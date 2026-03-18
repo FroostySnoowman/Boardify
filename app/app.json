@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "MyBreakPoint",
+    "slug": "mybreakpoint",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "mybreakpoint",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#020617"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.mybreakpoint",
+      "backgroundColor": "#020617",
+      "appleTeamId": "BZHS36ZMFQ",
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#020617"
+      }
+    },
+    "android": {
+      "softwareKeyboardLayoutMode": "pan",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#020617"
+      },
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#020617"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "backgroundColor": "#020617",
+      "navigationBar": {
+        "backgroundColor": "#000000",
+        "barStyle": "light-content"
+      },
+      "package": "app.mybreakpoint",
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "backgroundColor": "#020617",
+    "extra": {
+      "VITE_APP_URL": "https://mybreakpoint.app",
+      "VITE_API_BASE": "https://api.mybreakpoint.app",
+      "VITE_API_URL": "https://api.mybreakpoint.app",
+      "GOOGLE_OAUTH_CLIENT_ID": "354354727384-vk1eh3798hef45m9rttpibu21plf0chn.apps.googleusercontent.com"
+    }
+  }
+}

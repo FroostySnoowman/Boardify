@@ -1,0 +1,30 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["BZHS36ZMFQ.app.mybreakpoint"],
+        "components": [
+          {
+            "/": "*",
+            "comment": "Match all URLs"
+          }
+        ]
+      },
+      {
+        "appID": "BZHS36ZMFQ.app.mybreakpoint",
+        "paths": ["*"]
+      }
+    ]
+  },
+  "activitycontinuation": {
+    "apps": [
+      "BZHS36ZMFQ.app.mybreakpoint"
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "BZHS36ZMFQ.app.mybreakpoint"
+    ]
+  }
+}

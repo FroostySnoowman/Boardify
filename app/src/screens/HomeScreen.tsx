@@ -1,20 +1,31 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl, Platform, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
+import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
-import { ActivitySection } from '../components/ActivitySection';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 
-const READING_GRID = [
-  0, 1, 2, 1, 0, 1, 2, 1, 2, 3, 2, 1, 2, 1, 0, 2, 1, 2, 3, 2, 1, 0, 1, 2, 1, 0, 1, 0, 2, 1, 2, 3, 2, 1, 2,
-];
-const RUNNING_GRID = [
-  0, 2, 1, 2, 1, 0, 1, 2, 3, 2, 1, 2, 1, 0, 1, 2, 1, 0, 2, 3, 2, 1, 2, 1, 0, 2, 1, 2, 1, 0, 1, 2, 3, 2, 1,
+const SHIFT = 5;
+
+const MOCK_BOARDS = [
+  { id: '1', name: 'Work', color: '#a5d6a5' },
+  { id: '2', name: 'Personal', color: '#F3D9B1' },
 ];
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { loading } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -25,6 +36,16 @@ export default function HomeScreen() {
     hapticLight();
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setRefreshing(false);
+  };
+
+  const onBoardPress = (id: string) => {
+    hapticLight();
+    router.push('/board');
+  };
+
+  const onCreateBoard = () => {
+    hapticLight();
+    // TODO: Create new board
   };
 
   if (loading) {
@@ -47,7 +68,7 @@ export default function HomeScreen() {
           paddingBottom: insets.bottom + 24,
           paddingHorizontal: isWeb ? 24 : 16,
           flexGrow: 1,
-          maxWidth: isWeb ? 1200 : undefined,
+          maxWidth: isWeb ? 800 : undefined,
           alignSelf: isWeb ? 'center' : undefined,
           width: '100%',
         }}
@@ -64,41 +85,39 @@ export default function HomeScreen() {
           />
         }
       >
-        <ActivitySection
-          theme="reading"
-          label="Reading"
-          stat="9h 13m"
-          statSubtext="This Week"
-          ringLabel="START SESSION 📚"
-          icon="book"
-          actionType="play"
-          gridData={READING_GRID}
-        />
-        <ActivitySection
-          theme="running"
-          label="Running"
-          stat="13 mi"
-          statSubtext="This Week"
-          ringLabel="ADD TALLY 👟"
-          icon="activity"
-          actionType="plus"
-          gridData={RUNNING_GRID}
-        />
+        <View style={homeStyles.hero}>
+          <Text style={homeStyles.title}>Home</Text>
+          <Text style={homeStyles.subtitle}>Your boards and recent work</Text>
+        </View>
 
-        <View style={homeStyles.hintRow}>
-          <View style={homeStyles.hintCardWrap}>
-            <View style={homeStyles.hintCardShadow} />
-            <View style={homeStyles.hintCard}>
-              <Text style={homeStyles.hintEmoji}>🦊</Text>
-              <Text style={homeStyles.hintText}>LONG PRESS</Text>
-            </View>
-          </View>
-          <View style={homeStyles.hintCardWrap}>
-            <View style={homeStyles.hintCardShadow} />
-            <View style={homeStyles.hintCard}>
-              <Text style={homeStyles.hintEmoji}>🐻</Text>
-              <Text style={homeStyles.hintText}>Can also set Default Widgets</Text>
-            </View>
+        <View style={homeStyles.section}>
+          <Text style={homeStyles.sectionTitle}>My Boards</Text>
+          <View style={homeStyles.boardGrid}>
+            {MOCK_BOARDS.map((board) => (
+              <TouchableOpacity
+                key={board.id}
+                activeOpacity={0.9}
+                onPress={() => onBoardPress(board.id)}
+                style={homeStyles.boardCardWrap}
+              >
+                <View style={[homeStyles.boardCardShadow, { backgroundColor: board.color }]} />
+                <View style={homeStyles.boardCard}>
+                  <Text style={homeStyles.boardCardName} numberOfLines={1}>{board.name}</Text>
+                  <Feather name="chevron-right" size={18} color="#666" />
+                </View>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={onCreateBoard}
+              style={homeStyles.boardCardWrap}
+            >
+              <View style={homeStyles.boardCardShadow} />
+              <View style={homeStyles.createBoardCard}>
+                <Feather name="plus" size={24} color="#666" />
+                <Text style={homeStyles.createBoardText}>Create board</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -106,54 +125,87 @@ export default function HomeScreen() {
   );
 }
 
-const HINT_SHIFT = 5;
-
 const homeStyles = StyleSheet.create({
-  hintRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+  hero: {
+    marginBottom: 28,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#0a0a0a',
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#666',
+    marginTop: 6,
+    fontWeight: '500',
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 12,
   },
-  hintCardWrap: {
-    flex: 1,
-    position: 'relative',
-    marginRight: HINT_SHIFT,
-    marginBottom: HINT_SHIFT,
-    overflow: 'visible',
+  boardGrid: {
+    gap: 12,
   },
-  hintCardShadow: {
+  boardCardWrap: {
+    position: 'relative',
+    marginRight: SHIFT,
+    marginBottom: SHIFT,
+  },
+  boardCardShadow: {
     position: 'absolute',
-    left: HINT_SHIFT,
-    top: HINT_SHIFT,
-    right: -HINT_SHIFT,
-    bottom: -HINT_SHIFT,
-    backgroundColor: '#000',
-    borderRadius: 12,
+    left: SHIFT,
+    top: SHIFT,
+    right: -SHIFT,
+    bottom: -SHIFT,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#000',
   },
-  hintCard: {
+  boardCard: {
     position: 'relative',
     zIndex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#000',
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 72,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingLeft: 14,
   },
-  hintEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  hintText: {
-    fontSize: 11,
+  boardCardName: {
+    flex: 1,
+    fontSize: 17,
     fontWeight: '700',
     color: '#0a0a0a',
-    textAlign: 'center',
+  },
+  createBoardCard: {
+    position: 'relative',
+    zIndex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#e8e8e8',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#000',
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+  },
+  createBoardText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666',
   },
 });

@@ -4,7 +4,7 @@ import { Tabs, usePathname } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ActivitiesHeader, ACTIVITIES_HEADER_HEIGHT, MobileTopNav, MOBILE_NAV_HEIGHT, WebTopNav } from '../../src/components';
+import { ActivitiesHeader, ACTIVITIES_HEADER_HEIGHT, WebTopNav } from '../../src/components';
 import { useAuth } from '../../src/contexts/AuthContext';
 
 const TabIcon = NativeTabs.Trigger.Icon;
@@ -59,16 +59,12 @@ export default function TabsLayout() {
   }
 
   const isActivitiesHome = pathname === '/(tabs)' || pathname === '/' || pathname === '/(tabs)/index';
-  const headerHeight = isActivitiesHome ? ACTIVITIES_HEADER_HEIGHT : MOBILE_NAV_HEIGHT;
+  const headerHeight = isActivitiesHome ? ACTIVITIES_HEADER_HEIGHT : 0;
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f5f0e8" />
-      {isActivitiesHome ? (
-        <ActivitiesHeader />
-      ) : (
-        <MobileTopNav user={user} loading={loading} />
-      )}
+      {isActivitiesHome ? <ActivitiesHeader /> : null}
       <View style={[styles.contentWrapper, { paddingTop: headerHeight + insets.top }]}>
         {useNativeTabs ? (
           <NativeTabs

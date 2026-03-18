@@ -147,6 +147,7 @@ function AppContent() {
         <Stack.Screen name="profile" options={modalScreenOptions} />
         <Stack.Screen name="settings" options={modalScreenOptions} />
         <Stack.Screen name="login" options={modalScreenOptions} />
+        <Stack.Screen name="board" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" options={{ headerShown: false }} />
       </Stack>
     </View>

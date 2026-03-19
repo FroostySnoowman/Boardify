@@ -10,11 +10,66 @@ import {
   KeyboardAvoidingView,
   Keyboard,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticLight } from '../src/utils/haptics';
 
 const BG = '#f5f0e8';
+const SHIFT = 5;
+const PRESS_IN = 60;
+const PRESS_OUT = 100;
+
+/** Same structure as HomeScreen `BoardCardPressable` — shadow layer + animated face */
+function BoardStyleButton({
+  shadowColor,
+  onPress,
+  disabled,
+  label,
+  labelStyle,
+}: {
+  shadowColor: string;
+  onPress: () => void;
+  disabled?: boolean;
+  label: string;
+  labelStyle: object;
+}) {
+  const offset = useSharedValue(0);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: offset.value }, { translateY: offset.value }],
+  }));
+
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      onPressIn={() => {
+        if (!disabled) {
+          offset.value = withTiming(SHIFT, { duration: PRESS_IN });
+        }
+      }}
+      onPressOut={() => {
+        offset.value = withTiming(0, { duration: PRESS_OUT });
+      }}
+      style={styles.boardBtnWrap}
+    >
+      <View style={[styles.boardBtnShadow, { backgroundColor: shadowColor }]} />
+      <Animated.View
+        style={[
+          styles.boardBtnFace,
+          disabled && styles.boardBtnFaceDisabled,
+          animatedStyle,
+        ]}
+      >
+        <Text style={[styles.boardBtnLabel, labelStyle]}>{label}</Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export default function CreateBoardScreen() {
   const insets = useSafeAreaInsets();
@@ -79,7 +134,7 @@ export default function CreateBoardScreen() {
         >
           <View style={styles.card}>
             <Text style={styles.helper}>
-              Pick a name now — you can change it later in board settings.
+              Pick a name now — you can change it later from board settings.
             </Text>
 
             <Text style={styles.label}>Board name</Text>
@@ -98,28 +153,19 @@ export default function CreateBoardScreen() {
             />
 
             <View style={styles.actions}>
-              <Pressable
+              <BoardStyleButton
+                shadowColor="#e0e0e0"
                 onPress={close}
-                style={({ pressed }) => [styles.btn, styles.btnCancel, pressed && styles.pressed]}
-              >
-                <Text style={styles.btnCancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable
+                label="Cancel"
+                labelStyle={styles.labelCancel}
+              />
+              <BoardStyleButton
+                shadowColor={canSubmit ? '#a5d6a5' : '#d0d0d0'}
                 onPress={submit}
                 disabled={!canSubmit}
-                style={({ pressed }) => [
-                  styles.btn,
-                  styles.btnCreate,
-                  !canSubmit && styles.btnCreateDisabled,
-                  pressed && canSubmit && styles.pressed,
-                ]}
-              >
-                <Text
-                  style={[styles.btnCreateText, !canSubmit && styles.btnCreateTextDisabled]}
-                >
-                  Create
-                </Text>
-              </Pressable>
+                label="Create"
+                labelStyle={canSubmit ? styles.labelCreate : styles.labelCreateDisabled}
+              />
             </View>
           </View>
         </ScrollView>
@@ -154,7 +200,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingTop: 48,
+    paddingTop: 8,
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
@@ -196,44 +242,57 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'flex-start',
     marginTop: 28,
     gap: 12,
   },
-  btn: {
+  /** Mirrors HomeScreen `boardCardWrap` / `boardCardShadow` / `boardCard` */
+  boardBtnWrap: {
+    position: 'relative',
     flex: 1,
-    minHeight: 50,
-    borderRadius: 12,
-    borderWidth: 2,
+    minWidth: 0,
+    marginRight: SHIFT,
+    marginBottom: SHIFT,
+  },
+  boardBtnShadow: {
+    position: 'absolute',
+    left: SHIFT,
+    top: SHIFT,
+    right: -SHIFT,
+    bottom: -SHIFT,
+    borderRadius: 14,
+    borderWidth: 1,
     borderColor: '#000',
+  },
+  boardBtnFace: {
+    position: 'relative',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#000',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    minHeight: 52,
   },
-  btnCancel: {
-    backgroundColor: '#e8e8e8',
+  boardBtnFaceDisabled: {
+    backgroundColor: '#eee',
   },
-  btnCancelText: {
-    fontSize: 16,
-    fontWeight: '800',
+  boardBtnLabel: {
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'center',
+    width: '100%',
     color: '#0a0a0a',
   },
-  btnCreate: {
-    backgroundColor: '#a5d6a5',
-  },
-  btnCreateDisabled: {
-    backgroundColor: '#ddd',
-    borderColor: '#999',
-  },
-  btnCreateText: {
-    fontSize: 16,
-    fontWeight: '800',
+  labelCancel: {
     color: '#0a0a0a',
   },
-  btnCreateTextDisabled: {
+  labelCreate: {
+    color: '#0a0a0a',
+  },
+  labelCreateDisabled: {
     color: '#888',
-  },
-  pressed: {
-    opacity: 0.88,
   },
 });

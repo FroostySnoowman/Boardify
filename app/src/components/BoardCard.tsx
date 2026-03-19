@@ -15,16 +15,30 @@ export interface BoardCardProps {
   labelColor?: string;
   onPress?: () => void;
   hidden?: boolean;
+  /** When wrapped by DraggableBoardCard (gesture handles tap + long-press) */
+  suppressPress?: boolean;
 }
 
 export const BoardCard = forwardRef<View, BoardCardProps>(function BoardCard(
-  { title, subtitle, labelColor, onPress, hidden },
+  { title, subtitle, labelColor, onPress, hidden, suppressPress },
   ref
 ) {
   const handlePress = () => {
     hapticLight();
     onPress?.();
   };
+
+  const face = (
+    <>
+      <View style={styles.shadow} pointerEvents="none" />
+      <View style={[styles.card, labelColor ? { borderLeftWidth: 4, borderLeftColor: labelColor } : undefined]}>
+        <Text style={styles.title} numberOfLines={2}>{title}</Text>
+        {subtitle ? (
+          <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
+        ) : null}
+      </View>
+    </>
+  );
 
   return (
     <View
@@ -33,15 +47,13 @@ export const BoardCard = forwardRef<View, BoardCardProps>(function BoardCard(
       style={[styles.wrap, { opacity: hidden ? 0 : 1 }]}
       pointerEvents={hidden ? 'none' : 'auto'}
     >
-      <Pressable onPress={handlePress} style={styles.pressable}>
-        <View style={styles.shadow} pointerEvents="none" />
-        <View style={[styles.card, labelColor ? { borderLeftWidth: 4, borderLeftColor: labelColor } : undefined]}>
-          <Text style={styles.title} numberOfLines={2}>{title}</Text>
-          {subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
-          ) : null}
-        </View>
-      </Pressable>
+      {suppressPress ? (
+        <View style={styles.pressable}>{face}</View>
+      ) : (
+        <Pressable onPress={handlePress} style={styles.pressable}>
+          {face}
+        </Pressable>
+      )}
     </View>
   );
 });

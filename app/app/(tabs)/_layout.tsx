@@ -7,6 +7,7 @@ import { AppTopNav, MOBILE_NAV_HEIGHT, WebTopNav } from '../../src/components';
 import { useAuth } from '../../src/contexts/AuthContext';
 
 const BOARDS_TAB_ICON = require('../../assets/icons/board-tab.png');
+const MESSAGES_TAB_ICON = require('../../assets/icons/messages-tab.png');
 const ACCOUNT_TAB_ICON = require('../../assets/icons/account-tab.png');
 
 const TabIcon = NativeTabs.Trigger.Icon;
@@ -14,6 +15,7 @@ const TabLabel = NativeTabs.Trigger.Label;
 
 const TAB_ITEMS = [
   { name: 'index', label: 'Home', webIcon: 'home' as const, iconSrc: BOARDS_TAB_ICON },
+  { name: 'messages', label: 'Messages', webIcon: 'message-circle' as const, iconSrc: MESSAGES_TAB_ICON },
   { name: 'account', label: 'Account', webIcon: 'user' as const, iconSrc: ACCOUNT_TAB_ICON },
 ] as const;
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import { BoardColumn } from '../components/BoardColumn';
+import {
+  BoardCardExpandOverlay,
+  type ExpandedCardData,
+} from '../components/BoardCardExpandOverlay';
 
 const SHIFT = 5;
 
@@ -48,7 +52,33 @@ interface BoardScreenProps {
 export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScreenProps) {
   const insets = useSafeAreaInsets();
   const [columns] = useState(MOCK_COLUMNS);
+  const [expanded, setExpanded] = useState<ExpandedCardData | null>(null);
   const isWeb = Platform.OS === 'web';
+
+  const handleCardPress = useCallback(
+    (
+      columnIndex: number,
+      cardIndex: number,
+      layout: { x: number; y: number; width: number; height: number }
+    ) => {
+      const col = columns[columnIndex];
+      const card = col?.cards[cardIndex];
+      if (!col || !card) return;
+      setExpanded({
+        title: card.title,
+        subtitle: card.subtitle,
+        labelColor: card.labelColor,
+        columnTitle: col.title,
+        layout,
+        columnIndex,
+        cardIndex,
+      });
+    },
+    [columns]
+  );
+
+  const expandedCardKey =
+    expanded == null ? null : `${expanded.columnIndex}-${expanded.cardIndex}`;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -86,10 +116,12 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
         {columns.map((col, i) => (
           <BoardColumn
             key={i}
+            columnIndex={i}
             title={col.title}
             cards={col.cards}
             onAddCard={() => {}}
-            onCardPress={() => {}}
+            expandedCardKey={expandedCardKey}
+            onCardPress={(cardIndex, layout) => handleCardPress(i, cardIndex, layout)}
           />
         ))}
         <TouchableOpacity
@@ -104,6 +136,10 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
           </View>
         </TouchableOpacity>
       </ScrollView>
+
+      {expanded ? (
+        <BoardCardExpandOverlay data={expanded} onClose={() => setExpanded(null)} />
+      ) : null}
     </View>
   );
 }

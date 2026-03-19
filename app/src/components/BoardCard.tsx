@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { forwardRef } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { hapticLight } from '../utils/haptics';
 
 const CARD_SHIFT = 4;
@@ -9,36 +9,45 @@ export interface BoardCardProps {
   subtitle?: string;
   labelColor?: string;
   onPress?: () => void;
+  /** Hide list item while this card is expanded (shared-element style). */
+  hidden?: boolean;
 }
 
-export function BoardCard({ title, subtitle, labelColor, onPress }: BoardCardProps) {
+export const BoardCard = forwardRef<View, BoardCardProps>(function BoardCard(
+  { title, subtitle, labelColor, onPress, hidden },
+  ref
+) {
   const handlePress = () => {
     hapticLight();
     onPress?.();
   };
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={handlePress}
-      style={styles.wrap}
-    >
-      <View style={styles.shadow} />
-      <View style={[styles.card, labelColor ? { borderLeftWidth: 4, borderLeftColor: labelColor } : undefined]}>
-        <Text style={styles.title} numberOfLines={2}>{title}</Text>
-        {subtitle ? (
-          <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
-        ) : null}
-      </View>
-    </TouchableOpacity>
+    <View ref={ref} collapsable={false} style={[styles.wrap, hidden && styles.hidden]}>
+      <Pressable onPress={handlePress} style={styles.pressable}>
+        <View style={styles.shadow} pointerEvents="none" />
+        <View style={[styles.card, labelColor ? { borderLeftWidth: 4, borderLeftColor: labelColor } : undefined]}>
+          <Text style={styles.title} numberOfLines={2}>{title}</Text>
+          {subtitle ? (
+            <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
+          ) : null}
+        </View>
+      </Pressable>
+    </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrap: {
     position: 'relative',
     marginBottom: CARD_SHIFT,
     marginRight: CARD_SHIFT,
+  },
+  hidden: {
+    opacity: 0,
+  },
+  pressable: {
+    position: 'relative',
   },
   shadow: {
     position: 'absolute',

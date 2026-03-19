@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
@@ -10,10 +10,14 @@ export interface BoardColumnProps {
   title: string;
   cards: Array<Pick<BoardCardProps, 'title' | 'subtitle' | 'labelColor'>>;
   onAddCard?: () => void;
-  onCardPress?: (index: number) => void;
+  onCardPress?: (index: number, layout: { x: number; y: number; width: number; height: number }) => void;
+  /** `${columnIndex}-${cardIndex}` of expanded card, to hide the list duplicate */
+  expandedCardKey?: string | null;
+  columnIndex: number;
 }
 
-export function BoardColumn({ title, cards, onAddCard, onCardPress }: BoardColumnProps) {
+export function BoardColumn({ title, cards, onAddCard, onCardPress, expandedCardKey, columnIndex }: BoardColumnProps) {
+  const cardRefs = useRef<(React.ElementRef<typeof BoardCard> | null)[]>([]);
   const handleAddCard = () => {
     hapticLight();
     onAddCard?.();
@@ -31,10 +35,20 @@ export function BoardColumn({ title, cards, onAddCard, onCardPress }: BoardColum
           {cards.map((card, i) => (
             <BoardCard
               key={i}
+              ref={(el) => {
+                cardRefs.current[i] = el;
+              }}
               title={card.title}
               subtitle={card.subtitle}
               labelColor={card.labelColor}
-              onPress={() => onCardPress?.(i)}
+              hidden={expandedCardKey === `${columnIndex}-${i}`}
+              onPress={() => {
+                const node = cardRefs.current[i];
+                if (!node || !onCardPress) return;
+                node.measureInWindow((x, y, width, height) => {
+                  onCardPress(i, { x, y, width, height });
+                });
+              }}
             />
           ))}
           <TouchableOpacity

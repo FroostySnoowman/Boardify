@@ -142,8 +142,7 @@ function AppContent() {
           name="(tabs)"
           options={{
             headerShown: false,
-            animation: 'none',
-            contentStyle: { backgroundColor: BACKGROUND_COLOR },
+            animation: 'fade',
           }}
         />
         <Stack.Screen name="profile" options={modalScreenOptions} />

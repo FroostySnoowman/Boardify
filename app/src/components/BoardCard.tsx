@@ -1,5 +1,11 @@
-import React, { forwardRef } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { forwardRef, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Animated,
+} from 'react-native';
 import { hapticLight } from '../utils/haptics';
 
 const CARD_SHIFT = 4;
@@ -9,7 +15,6 @@ export interface BoardCardProps {
   subtitle?: string;
   labelColor?: string;
   onPress?: () => void;
-  /** Hide list item while this card is expanded (shared-element style). */
   hidden?: boolean;
 }
 
@@ -17,13 +22,35 @@ export const BoardCard = forwardRef<View, BoardCardProps>(function BoardCard(
   { title, subtitle, labelColor, onPress, hidden },
   ref
 ) {
+  const opacity = useRef(new Animated.Value(1)).current;
+  const wasHiddenRef = useRef(false);
+
+  useEffect(() => {
+    if (hidden) {
+      wasHiddenRef.current = true;
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 0,
+        useNativeDriver: true,
+      }).start();
+    } else if (wasHiddenRef.current) {
+      wasHiddenRef.current = false;
+      opacity.setValue(1);
+    }
+  }, [hidden, opacity]);
+
   const handlePress = () => {
     hapticLight();
     onPress?.();
   };
 
   return (
-    <View ref={ref} collapsable={false} style={[styles.wrap, hidden && styles.hidden]}>
+    <Animated.View
+      ref={ref}
+      collapsable={false}
+      style={[styles.wrap, { opacity }]}
+      pointerEvents={hidden ? 'none' : 'auto'}
+    >
       <Pressable onPress={handlePress} style={styles.pressable}>
         <View style={styles.shadow} pointerEvents="none" />
         <View style={[styles.card, labelColor ? { borderLeftWidth: 4, borderLeftColor: labelColor } : undefined]}>
@@ -33,7 +60,7 @@ export const BoardCard = forwardRef<View, BoardCardProps>(function BoardCard(
           ) : null}
         </View>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 });
 
@@ -42,9 +69,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: CARD_SHIFT,
     marginRight: CARD_SHIFT,
-  },
-  hidden: {
-    opacity: 0,
   },
   pressable: {
     position: 'relative',

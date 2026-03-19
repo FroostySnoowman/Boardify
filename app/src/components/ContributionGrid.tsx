@@ -24,7 +24,6 @@ const runningColors: Record<number, string> = {
 
 interface ContributionGridProps {
   theme: ContributionGridTheme;
-  /** Row-major intensity values 0-4, length ROWS*COLS. Defaults to mock data. */
   data?: number[];
   cellSize?: number;
   gap?: number;

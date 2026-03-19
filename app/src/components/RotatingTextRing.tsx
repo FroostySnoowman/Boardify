@@ -16,10 +16,6 @@ function toChars(s: string): string[] {
   return Array.from(s);
 }
 
-/**
- * Characters placed on a circle (round path). Each letter is oriented tangent to the
- * circle so it sits flat on the round edge at that position (like screenshot 2).
- */
 export function RotatingTextRing({ label, centerChild, size = 150 }: RotatingTextRingProps) {
   const center = Math.round(size / 2);
   const half = Math.round(CHAR_SIZE / 2);

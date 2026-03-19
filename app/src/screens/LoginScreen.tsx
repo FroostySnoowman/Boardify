@@ -56,7 +56,6 @@ export default function LoginScreen() {
   const [isRegister, setIsRegister] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState<'Weak' | 'Medium' | 'Strong' | ''>('');
 
-  // Forgot password flow
   const [resetStep, setResetStep] = useState<'none' | 'email' | 'code' | 'newPassword' | 'success'>('none');
   const [resetEmail, setResetEmail] = useState('');
   const [resetCode, setResetCode] = useState('');
@@ -70,7 +69,6 @@ export default function LoginScreen() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const resendTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Cooldown countdown timer for resend
   useEffect(() => {
     if (resendCooldown <= 0) {
       if (resendTimerRef.current) {

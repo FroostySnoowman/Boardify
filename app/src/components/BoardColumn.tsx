@@ -11,7 +11,6 @@ export interface BoardColumnProps {
   cards: Array<Pick<BoardCardProps, 'title' | 'subtitle' | 'labelColor'>>;
   onAddCard?: () => void;
   onCardPress?: (index: number, layout: { x: number; y: number; width: number; height: number }) => void;
-  /** `${columnIndex}-${cardIndex}` of expanded card, to hide the list duplicate */
   expandedCardKey?: string | null;
   columnIndex: number;
 }

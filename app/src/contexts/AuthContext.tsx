@@ -34,7 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(fetched);
       await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(fetched));
     } catch (e: any) {
-      // Only clear user on auth errors (e.g. session expired). Keep cached user on network errors (offline).
       const isAuthError = e?.status === 401 || e?.status === 403 || e?.message?.toLowerCase().includes('unauthorized');
       if (isAuthError) {
         setUser(null);

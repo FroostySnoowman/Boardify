@@ -91,7 +91,6 @@ export default function HomeScreen() {
 
   const onCreateBoard = () => {
     hapticLight();
-    // TODO: Create new board
   };
 
   if (loading) {

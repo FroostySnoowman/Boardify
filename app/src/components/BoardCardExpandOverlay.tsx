@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,16 +21,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 
-/** Smooth open — decelerate into place (Trello-like). */
+const LIST_TITLE_SIZE = 14;
+const LIST_TITLE_LH = 18;
+const DETAIL_TITLE_SIZE = 22;
+const DETAIL_TITLE_LH = 28;
+
 const openConfig = {
   duration: 380,
   easing: Easing.out(Easing.cubic),
 };
 
-/** Smooth close — symmetric ease in-out, no spring overshoot. */
 const closeConfig = {
-  duration: 340,
-  easing: Easing.inOut(Easing.cubic),
+  duration: 420,
+  easing: Easing.out(Easing.cubic),
 };
 
 export type CardLayout = { x: number; y: number; width: number; height: number };
@@ -53,6 +56,10 @@ type Props = {
 export function BoardCardExpandOverlay({ data, onClose }: Props) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+
+  const scheduleUnmount = useCallback(() => {
+    requestAnimationFrame(() => onClose());
+  }, [onClose]);
 
   const progress = useSharedValue(0);
   const ox = useSharedValue(0);
@@ -114,23 +121,68 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
   });
 
   const backdropStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.08, 1], [0, 0.4, 0.48], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.value,
+      [0, 0.2, 0.55, 1],
+      [0, 0.34, 0.44, 0.5],
+      Extrapolation.CLAMP
+    ),
   }));
 
-  const chromeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.22, 1], [0, 0.85, 1], Extrapolation.CLAMP),
-    transform: [
-      {
-        translateY: interpolate(progress.value, [0, 1], [8, 0], Extrapolation.CLAMP),
-      },
-    ],
-  }));
+  const headerPaddingStyle = useAnimatedStyle(() => {
+    const t = progress.value;
+    const topPad = Math.max(insets.top, 12);
+    return {
+      paddingTop: interpolate(t, [0, 1], [0, topPad], Extrapolation.CLAMP),
+      paddingBottom: interpolate(t, [0, 0.18, 0.32, 1], [0, 0, 0, 10], Extrapolation.CLAMP),
+      paddingHorizontal: interpolate(t, [0, 0.18, 0.32, 1], [0, 0, 0, 16], Extrapolation.CLAMP),
+      maxHeight: interpolate(t, [0, 0.12, 0.28, 1], [0, 0, 88, 2000], Extrapolation.CLAMP),
+      overflow: 'hidden',
+      opacity: interpolate(t, [0, 0.12, 0.26, 1], [0, 0, 1, 1], Extrapolation.CLAMP),
+      transform: [
+        {
+          translateY: interpolate(t, [0, 1], [6, 0], Extrapolation.CLAMP),
+        },
+      ],
+      borderBottomWidth: interpolate(t, [0, 0.2, 0.34, 1], [0, 0, 1, 1], Extrapolation.CLAMP),
+    };
+  });
+
+  const detailTitleStyle = useAnimatedStyle(() => {
+    const t = progress.value;
+    return {
+      fontSize: interpolate(t, [0, 1], [LIST_TITLE_SIZE, DETAIL_TITLE_SIZE], Extrapolation.CLAMP),
+      lineHeight: interpolate(t, [0, 1], [LIST_TITLE_LH, DETAIL_TITLE_LH], Extrapolation.CLAMP),
+    };
+  });
+
+  const detailBodyStyle = useAnimatedStyle(() => {
+    const t = progress.value;
+    return {
+      paddingHorizontal: interpolate(t, [0, 1], [12, 20], Extrapolation.CLAMP),
+      paddingTop: interpolate(t, [0, 1], [10, 16], Extrapolation.CLAMP),
+    };
+  });
+
+  const detailMetaStyle = useAnimatedStyle(() => {
+    const t = progress.value;
+    return {
+      opacity: interpolate(t, [0, 0.35, 0.52, 1], [0, 0, 1, 1], Extrapolation.CLAMP),
+      maxHeight: interpolate(t, [0, 0.32, 0.48, 1], [0, 0, 800, 1200], Extrapolation.CLAMP),
+      overflow: 'hidden',
+      transform: [
+        {
+          translateY: interpolate(t, [0, 0.5, 1], [4, 2, 0], Extrapolation.CLAMP),
+        },
+      ],
+    };
+  });
 
   const handleClose = () => {
     hapticLight();
     progress.value = withTiming(0, closeConfig, (finished) => {
       if (finished) {
-        runOnJS(onClose)();
+        runOnJS(scheduleUnmount)();
       }
     });
   };
@@ -151,13 +203,7 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
                 : undefined,
             ]}
           >
-            <Animated.View
-              style={[
-                styles.cardFaceHeader,
-                { paddingTop: Math.max(insets.top, 12) },
-                chromeStyle,
-              ]}
-            >
+            <Animated.View style={[styles.cardFaceHeader, headerPaddingStyle]}>
               <Text style={styles.columnBadge} numberOfLines={1}>
                 {data.columnTitle}
               </Text>
@@ -170,11 +216,13 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
                 <Feather name="x" size={22} color="#0a0a0a" />
               </Pressable>
             </Animated.View>
-            <View style={[styles.detailBody, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-              <Text style={styles.detailTitle} numberOfLines={4}>
+            <Animated.View
+              style={[styles.detailBody, { paddingBottom: Math.max(insets.bottom, 24) }, detailBodyStyle]}
+            >
+              <Animated.Text style={[styles.detailTitleBase, detailTitleStyle]} numberOfLines={4}>
                 {data.title}
-              </Text>
-              <Animated.View style={chromeStyle}>
+              </Animated.Text>
+              <Animated.View style={detailMetaStyle}>
                 {data.subtitle ? (
                   <Text style={styles.detailSubtitle}>{data.subtitle}</Text>
                 ) : null}
@@ -182,7 +230,7 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
                   Add description, checklist, and more — coming soon.
                 </Text>
               </Animated.View>
-            </View>
+            </Animated.View>
           </View>
         </Animated.View>
       </View>
@@ -213,7 +261,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 10,
-    borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.08)',
   },
   columnBadge: {
@@ -230,14 +277,10 @@ const styles = StyleSheet.create({
   },
   detailBody: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
   },
-  detailTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+  detailTitleBase: {
+    fontWeight: '600',
     color: '#0a0a0a',
-    lineHeight: 28,
   },
   detailSubtitle: {
     fontSize: 15,

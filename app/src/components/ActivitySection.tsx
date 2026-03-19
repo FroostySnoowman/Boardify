@@ -46,7 +46,6 @@ export function ActivitySection({
 
   const onActionPress = () => {
     hapticLight();
-    // TODO: Start session / Add tally
   };
 
   const centerButton = (

@@ -18,7 +18,6 @@ export function ActivitiesHeader({ embeddedInLayout = false }: { embeddedInLayou
 
   const onPlusPress = () => {
     hapticLight();
-    // TODO: Add activity
   };
 
   return (

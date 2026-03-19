@@ -5,7 +5,6 @@ import { ActivitiesHeader, MOBILE_NAV_HEIGHT } from './ActivitiesHeader';
 
 export { MOBILE_NAV_HEIGHT };
 
-/** Cream bar matching the rest of the app (`#f5f0e8`); glass controls stay above scroll content. */
 interface User {
   profilePictureUrl?: string | null;
   displayName?: string | null;

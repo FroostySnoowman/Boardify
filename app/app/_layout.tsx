@@ -41,6 +41,24 @@ const modalScreenOptions = {
   animation: Platform.OS === 'android' ? 'slide_from_bottom' : 'default',
 } as const;
 
+const createBoardModalOptions = {
+  presentation: Platform.OS === 'ios' ? 'pageSheet' : 'modal',
+  headerShown: true,
+  headerTransparent: Platform.OS === 'ios',
+  headerBlurEffect: Platform.OS === 'ios' ? 'systemChromeMaterialLight' : undefined,
+  headerStyle:
+    Platform.OS === 'android' || Platform.OS === 'web'
+      ? { backgroundColor: BACKGROUND_COLOR }
+      : undefined,
+  headerShadowVisible: false,
+  headerTintColor: '#0a0a0a',
+  headerBackVisible: Platform.OS === 'web' ? true : undefined,
+  contentStyle: { backgroundColor: BACKGROUND_COLOR },
+  gestureEnabled: true,
+  headerTitle: '',
+  animation: Platform.OS === 'android' ? 'slide_from_bottom' : 'default',
+} as const;
+
 function OfflineBanner() {
   const insets = useSafeAreaInsets();
   const { isOnline } = useNetwork();
@@ -148,6 +166,7 @@ function AppContent() {
         <Stack.Screen name="profile" options={modalScreenOptions} />
         <Stack.Screen name="settings" options={modalScreenOptions} />
         <Stack.Screen name="login" options={modalScreenOptions} />
+        <Stack.Screen name="create-board" options={createBoardModalOptions} />
         <Stack.Screen name="board" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" options={{ headerShown: false }} />
       </Stack>

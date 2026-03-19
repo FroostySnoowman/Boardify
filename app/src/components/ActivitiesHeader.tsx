@@ -1,11 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { GlassView, isLiquidGlassAvailable, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { ContextMenu } from './ContextMenu';
-import { CreateBoardNameModal } from './CreateBoardNameModal';
 import { hapticLight } from '../utils/haptics';
 
 export const ACTIVITIES_HEADER_HEIGHT = 64;
@@ -49,18 +48,10 @@ export function ActivitiesHeader({
   const insets = useSafeAreaInsets();
   const isHomeTab = useIsHomeTab();
   const tabTitle = useTabTitle();
-  /** Match mbp MobileTopNav: same availability checks + native GlassView props */
   const isGlassAvailable = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
-  const [createBoardVisible, setCreateBoardVisible] = useState(false);
-
-  const openCreateBoardModal = useCallback(() => {
+  const openCreateBoard = useCallback(() => {
     hapticLight();
-    setCreateBoardVisible(true);
-  }, []);
-
-  const onCreateBoardNamed = useCallback((name: string) => {
-    setCreateBoardVisible(false);
-    router.push({ pathname: '/board', params: { boardName: name } });
+    router.push('/create-board');
   }, []);
 
   const goHome = () => {
@@ -171,7 +162,7 @@ export function ActivitiesHeader({
               <Pressable
                 hitSlop={12}
                 accessibilityLabel="Create new board"
-                onPress={openCreateBoardModal}
+                onPress={openCreateBoard}
                 style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}
               >
                 {renderGlassRound('plus', 23)}
@@ -209,7 +200,7 @@ export function ActivitiesHeader({
 
             <View style={[styles.homeSide, { alignItems: 'flex-end' }]}>
               <Pressable
-                onPress={openCreateBoardModal}
+                onPress={openCreateBoard}
                 hitSlop={12}
                 style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}
               >
@@ -220,11 +211,6 @@ export function ActivitiesHeader({
         </View>
       )}
 
-      <CreateBoardNameModal
-        visible={createBoardVisible}
-        onClose={() => setCreateBoardVisible(false)}
-        onCreate={onCreateBoardNamed}
-      />
     </>
   );
 
@@ -246,7 +232,6 @@ const styles = StyleSheet.create({
     zIndex: 999,
     elevation: 0,
   },
-  /** Same cream as AppTopNav / screen — seamless with scroll area */
   containerEmbedded: {
     flex: 1,
     width: '100%',
@@ -272,7 +257,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 0,
   },
-  /** Same dimensions as mbp MobileTopNav `glassContainer` (no overflow:hidden — that breaks liquid glass) */
   glassContainer: {
     width: 45,
     height: 45,

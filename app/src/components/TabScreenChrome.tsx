@@ -4,11 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppTopNav, MOBILE_NAV_HEIGHT } from './AppTopNav';
 import { useAuth } from '../contexts/AuthContext';
 
-/**
- * Renders the liquid-glass top bar *inside* the tab screen subtree.
- * Siblings of NativeTabs (react-native-screens Tabs.Host) paint under native
- * tab content — this wrapper fixes that by compositing the bar with the screen.
- */
 export function TabScreenChrome({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const { user, loading } = useAuth();

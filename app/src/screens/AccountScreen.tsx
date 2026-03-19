@@ -13,6 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
+import { TabScreenChrome } from '../components/TabScreenChrome';
 
 const SHIFT = 5;
 
@@ -39,22 +40,24 @@ export default function AccountScreen() {
     setConfig((c) => ({ ...c, [key]: value }));
   };
 
-  return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: isWeb ? 24 : Math.max(insets.top / 2, 12) + (Platform.OS === 'ios' && Platform.isPad ? IPAD_TAB_CONTENT_TOP_PADDING : 0),
-            paddingBottom: insets.bottom + 24,
-            paddingHorizontal: isWeb ? 24 : 16,
-            maxWidth: isWeb ? 600 : undefined,
-            alignSelf: isWeb ? 'center' : undefined,
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-        bounces={Platform.OS === 'ios'}
-      >
+  const ipadPad = Platform.OS === 'ios' && Platform.isPad ? IPAD_TAB_CONTENT_TOP_PADDING : 0;
+  const contentPaddingTop = (isWeb ? 24 : 12) + ipadPad;
+
+  const scroll = (
+    <ScrollView
+      contentContainerStyle={[
+        styles.scrollContent,
+        {
+          paddingTop: contentPaddingTop,
+          paddingBottom: insets.bottom + 24,
+          paddingHorizontal: isWeb ? 24 : 16,
+          maxWidth: isWeb ? 600 : undefined,
+          alignSelf: isWeb ? 'center' : undefined,
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+      bounces={Platform.OS === 'ios'}
+    >
         <View style={styles.hero}>
           <Text style={styles.title}>Account</Text>
           <Text style={styles.subtitle}>
@@ -111,9 +114,14 @@ export default function AccountScreen() {
             </View>
           </View>
         </View>
-      </ScrollView>
-    </View>
+    </ScrollView>
   );
+
+  if (isWeb) {
+    return <View style={styles.container}>{scroll}</View>;
+  }
+
+  return <TabScreenChrome>{scroll}</TabScreenChrome>;
 }
 
 function ConfigRow({
@@ -204,7 +212,6 @@ const styles = StyleSheet.create({
   },
   card: {
     position: 'relative',
-    zIndex: 1,
     backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,

@@ -1,5 +1,5 @@
-import AccountScreen from '../../src/screens/AccountScreen';
+import MessagesScreen from '../../src/screens/MessagesScreen';
 
-export default function AccountTab() {
-  return <AccountScreen />;
+export default function MessagesTab() {
+  return <MessagesScreen />;
 }

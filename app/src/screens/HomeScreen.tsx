@@ -20,7 +20,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
-import { ActivitiesHeader } from '../components/ActivitiesHeader';
+import { ActivitiesHeader, MOBILE_NAV_HEIGHT } from '../components/ActivitiesHeader';
+import { TabScreenChrome } from '../components/TabScreenChrome';
 
 const SHIFT = 5;
 
@@ -101,68 +102,78 @@ export default function HomeScreen() {
     );
   }
 
-  return (
-    <View className="relative flex-1" style={{ backgroundColor: '#f5f0e8' }}>
-      {isWeb && <ActivitiesHeader />}
-      <ScrollView
-        ref={scrollViewRef}
-        className="flex-1"
-        contentContainerStyle={{
-          paddingTop:
-            (isWeb ? 24 : Math.max(12, insets.top / 2)) +
-            (Platform.OS === 'ios' && Platform.isPad ? IPAD_TAB_CONTENT_TOP_PADDING : 0),
-          paddingBottom: insets.bottom + 24,
-          paddingHorizontal: isWeb ? 24 : 16,
-          flexGrow: 1,
-          maxWidth: isWeb ? 800 : undefined,
-          alignSelf: isWeb ? 'center' : undefined,
-          width: '100%',
-        }}
-        showsVerticalScrollIndicator={false}
-        bounces={Platform.OS === 'ios'}
-        overScrollMode={Platform.OS === 'android' ? 'never' : undefined}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#0a0a0a"
-            colors={['#0a0a0a']}
-            progressViewOffset={Platform.OS === 'android' ? 60 : undefined}
-          />
-        }
-      >
-        <View style={homeStyles.hero}>
-          <Text style={homeStyles.title}>Home</Text>
-          <Text style={homeStyles.subtitle}>Your boards and recent work</Text>
-        </View>
+  const ipadPad = Platform.OS === 'ios' && Platform.isPad ? IPAD_TAB_CONTENT_TOP_PADDING : 0;
+  const contentPaddingTop = (isWeb ? 24 : 12) + ipadPad;
+  const androidRefreshOffset = MOBILE_NAV_HEIGHT + insets.top;
 
-        <View style={homeStyles.section}>
-          <Text style={homeStyles.sectionTitle}>My Boards</Text>
-          <View style={homeStyles.boardGrid}>
-            {MOCK_BOARDS.map((board) => (
-              <BoardCardPressable
-                key={board.id}
-                shadowStyle={{ backgroundColor: board.color }}
-                topStyle={homeStyles.boardCard}
-                onPress={() => onBoardPress(board.id)}
-              >
-                <Text style={homeStyles.boardCardName} numberOfLines={1}>{board.name}</Text>
-                <Feather name="chevron-right" size={18} color="#666" />
-              </BoardCardPressable>
-            ))}
+  const scroll = (
+    <ScrollView
+      ref={scrollViewRef}
+      className="flex-1"
+      contentContainerStyle={{
+        paddingTop: contentPaddingTop,
+        paddingBottom: insets.bottom + 24,
+        paddingHorizontal: isWeb ? 24 : 16,
+        flexGrow: 1,
+        maxWidth: isWeb ? 800 : undefined,
+        alignSelf: isWeb ? 'center' : undefined,
+        width: '100%',
+      }}
+      showsVerticalScrollIndicator={false}
+      bounces={Platform.OS === 'ios'}
+      overScrollMode={Platform.OS === 'android' ? 'never' : undefined}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#0a0a0a"
+          colors={['#0a0a0a']}
+          progressViewOffset={Platform.OS === 'android' ? androidRefreshOffset : undefined}
+        />
+      }
+    >
+      <View style={homeStyles.hero}>
+        <Text style={homeStyles.title}>Home</Text>
+        <Text style={homeStyles.subtitle}>Your boards and recent work</Text>
+      </View>
+
+      <View style={homeStyles.section}>
+        <Text style={homeStyles.sectionTitle}>My Boards</Text>
+        <View style={homeStyles.boardGrid}>
+          {MOCK_BOARDS.map((board) => (
             <BoardCardPressable
-              shadowStyle={{}}
-              topStyle={homeStyles.createBoardCard}
-              onPress={onCreateBoard}
+              key={board.id}
+              shadowStyle={{ backgroundColor: board.color }}
+              topStyle={homeStyles.boardCard}
+              onPress={() => onBoardPress(board.id)}
             >
-              <Feather name="plus" size={24} color="#666" />
-              <Text style={homeStyles.createBoardText}>Create board</Text>
+              <Text style={homeStyles.boardCardName} numberOfLines={1}>{board.name}</Text>
+              <Feather name="chevron-right" size={18} color="#666" />
             </BoardCardPressable>
-          </View>
+          ))}
+          <BoardCardPressable
+            shadowStyle={{}}
+            topStyle={homeStyles.createBoardCard}
+            onPress={onCreateBoard}
+          >
+            <Feather name="plus" size={24} color="#666" />
+            <Text style={homeStyles.createBoardText}>Create board</Text>
+          </BoardCardPressable>
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
+
+  if (isWeb) {
+    return (
+      <View className="flex-1" style={{ backgroundColor: '#f5f0e8' }}>
+        <ActivitiesHeader />
+        {scroll}
+      </View>
+    );
+  }
+
+  return <TabScreenChrome>{scroll}</TabScreenChrome>;
 }
 
 const homeStyles = StyleSheet.create({
@@ -212,7 +223,6 @@ const homeStyles = StyleSheet.create({
   },
   boardCard: {
     position: 'relative',
-    zIndex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
@@ -231,7 +241,6 @@ const homeStyles = StyleSheet.create({
   },
   createBoardCard: {
     position: 'relative',
-    zIndex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

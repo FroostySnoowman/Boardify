@@ -2,8 +2,7 @@ import React from 'react';
 import { Platform, DynamicColorIOS, View, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppTopNav, MOBILE_NAV_HEIGHT, WebTopNav } from '../../src/components';
+import { WebTopNav } from '../../src/components';
 import { useAuth } from '../../src/contexts/AuthContext';
 
 const BOARDS_TAB_ICON = require('../../assets/icons/board-tab.png');
@@ -20,9 +19,7 @@ const TAB_ITEMS = [
 ] as const;
 
 export default function TabsLayout() {
-  const insets = useSafeAreaInsets();
   const { user, loading } = useAuth();
-  const useNativeTabs = Platform.OS !== 'web';
   const isWeb = Platform.OS === 'web';
 
   const tabBarTintColor = Platform.OS === 'ios'
@@ -64,7 +61,7 @@ export default function TabsLayout() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.contentWrapper, { paddingTop: MOBILE_NAV_HEIGHT + insets.top }]}>
+      <View style={styles.contentWrapper}>
         <NativeTabs
           labelStyle={{
             color: tabBarLabelColor,
@@ -85,11 +82,6 @@ export default function TabsLayout() {
           ))}
         </NativeTabs>
       </View>
-
-      <AppTopNav
-        user={user}
-        loading={loading}
-      />
     </View>
   );
 }

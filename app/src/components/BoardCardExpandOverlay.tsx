@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,10 @@ const LIST_TITLE_SIZE = 14;
 const LIST_TITLE_LH = 18;
 const DETAIL_TITLE_SIZE = 22;
 const DETAIL_TITLE_LH = 28;
+
+/** Must match BoardCard so the close transition lands on the same silhouette. */
+const CARD_SHIFT = 4;
+const LIST_CARD_PAD_V = 10;
 
 const openConfig = {
   duration: 380,
@@ -56,10 +60,6 @@ type Props = {
 export function BoardCardExpandOverlay({ data, onClose }: Props) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-
-  const scheduleUnmount = useCallback(() => {
-    requestAnimationFrame(() => onClose());
-  }, [onClose]);
 
   const progress = useSharedValue(0);
   const ox = useSharedValue(0);
@@ -95,15 +95,24 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
     progress,
   ]);
 
-  const shellStyle = useAnimatedStyle(() => {
+  /** Outer: shadow + radius — never combine overflow:hidden here or iOS drops the shadow until late. */
+  const shellOuterStyle = useAnimatedStyle(() => {
     const t = progress.value;
     const left = interpolate(t, [0, 1], [ox.value, 0], Extrapolation.CLAMP);
     const top = interpolate(t, [0, 1], [oy.value, 0], Extrapolation.CLAMP);
     const width = interpolate(t, [0, 1], [ow.value, tw.value], Extrapolation.CLAMP);
     const height = interpolate(t, [0, 1], [oh.value, th.value], Extrapolation.CLAMP);
     const borderRadius = interpolate(t, [0, 1], [8, 0], Extrapolation.CLAMP);
-    const shadowOpacity = interpolate(t, [0, 0.75, 1], [0.18, 0.06, 0], Extrapolation.CLAMP);
-    const elevation = interpolate(t, [0, 0.75, 1], [14, 6, 0], Extrapolation.CLAMP);
+    const neubAmount = interpolate(t, [0, 0.28, 0.62, 1], [1, 1, 0, 0], Extrapolation.CLAMP);
+    const softAmt = 1 - neubAmount;
+    const shadowOpacity =
+      (Platform.OS === 'ios' ? 1 : 0) *
+      softAmt *
+      interpolate(t, [0, 0.75, 1], [0.05, 0.06, 0], Extrapolation.CLAMP);
+    const elevation =
+      (Platform.OS === 'android' ? 1 : 0) *
+      softAmt *
+      interpolate(t, [0, 0.75, 1], [10, 6, 0], Extrapolation.CLAMP);
     return {
       position: 'absolute',
       left,
@@ -111,12 +120,41 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
       width,
       height,
       borderRadius,
-      overflow: 'hidden',
+      backgroundColor: '#fff',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: Platform.OS === 'ios' ? shadowOpacity : 0,
+      shadowOpacity,
       shadowRadius: 16,
-      elevation: Platform.OS === 'android' ? elevation : 0,
+      elevation,
+    };
+  });
+
+  /** Inner: clip content to the same radius as the shell. */
+  const shellInnerClipStyle = useAnimatedStyle(() => {
+    const t = progress.value;
+    const borderRadius = interpolate(t, [0, 1], [8, 0], Extrapolation.CLAMP);
+    return {
+      flex: 1,
+      borderRadius,
+      overflow: 'hidden',
+    };
+  });
+
+  /** Same offset “stamp” shadow as BoardCard; fades out while expanding so corners/shadow aren’t late on close. */
+  const shellNeubShadowStyle = useAnimatedStyle(() => {
+    const t = progress.value;
+    const borderRadius = interpolate(t, [0, 1], [8, 0], Extrapolation.CLAMP);
+    return {
+      position: 'absolute',
+      left: CARD_SHIFT,
+      top: CARD_SHIFT,
+      right: -CARD_SHIFT,
+      bottom: -CARD_SHIFT,
+      borderRadius,
+      backgroundColor: '#000',
+      borderWidth: 1,
+      borderColor: '#000',
+      opacity: interpolate(t, [0, 0.22, 0.55, 1], [1, 1, 0, 0], Extrapolation.CLAMP),
     };
   });
 
@@ -158,9 +196,12 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
 
   const detailBodyStyle = useAnimatedStyle(() => {
     const t = progress.value;
+    const bottomPad = Math.max(insets.bottom, 24);
     return {
       paddingHorizontal: interpolate(t, [0, 1], [12, 20], Extrapolation.CLAMP),
       paddingTop: interpolate(t, [0, 1], [10, 16], Extrapolation.CLAMP),
+      // Collapse matches BoardCard paddingVertical (10); expand adds safe-area inset for scroll room.
+      paddingBottom: interpolate(t, [0, 1], [LIST_CARD_PAD_V, bottomPad], Extrapolation.CLAMP),
     };
   });
 
@@ -178,11 +219,17 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
     };
   });
 
+  /** BoardCard uses a 1px black outline; fade it out while expanded so it isn’t missing until unmount. */
+  const cardOutlineStyle = useAnimatedStyle(() => ({
+    borderWidth: interpolate(progress.value, [0, 0.45, 1], [1, 0, 0], Extrapolation.CLAMP),
+    borderColor: '#000',
+  }));
+
   const handleClose = () => {
     hapticLight();
     progress.value = withTiming(0, closeConfig, (finished) => {
       if (finished) {
-        runOnJS(scheduleUnmount)();
+        runOnJS(onClose)();
       }
     });
   };
@@ -194,15 +241,18 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
           <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
         </Animated.View>
 
-        <Animated.View style={[styles.cardShell, shellStyle]} pointerEvents="box-none">
-          <View
-            style={[
-              styles.cardFace,
-              data.labelColor
-                ? { borderLeftWidth: 4, borderLeftColor: data.labelColor }
-                : undefined,
-            ]}
-          >
+        <Animated.View style={shellOuterStyle} pointerEvents="box-none">
+          <Animated.View style={shellNeubShadowStyle} pointerEvents="none" />
+          <Animated.View style={shellInnerClipStyle}>
+            <Animated.View
+              style={[
+                styles.cardFace,
+                cardOutlineStyle,
+                data.labelColor
+                  ? { borderLeftWidth: 4, borderLeftColor: data.labelColor }
+                  : undefined,
+              ]}
+            >
             <Animated.View style={[styles.cardFaceHeader, headerPaddingStyle]}>
               <Text style={styles.columnBadge} numberOfLines={1}>
                 {data.columnTitle}
@@ -216,9 +266,7 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
                 <Feather name="x" size={22} color="#0a0a0a" />
               </Pressable>
             </Animated.View>
-            <Animated.View
-              style={[styles.detailBody, { paddingBottom: Math.max(insets.bottom, 24) }, detailBodyStyle]}
-            >
+            <Animated.View style={[styles.detailBody, detailBodyStyle]}>
               <Animated.Text style={[styles.detailTitleBase, detailTitleStyle]} numberOfLines={4}>
                 {data.title}
               </Animated.Text>
@@ -231,7 +279,8 @@ export function BoardCardExpandOverlay({ data, onClose }: Props) {
                 </Text>
               </Animated.View>
             </Animated.View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         </Animated.View>
       </View>
     </Modal>
@@ -246,14 +295,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#0a0a0a',
   },
-  cardShell: {
-    backgroundColor: '#fff',
-  },
   cardFace: {
     flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 0,
-    overflow: 'hidden',
   },
   cardFaceHeader: {
     flexDirection: 'row',
@@ -285,7 +329,7 @@ const styles = StyleSheet.create({
   detailSubtitle: {
     fontSize: 15,
     color: '#666',
-    marginTop: 8,
+    marginTop: 4,
     fontWeight: '500',
   },
   detailPlaceholder: {

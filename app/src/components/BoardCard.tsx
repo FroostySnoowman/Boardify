@@ -1,10 +1,9 @@
-import React, { forwardRef, useEffect, useRef } from 'react';
+import React, { forwardRef } from 'react';
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
-  Animated,
 } from 'react-native';
 import { hapticLight } from '../utils/haptics';
 
@@ -22,33 +21,16 @@ export const BoardCard = forwardRef<View, BoardCardProps>(function BoardCard(
   { title, subtitle, labelColor, onPress, hidden },
   ref
 ) {
-  const opacity = useRef(new Animated.Value(1)).current;
-  const wasHiddenRef = useRef(false);
-
-  useEffect(() => {
-    if (hidden) {
-      wasHiddenRef.current = true;
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 0,
-        useNativeDriver: true,
-      }).start();
-    } else if (wasHiddenRef.current) {
-      wasHiddenRef.current = false;
-      opacity.setValue(1);
-    }
-  }, [hidden, opacity]);
-
   const handlePress = () => {
     hapticLight();
     onPress?.();
   };
 
   return (
-    <Animated.View
+    <View
       ref={ref}
       collapsable={false}
-      style={[styles.wrap, { opacity }]}
+      style={[styles.wrap, { opacity: hidden ? 0 : 1 }]}
       pointerEvents={hidden ? 'none' : 'auto'}
     >
       <Pressable onPress={handlePress} style={styles.pressable}>
@@ -60,7 +42,7 @@ export const BoardCard = forwardRef<View, BoardCardProps>(function BoardCard(
           ) : null}
         </View>
       </Pressable>
-    </Animated.View>
+    </View>
   );
 });
 

@@ -41,11 +41,19 @@ interface ContextMenuProps {
   trigger: React.ReactNode;
   options: ContextMenuOption[];
   onSelect?: (value: string) => void;
+  onMenuItemCommit?: () => void;
   activationMethod?: 'singlePress' | 'longPress';
   onSinglePress?: () => void;
 }
 
-export function ContextMenu({ trigger, options, onSelect, activationMethod = 'singlePress', onSinglePress }: ContextMenuProps) {
+export function ContextMenu({
+  trigger,
+  options,
+  onSelect,
+  onMenuItemCommit,
+  activationMethod = 'singlePress',
+  onSinglePress,
+}: ContextMenuProps) {
   const [androidMenuVisible, setAndroidMenuVisible] = useState(false);
   const androidMenuOpacity = useRef(new Animated.Value(0)).current;
   const androidMenuScale = useRef(new Animated.Value(0.9)).current;
@@ -128,6 +136,7 @@ export function ContextMenu({ trigger, options, onSelect, activationMethod = 'si
       if (onSelect) {
         onSelect(option.value);
       }
+      onMenuItemCommit?.();
     }, 150);
   };
 
@@ -144,6 +153,7 @@ export function ContextMenu({ trigger, options, onSelect, activationMethod = 'si
               if (onSelect) {
                 onSelect(option.value);
               }
+              onMenuItemCommit?.();
             }}
           />
         ))}
@@ -152,7 +162,7 @@ export function ContextMenu({ trigger, options, onSelect, activationMethod = 'si
 
     if (activationMethod === 'singlePress' && SwiftMenu) {
       return (
-        <Host>
+        <Host colorScheme="light">
           <SwiftMenu label={
             <View ref={triggerRef} style={styles.triggerWrapper} collapsable={false}>
               {trigger}
@@ -166,7 +176,7 @@ export function ContextMenu({ trigger, options, onSelect, activationMethod = 'si
 
     if (SwiftContextMenu) {
       return (
-        <Host>
+        <Host colorScheme="light">
           <SwiftContextMenu>
             <SwiftContextMenu.Trigger>
               <View ref={triggerRef} style={styles.triggerWrapper} collapsable={false}>
@@ -255,6 +265,8 @@ export function ContextMenu({ trigger, options, onSelect, activationMethod = 'si
 const styles = StyleSheet.create({
   triggerWrapper: {
     width: '100%',
+    borderRadius: 22.5,
+    overflow: 'hidden',
   },
   androidMenuOverlay: {
     ...StyleSheet.absoluteFillObject,

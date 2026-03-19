@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, InteractionManager } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
@@ -54,6 +54,8 @@ export function ActivitiesHeader({
   const isHomeTab = useIsHomeTab();
   const tabTitle = useTabTitle();
   const { sortMode, setSortMode } = useBoardSort();
+  /** Bumps after menu selection so GlassView remounts once the menu dismiss animation finishes (glass re-composite; expo/expo#43953). */
+  const [sortGlassRemountKey, setSortGlassRemountKey] = useState(0);
   const isGlassAvailable = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
   const openCreateBoard = useCallback(() => {
     hapticLight();
@@ -117,13 +119,20 @@ export function ActivitiesHeader({
             <View style={styles.homeSide}>
               <ContextMenu
                 options={boardSortMenuOptions}
+                onMenuItemCommit={() => {
+                  InteractionManager.runAfterInteractions(() => {
+                    setTimeout(() => setSortGlassRemountKey((k) => k + 1), 450);
+                  });
+                }}
                 trigger={
                   <Pressable
                     hitSlop={12}
                     accessibilityLabel="Sort boards"
-                    style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}
+                    style={styles.glassPressable}
                   >
-                    {renderGlassRound('more-horizontal', 22)}
+                    <View key={sortGlassRemountKey} style={styles.sortGlassMount} collapsable={false}>
+                      {renderGlassRound('more-horizontal', 22)}
+                    </View>
                   </Pressable>
                 }
               />
@@ -142,7 +151,7 @@ export function ActivitiesHeader({
                 hitSlop={12}
                 accessibilityLabel="Create new board"
                 onPress={openCreateBoard}
-                style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}
+                style={styles.glassPressable}
               >
                 {renderGlassRound('plus', 23)}
               </Pressable>
@@ -165,7 +174,7 @@ export function ActivitiesHeader({
                   router.push('/profile');
                 }}
                 hitSlop={12}
-                style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}
+                style={styles.glassPressable}
               >
                 {renderGlassRound('more-horizontal', 22)}
               </Pressable>
@@ -181,7 +190,7 @@ export function ActivitiesHeader({
               <Pressable
                 onPress={openCreateBoard}
                 hitSlop={12}
-                style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}
+                style={styles.glassPressable}
               >
                 {renderGlassRound('plus', 23)}
               </Pressable>
@@ -251,6 +260,13 @@ const styles = StyleSheet.create({
   centerIcon: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  glassPressable: {
+    opacity: 1,
+  },
+  sortGlassMount: {
+    borderRadius: 22.5,
+    overflow: 'hidden',
   },
   title: {
     fontSize: 22,

@@ -16,8 +16,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Stack, router, useFocusEffect } from 'expo-router';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticLight } from '../src/utils/haptics';
+
+/** Space between bottom of native header (X / title row) and card */
+const BELOW_HEADER_GAP = 10;
 
 const BG = '#f5f0e8';
 const SHIFT = 5;
@@ -73,6 +77,7 @@ function BoardStyleButton({
 
 export default function CreateBoardScreen() {
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const [name, setName] = useState('');
   const inputRef = useRef<TextInput>(null);
 
@@ -126,7 +131,10 @@ export default function CreateBoardScreen() {
           style={styles.sheetFill}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: insets.bottom + 28 },
+            {
+              paddingTop: headerHeight + BELOW_HEADER_GAP,
+              paddingBottom: insets.bottom + 28,
+            },
           ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
@@ -198,9 +206,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: 20,
-    paddingTop: 8,
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',

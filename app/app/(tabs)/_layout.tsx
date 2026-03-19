@@ -67,6 +67,7 @@ export default function TabsLayout() {
             color: tabBarLabelColor,
           }}
           tintColor={tabBarTintColor}
+          disableTransparentOnScrollEdge
           blurEffect="none"
           backgroundColor="transparent"
           shadowColor="transparent"

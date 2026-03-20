@@ -130,6 +130,21 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
     };
   }, []);
 
+  /**
+   * Reset overlay transforms only after `dragging` is cleared and the overlay has unmounted.
+   * If we zero translateX/Y in the same tick as setDragging(null), shared values update
+   * before React commits — the overlay still paints one frame at startX/startY (pickup point).
+   */
+  useEffect(() => {
+    if (dragging != null) return;
+    cancelAnimation(translateX);
+    cancelAnimation(translateY);
+    cancelAnimation(scale);
+    translateX.value = 0;
+    translateY.value = 0;
+    scale.value = 1;
+  }, [dragging, translateX, translateY, scale]);
+
   const noopAddCard = useCallback(() => {}, []);
 
   const columnScrollRefSetters = useMemo(
@@ -272,13 +287,7 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
     draggingRef.current = null;
     setDragging(null);
     setHoverTarget(null);
-    cancelAnimation(translateX);
-    cancelAnimation(translateY);
-    cancelAnimation(scale);
-    translateX.value = 0;
-    translateY.value = 0;
-    scale.value = 1;
-  }, [translateX, translateY, scale]);
+  }, []);
 
   useEffect(() => {
     if (!dragging) return;

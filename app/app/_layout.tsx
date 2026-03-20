@@ -18,6 +18,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { NetworkProvider, useNetwork } from '../src/contexts/NetworkContext';
 import { BoardSortProvider } from '../src/contexts/BoardSortContext';
+import { MessageFilterProvider } from '../src/contexts/MessageFilterContext';
 import { useRouter } from 'expo-router';
 
 const BACKGROUND_COLOR = '#f5f0e8';
@@ -182,9 +183,11 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <AuthProvider>
             <BoardSortProvider>
-              <NetworkProvider>
-                <AppContent />
-              </NetworkProvider>
+              <MessageFilterProvider>
+                <NetworkProvider>
+                  <AppContent />
+                </NetworkProvider>
+              </MessageFilterProvider>
             </BoardSortProvider>
           </AuthProvider>
         </SafeAreaProvider>

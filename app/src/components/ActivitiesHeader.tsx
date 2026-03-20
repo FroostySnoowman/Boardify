@@ -11,6 +11,11 @@ import {
   BOARD_SORT_ORDER,
   useBoardSort,
 } from '../contexts/BoardSortContext';
+import {
+  MESSAGE_FILTER_LABELS,
+  MESSAGE_FILTER_ORDER,
+  useMessageFilter,
+} from '../contexts/MessageFilterContext';
 
 export const ACTIVITIES_HEADER_HEIGHT = 64;
 export const MOBILE_NAV_HEIGHT = 64;
@@ -43,6 +48,11 @@ function useTabTitle() {
   return 'Home';
 }
 
+function useIsMessagesTab() {
+  const pathname = usePathname() ?? '';
+  return pathname.includes('messages');
+}
+
 export function ActivitiesHeader({
   embeddedInLayout = false,
   user: _user = null,
@@ -52,9 +62,12 @@ export function ActivitiesHeader({
 }) {
   const insets = useSafeAreaInsets();
   const isHomeTab = useIsHomeTab();
+  const isMessagesTab = useIsMessagesTab();
   const tabTitle = useTabTitle();
   const { sortMode, setSortMode } = useBoardSort();
+  const { messageFilter, setMessageFilter } = useMessageFilter();
   const [sortGlassRemountKey, setSortGlassRemountKey] = useState(0);
+  const [filterGlassRemountKey, setFilterGlassRemountKey] = useState(0);
   const isGlassAvailable = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
   const openCreateBoard = useCallback(() => {
     hapticLight();
@@ -102,6 +115,19 @@ export function ActivitiesHeader({
     };
   });
 
+  const messageFilterMenuOptions = MESSAGE_FILTER_ORDER.map((mode) => {
+    const base = MESSAGE_FILTER_LABELS[mode];
+    const label = messageFilter === mode ? `✓ ${base}` : base;
+    return {
+      label,
+      value: `filter:${mode}`,
+      onPress: () => {
+        hapticLight();
+        setMessageFilter(mode);
+      },
+    };
+  });
+
   const titleStyle = styles.title;
 
   const headerShell = (
@@ -126,11 +152,11 @@ export function ActivitiesHeader({
                 trigger={
                   <Pressable
                     hitSlop={12}
-                    accessibilityLabel="Sort boards"
+                    accessibilityLabel="Filter boards"
                     style={styles.glassPressable}
                   >
                     <View key={sortGlassRemountKey} style={styles.sortGlassMount} collapsable={false}>
-                      {renderGlassRound('more-horizontal', 22)}
+                      {renderGlassRound('filter', 22)}
                     </View>
                   </Pressable>
                 }
@@ -167,16 +193,38 @@ export function ActivitiesHeader({
         >
           <View style={styles.homeRow}>
             <View style={styles.homeSide}>
-              <Pressable
-                onPress={() => {
-                  hapticLight();
-                  router.push('/profile');
-                }}
-                hitSlop={12}
-                style={styles.glassPressable}
-              >
-                {renderGlassRound('more-horizontal', 22)}
-              </Pressable>
+              {isMessagesTab ? (
+                <ContextMenu
+                  options={messageFilterMenuOptions}
+                  onMenuItemCommit={() => {
+                    InteractionManager.runAfterInteractions(() => {
+                      setTimeout(() => setFilterGlassRemountKey((k) => k + 1), 450);
+                    });
+                  }}
+                  trigger={
+                    <Pressable
+                      hitSlop={12}
+                      accessibilityLabel="Filter notifications"
+                      style={styles.glassPressable}
+                    >
+                      <View key={filterGlassRemountKey} style={styles.sortGlassMount} collapsable={false}>
+                        {renderGlassRound('filter', 22)}
+                      </View>
+                    </Pressable>
+                  }
+                />
+              ) : (
+                <Pressable
+                  onPress={() => {
+                    hapticLight();
+                    router.push('/profile');
+                  }}
+                  hitSlop={12}
+                  style={styles.glassPressable}
+                >
+                  {renderGlassRound('more-horizontal', 22)}
+                </Pressable>
+              )}
             </View>
 
             <View style={styles.homeTitleWrap}>

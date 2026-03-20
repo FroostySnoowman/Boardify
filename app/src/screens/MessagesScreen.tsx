@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import type { CardLayout } from '../components/BoardCardExpandOverlay';
 import {
   View,
@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 import { TabScreenChrome } from '../components/TabScreenChrome';
+import { ActivitiesHeader } from '../components/ActivitiesHeader';
 import { NeuListRowPressable, neuListRowCardBase } from '../components/NeuListRowPressable';
 import {
   NotificationExpandOverlay,
@@ -19,6 +20,11 @@ import {
   type NotificationKind,
 } from '../components/NotificationExpandOverlay';
 import { hapticLight } from '../utils/haptics';
+import {
+  MESSAGE_FILTER_LABELS,
+  notificationMatchesFilter,
+  useMessageFilter,
+} from '../contexts/MessageFilterContext';
 
 type PlaceholderNotification = {
   id: string;
@@ -189,7 +195,16 @@ export default function MessagesScreen() {
   const contentPaddingTop = (isWeb ? 24 : 12) + ipadPad;
 
   const [expanded, setExpanded] = useState<ExpandedNotificationData | null>(null);
+  const { messageFilter } = useMessageFilter();
   const sourceRowViewsRef = useRef<Record<string, RNView | null>>({});
+
+  const visibleNotifications = useMemo(
+    () =>
+      PLACEHOLDER_NOTIFICATIONS.filter((n) =>
+        notificationMatchesFilter(messageFilter, n.kind, n.unread)
+      ),
+    [messageFilter]
+  );
 
   const registerRowView = useCallback((id: string, el: RNView | null) => {
     if (el) sourceRowViewsRef.current[id] = el;
@@ -251,15 +266,26 @@ export default function MessagesScreen() {
       </View>
 
       <View style={styles.list}>
-        {PLACEHOLDER_NOTIFICATIONS.map((n) => (
-          <NotificationRow
-            key={n.id}
-            item={n}
-            expandedSourceId={expanded?.id ?? null}
-            onExpand={onExpand}
-            registerRowView={registerRowView}
-          />
-        ))}
+        {visibleNotifications.length === 0 ? (
+          <View style={styles.emptyFilter}>
+            <Feather name="filter" size={28} color="#999" />
+            <Text style={styles.emptyFilterTitle}>Nothing to show</Text>
+            <Text style={styles.emptyFilterHint}>
+              No notifications match “{MESSAGE_FILTER_LABELS[messageFilter]}”. Try another filter
+              from the top left.
+            </Text>
+          </View>
+        ) : (
+          visibleNotifications.map((n) => (
+            <NotificationRow
+              key={n.id}
+              item={n}
+              expandedSourceId={expanded?.id ?? null}
+              onExpand={onExpand}
+              registerRowView={registerRowView}
+            />
+          ))
+        )}
       </View>
     </ScrollView>
   );
@@ -276,6 +302,7 @@ export default function MessagesScreen() {
   if (isWeb) {
     return (
       <View style={styles.root}>
+        <ActivitiesHeader />
         {scroll}
         {overlay}
       </View>
@@ -323,6 +350,25 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 12,
+  },
+  emptyFilter: {
+    alignItems: 'center',
+    paddingVertical: 36,
+    paddingHorizontal: 24,
+    gap: 10,
+  },
+  emptyFilterTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0a0a0a',
+  },
+  emptyFilterHint: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 300,
+    fontWeight: '500',
   },
   rowOuter: {
     opacity: 1,

@@ -185,15 +185,8 @@ export function ActivitiesHeader({
               </Text>
             </View>
 
-            <View style={[styles.homeSide, { alignItems: 'flex-end' }]}>
-              <Pressable
-                onPress={openCreateBoard}
-                hitSlop={12}
-                style={styles.glassPressable}
-              >
-                {renderGlassRound('plus', 23)}
-              </Pressable>
-            </View>
+            {/* Spacer only — create (+) stays on Home */}
+            <View style={[styles.homeSide, { alignItems: 'flex-end' }]} />
           </View>
         </View>
       )}

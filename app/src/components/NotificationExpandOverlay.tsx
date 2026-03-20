@@ -59,6 +59,11 @@ export type ExpandedNotificationData = {
 type Props = {
   data: ExpandedNotificationData;
   onClose: () => void;
+  /**
+   * Before playing the close animation, measure the source row in the window (still laid out
+   * under the modal, opacity 0) and pass the rect so the shrink lands on the true unpressed tile.
+   */
+  onMeasureSource?: (callback: (layout: CardLayout) => void) => void;
 };
 
 function kindBadgeLabel(kind: NotificationKind): string {
@@ -93,7 +98,7 @@ function iconForKind(kind: NotificationKind): keyof typeof Feather.glyphMap {
   }
 }
 
-export function NotificationExpandOverlay({ data, onClose }: Props) {
+export function NotificationExpandOverlay({ data, onClose, onMeasureSource }: Props) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -287,13 +292,29 @@ export function NotificationExpandOverlay({ data, onClose }: Props) {
     };
   });
 
-  const handleClose = () => {
-    hapticLight();
+  const runCloseToRect = (layout: CardLayout) => {
+    const L =
+      layout.width > 0 && layout.height > 0 ? layout : data.layout;
+    ox.value = L.x;
+    oy.value = L.y;
+    ow.value = L.width;
+    oh.value = L.height;
     progress.value = withTiming(0, closeConfig, (finished) => {
       if (finished) {
         runOnJS(onClose)();
       }
     });
+  };
+
+  const handleClose = () => {
+    hapticLight();
+    if (onMeasureSource) {
+      onMeasureSource((layout) => {
+        runCloseToRect(layout);
+      });
+    } else {
+      runCloseToRect(data.layout);
+    }
   };
 
   const summaryLine = `${data.actor} ${data.headline}`;

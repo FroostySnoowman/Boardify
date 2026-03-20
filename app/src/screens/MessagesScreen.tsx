@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import type { CardLayout } from '../components/BoardCardExpandOverlay';
 import {
   View,
   Text,
@@ -98,12 +99,21 @@ function NotificationRow({
   item,
   expandedSourceId,
   onExpand,
+  registerRowView,
 }: {
   item: PlaceholderNotification;
   expandedSourceId: string | null;
   onExpand: (data: ExpandedNotificationData) => void;
+  registerRowView: (id: string, el: RNView | null) => void;
 }) {
   const rowRef = useRef<RNView | null>(null);
+  const assignRowRef = useCallback(
+    (el: RNView | null) => {
+      rowRef.current = el;
+      registerRowView(item.id, el);
+    },
+    [item.id, registerRowView]
+  );
   const icon = iconForKind(item.kind);
   const leftBar = item.accentColor
     ? { borderLeftWidth: 4, borderLeftColor: item.accentColor }
@@ -111,21 +121,26 @@ function NotificationRow({
 
   const handlePress = useCallback(() => {
     hapticLight();
-    rowRef.current?.measureInWindow((x, y, w, h) => {
-      onExpand({
-        id: item.id,
-        kind: item.kind,
-        actor: item.actor,
-        headline: item.headline,
-        detail: item.detail,
-        timeLabel: item.timeLabel,
-        accentColor: item.accentColor,
-        layout: {
-          x: Math.round(x),
-          y: Math.round(y),
-          width: Math.round(w > 0 ? w : 280),
-          height: Math.round(h > 0 ? h : 72),
-        },
+    // Wait until press offset reset + native layout commit before measuring (same as close path).
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        rowRef.current?.measureInWindow((x, y, w, h) => {
+          onExpand({
+            id: item.id,
+            kind: item.kind,
+            actor: item.actor,
+            headline: item.headline,
+            detail: item.detail,
+            timeLabel: item.timeLabel,
+            accentColor: item.accentColor,
+            layout: {
+              x,
+              y,
+              width: w > 0 ? w : 280,
+              height: h > 0 ? h : 72,
+            },
+          });
+        });
       });
     });
   }, [item, onExpand]);
@@ -135,7 +150,7 @@ function NotificationRow({
   return (
     <View style={[styles.rowOuter, hidden && styles.rowHidden]}>
       <NeuListRowPressable
-        ref={rowRef}
+        ref={assignRowRef}
         shadowStyle={{ backgroundColor: item.accentColor ?? '#e0e0e0' }}
         topStyle={[neuListRowCardBase, styles.notificationCardFace, leftBar]}
         onPress={handlePress}
@@ -174,6 +189,38 @@ export default function MessagesScreen() {
   const contentPaddingTop = (isWeb ? 24 : 12) + ipadPad;
 
   const [expanded, setExpanded] = useState<ExpandedNotificationData | null>(null);
+  const sourceRowViewsRef = useRef<Record<string, RNView | null>>({});
+
+  const registerRowView = useCallback((id: string, el: RNView | null) => {
+    if (el) sourceRowViewsRef.current[id] = el;
+    else delete sourceRowViewsRef.current[id];
+  }, []);
+
+  const onMeasureSource = useCallback(
+    (callback: (layout: CardLayout) => void) => {
+      const id = expanded?.id;
+      const fallback = expanded?.layout;
+      if (!id || !fallback) return;
+      const node = sourceRowViewsRef.current[id];
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!node) {
+            callback(fallback);
+            return;
+          }
+          node.measureInWindow((x, y, w, h) => {
+            callback({
+              x,
+              y,
+              width: w > 0 ? w : fallback.width,
+              height: h > 0 ? h : fallback.height,
+            });
+          });
+        });
+      });
+    },
+    [expanded]
+  );
 
   const onExpand = useCallback((data: ExpandedNotificationData) => {
     setExpanded(data);
@@ -210,6 +257,7 @@ export default function MessagesScreen() {
             item={n}
             expandedSourceId={expanded?.id ?? null}
             onExpand={onExpand}
+            registerRowView={registerRowView}
           />
         ))}
       </View>
@@ -218,7 +266,11 @@ export default function MessagesScreen() {
 
   const overlay =
     expanded != null ? (
-      <NotificationExpandOverlay data={expanded} onClose={() => setExpanded(null)} />
+      <NotificationExpandOverlay
+        data={expanded}
+        onClose={() => setExpanded(null)}
+        onMeasureSource={onMeasureSource}
+      />
     ) : null;
 
   if (isWeb) {

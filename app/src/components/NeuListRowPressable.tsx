@@ -5,11 +5,11 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  cancelAnimation,
 } from 'react-native-reanimated';
 
 const SHIFT = 5;
 const PRESS_DURATION = 60;
-const RELEASE_DURATION = 100;
 
 export const NEU_LIST_ROW_SHIFT = SHIFT;
 
@@ -39,7 +39,11 @@ export const NeuListRowPressable = forwardRef<RNView, Props>(function NeuListRow
     <Pressable onPress={onPress} style={styles.wrap} onPressIn={() => {
       offset.value = withTiming(SHIFT, { duration: PRESS_DURATION });
     }} onPressOut={() => {
-      offset.value = withTiming(0, { duration: RELEASE_DURATION });
+      // Snap back immediately so measureInWindow (runs in onPress right after) sees the true
+      // rest frame. A timed release here leaves the card shifted ~5px when measured — the expand
+      // overlay then closes to that wrong rect and jumps when the real row appears unpressed.
+      cancelAnimation(offset);
+      offset.value = 0;
     }}>
       <View style={[styles.shadow, shadowStyle]} />
       <Animated.View ref={ref} collapsable={false} style={[topStyle, animatedStyle]}>

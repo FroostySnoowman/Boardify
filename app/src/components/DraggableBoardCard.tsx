@@ -91,7 +91,6 @@ export const DraggableBoardCard = forwardRef<View, DraggableBoardCardProps>(func
     [ref]
   );
 
-  /** Stable for runOnJS + useMemo — read latest handlers from latestRef */
   const notifyPress = useCallback(() => {
     latestRef.current.onPress();
   }, []);
@@ -126,16 +125,12 @@ export const DraggableBoardCard = forwardRef<View, DraggableBoardCardProps>(func
     const pan = Gesture.Pan()
       .enabled(enabled)
       .activateAfterLongPress(400)
-      /** Critical: default true cancels pan when finger leaves the card — drag would "stick" */
       .shouldCancelWhenOutside(false)
       .onStart(() => {
-        // Fresh gesture — avoid inheriting stale transforms if onDragEnd didn’t run.
         translateX.value = 0;
         translateY.value = 0;
         scale.value = 1;
         runOnJS(notifyDragBegin)();
-        // Instant lift scale — any timing animation can still be running on release and
-        // combine with native layout to feel like a spring.
         scale.value = 1.04;
       })
       .onUpdate((e) => {
@@ -143,7 +138,6 @@ export const DraggableBoardCard = forwardRef<View, DraggableBoardCardProps>(func
         translateY.value = e.translationY;
         runOnJS(notifyMove)(e.absoluteX, e.absoluteY);
       })
-      // Don’t zero transforms here — overlay follows shared values until BoardScreen onDragEnd.
       .onEnd(() => {
         runOnJS(notifyEnd)();
       });
@@ -178,10 +172,6 @@ const styles = StyleSheet.create({
   wrap: {
     position: 'relative',
   },
-  /**
-   * Remove the source row from layout flow without a fixed negative margin (that margin
-   * never matched real row height + card margins, and pulled the list above the gap up too far).
-   */
   draggingSourceLayout: {
     height: 0,
     maxHeight: 0,

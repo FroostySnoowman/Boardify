@@ -2,7 +2,6 @@ import type { BoardColumnData } from '../types/board';
 
 export const BOARD_CARD_ROW_HEIGHT = 88;
 
-/** insertIndex = position in destination after the card is removed from source (virtual / gap index). */
 export function moveCardToHover(
   columns: BoardColumnData[],
   cardId: string,
@@ -24,9 +23,6 @@ export function moveCardToHover(
   return next;
 }
 
-/**
- * Virtual list = cards without the dragged id. Returns insert index 0..virtual.length
- */
 export function computeHoverInsertIndex(
   localYInList: number,
   virtualCardCount: number

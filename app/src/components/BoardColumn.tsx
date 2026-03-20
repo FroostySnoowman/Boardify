@@ -24,7 +24,6 @@ export interface BoardColumnProps {
   expandedCardKey?: string | null;
   columnIndex: number;
   draggingCardId: string | null;
-  /** -1 = no drop gap in this column; else virtual insert index */
   hoverInsertIndex: number;
   onListLayout: (colIndex: number, rect: { x: number; y: number; width: number; height: number }) => void;
   onColumnScroll: (colIndex: number, scrollY: number) => void;
@@ -42,7 +41,6 @@ export interface BoardColumnProps {
   onScrollViewRef?: (ref: React.ElementRef<typeof GHScrollView> | null) => void;
   registerColumnMeasure?: (colIndex: number, fn: () => void) => void;
   unregisterColumnMeasure?: (colIndex: number) => void;
-  /** False while any card is being dragged — keeps pan from being cancelled mid-gesture */
   listScrollEnabled?: boolean;
 }
 
@@ -92,11 +90,6 @@ function BoardColumnInner({
     return () => unregisterColumnMeasure?.(columnIndex);
   }, [columnIndex, measureList, registerColumnMeasure, unregisterColumnMeasure]);
 
-  /**
-   * insertAt indexes the "virtual" list (cards minus the dragged id). We still render the
-   * dragged card in-place with opacity 0 so its GestureDetector stays mounted — otherwise the
-   * pan unmounts mid-gesture and the floating card stops moving.
-   */
   const insertAt = hoverInsertIndex;
 
   const nodes: React.ReactNode[] = [];

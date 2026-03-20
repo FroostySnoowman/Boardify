@@ -54,7 +54,6 @@ export function ActivitiesHeader({
   const isHomeTab = useIsHomeTab();
   const tabTitle = useTabTitle();
   const { sortMode, setSortMode } = useBoardSort();
-  /** Bumps after menu selection so GlassView remounts once the menu dismiss animation finishes (glass re-composite; expo/expo#43953). */
   const [sortGlassRemountKey, setSortGlassRemountKey] = useState(0);
   const isGlassAvailable = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
   const openCreateBoard = useCallback(() => {

@@ -15,7 +15,6 @@ export interface BoardCardProps {
   labelColor?: string;
   onPress?: () => void;
   hidden?: boolean;
-  /** When wrapped by DraggableBoardCard (gesture handles tap + long-press) */
   suppressPress?: boolean;
 }
 

@@ -94,7 +94,6 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
   const measureFnsRef = useRef<Record<number, () => void>>({});
   const draggingRef = useRef<DraggingState | null>(null);
   const hoverRef = useRef<{ col: number; insertIndex: number } | null>(null);
-  /** Batch hover React updates to one commit per frame (smoother than setState on every pan tick). */
   const pendingHoverRef = useRef<{ col: number; insertIndex: number } | null>(null);
   const hoverRafRef = useRef<number | null>(null);
 
@@ -130,11 +129,6 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
     };
   }, []);
 
-  /**
-   * Reset overlay transforms only after `dragging` is cleared and the overlay has unmounted.
-   * If we zero translateX/Y in the same tick as setDragging(null), shared values update
-   * before React commits — the overlay still paints one frame at startX/startY (pickup point).
-   */
   useEffect(() => {
     if (dragging != null) return;
     cancelAnimation(translateX);
@@ -241,7 +235,6 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
         pendingHoverRef.current = next;
         scheduleHoverFlush();
       }
-      // Finger left column bounds: keep pendingHoverRef / hoverTarget unchanged (sticky)
     },
     [computeHover, scheduleHoverFlush]
   );
@@ -280,8 +273,6 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
     const d = draggingRef.current;
     const h = hoverRef.current;
     if (d && h) {
-      // No LayoutAnimation on drop — RN's native layout animation still feels springy/bouncy
-      // on Fabric even with type: linear; instant reorder is the only way to avoid that.
       setColumns((prev) => moveCardToHover(prev, d.cardId, d.fromCol, h.col, h.insertIndex));
     }
     draggingRef.current = null;
@@ -371,7 +362,6 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
         style={styles.columnsScrollView}
         nestedScrollEnabled
         scrollEventThrottle={16}
-        // iOS: UIScrollView delays touches to children by default — breaks long-press drag on cards
         // @ts-expect-error RN ScrollView iOS prop; RNGH typings omit it
         delayContentTouches={false}
         onScroll={(e) => {

@@ -7,7 +7,6 @@ const ICON_COLOR = '#0a0a0a';
 
 export type GlassRoundIconButtonProps = {
   icon: keyof typeof Feather.glyphMap;
-  /** Icon glyph size (container stays 45×45). */
   size?: number;
   onPress: () => void;
   accessibilityLabel: string;
@@ -15,10 +14,6 @@ export type GlassRoundIconButtonProps = {
   disabled?: boolean;
 };
 
-/**
- * Same liquid-glass / fallback treatment as tab headers (ActivitiesHeader).
- * Keep wrappers free of overflow:hidden so GlassView compositing stays correct.
- */
 export function GlassRoundIconButton({
   icon,
   size = 22,

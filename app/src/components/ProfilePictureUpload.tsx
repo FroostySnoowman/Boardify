@@ -20,7 +20,6 @@ interface ProfilePictureUploadProps {
   currentImageUrl?: string | null;
   onUploadSuccess: (url: string) => void;
   onRemoveSuccess?: () => void;
-  /** Cream / light cards (e.g. profile sheet); default matches dark headers */
   tone?: 'dark' | 'light';
 }
 

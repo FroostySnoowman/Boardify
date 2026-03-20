@@ -30,7 +30,6 @@ const DETAIL_TITLE_LH = 28;
 const CARD_SHIFT = 4;
 const LIST_CARD_PAD_V = 10;
 
-/** List row uses 14px radius (same as home board tiles). */
 const LIST_ROW_BORDER_RADIUS = 14;
 
 const openConfig = {
@@ -59,10 +58,6 @@ export type ExpandedNotificationData = {
 type Props = {
   data: ExpandedNotificationData;
   onClose: () => void;
-  /**
-   * Before playing the close animation, measure the source row in the window (still laid out
-   * under the modal, opacity 0) and pass the rect so the shrink lands on the true unpressed tile.
-   */
   onMeasureSource?: (callback: (layout: CardLayout) => void) => void;
 };
 
@@ -271,18 +266,15 @@ export function NotificationExpandOverlay({ data, onClose, onMeasureSource }: Pr
     borderColor: '#000',
   }));
 
-  /** Matches list row: icon + summary — visible while collapsing so close mirrors open. */
   const listMimicOpacityStyle = useAnimatedStyle(() => {
     const t = progress.value;
     return {
       opacity: interpolate(t, [0, 0.22, 0.42, 0.55, 1], [1, 1, 0.85, 0, 0], Extrapolation.CLAMP),
-      // On top when collapsed so the X layer doesn’t hide the icon; expanded wins when open.
       zIndex: interpolate(t, [0, 0.46, 0.54, 1], [2, 2, 0, 0], Extrapolation.CLAMP),
       elevation: interpolate(t, [0, 0.46, 0.54, 1], [3, 3, 0, 0], Extrapolation.CLAMP),
     };
   });
 
-  /** Full-screen chrome hidden when collapsed so it doesn’t fight layout / steal space. */
   const expandedLayerOpacityStyle = useAnimatedStyle(() => {
     const t = progress.value;
     return {

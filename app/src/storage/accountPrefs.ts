@@ -19,6 +19,6 @@ export async function setStoredDefaultBoardId(id: string | null): Promise<void> 
       await AsyncStorage.setItem(DEFAULT_BOARD_ID_KEY, id);
     }
   } catch {
-    /* ignore */
+    // ignore
   }
 }

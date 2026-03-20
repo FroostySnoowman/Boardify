@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 import { TabScreenChrome } from '../components/TabScreenChrome';
+import { ContextMenu } from '../components/ContextMenu';
 import { boardLabelForId } from '../data/boards';
 import { getStoredDefaultBoardId } from '../storage/accountPrefs';
 
@@ -55,6 +56,24 @@ export default function AccountScreen() {
     hapticLight();
     setConfig((c) => ({ ...c, [key]: value }));
   };
+
+  const themeSublabel =
+    config.theme === 'system' ? 'System' : config.theme === 'light' ? 'Light' : 'Dark';
+
+  const themeMenuOptions = useMemo(
+    () =>
+      (['system', 'light', 'dark'] as const).map((mode) => {
+        const base = mode === 'system' ? 'System' : mode === 'light' ? 'Light' : 'Dark';
+        return {
+          label: config.theme === mode ? `✓ ${base}` : base,
+          value: mode,
+          onPress: () => {
+            setConfig((c) => ({ ...c, theme: mode }));
+          },
+        };
+      }),
+    [config.theme],
+  );
 
   const ipadPad = Platform.OS === 'ios' && Platform.isPad ? IPAD_TAB_CONTENT_TOP_PADDING : 0;
   const contentPaddingTop = (isWeb ? 24 : 12) + ipadPad;
@@ -109,15 +128,35 @@ export default function AccountScreen() {
                 showChevron
               />
               <ConfigRowDivider />
-              <ConfigRow
-                label="Theme"
-                sublabel={config.theme === 'system' ? 'System' : config.theme === 'light' ? 'Light' : 'Dark'}
-                onPress={() => {
-                  const next = { system: 'light' as const, light: 'dark' as const, dark: 'system' as const };
-                  updateConfig('theme', next[config.theme]);
-                }}
-                showChevron
-              />
+              {Platform.OS === 'ios' ? (
+                <ContextMenu
+                  triggerWrapperStyle={styles.themeMenuTriggerWrap}
+                  options={themeMenuOptions}
+                  trigger={
+                    <View style={styles.configRow}>
+                      <View style={styles.configLabelBlock}>
+                        <Text style={styles.configLabel}>Theme</Text>
+                        <Text style={styles.configSublabel}>{themeSublabel}</Text>
+                      </View>
+                      <Feather name="chevron-right" size={18} color="#666" />
+                    </View>
+                  }
+                />
+              ) : (
+                <ConfigRow
+                  label="Theme"
+                  sublabel={themeSublabel}
+                  onPress={() => {
+                    const next = {
+                      system: 'light' as const,
+                      light: 'dark' as const,
+                      dark: 'system' as const,
+                    };
+                    updateConfig('theme', next[config.theme]);
+                  }}
+                  showChevron
+                />
+              )}
             </View>
           </View>
         </View>
@@ -278,5 +317,10 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#e5e5e5',
     marginLeft: 0,
+  },
+  themeMenuTriggerWrap: {
+    borderRadius: 0,
+    width: '100%',
+    alignSelf: 'stretch',
   },
 });

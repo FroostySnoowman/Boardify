@@ -231,7 +231,6 @@ export function ActivitiesHeader({
               </Text>
             </View>
 
-            {/* Spacer only — create (+) stays on Home */}
             <View style={[styles.homeSide, { alignItems: 'flex-end' }]} />
           </View>
         </View>

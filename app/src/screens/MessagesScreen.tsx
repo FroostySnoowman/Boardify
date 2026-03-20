@@ -128,7 +128,6 @@ function NotificationRow({
 
   const handlePress = useCallback(() => {
     hapticLight();
-    // Wait until press offset reset + native layout commit before measuring (same as close path).
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         rowRef.current?.measureInWindow((x, y, w, h) => {

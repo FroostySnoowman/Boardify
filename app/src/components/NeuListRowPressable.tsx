@@ -20,9 +20,6 @@ type Props = {
   children: React.ReactNode;
 };
 
-/**
- * Neubrutalist list row with press-in shift — same interaction as home board tiles.
- */
 export const NeuListRowPressable = forwardRef<RNView, Props>(function NeuListRowPressable(
   { shadowStyle, topStyle, onPress, children },
   ref

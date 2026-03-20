@@ -61,7 +61,6 @@ export function useMessageFilter(): MessageFilterContextValue {
   return ctx;
 }
 
-/** Safe for optional use outside provider (e.g. future screens). */
 export function useMessageFilterOptional(): MessageFilterContextValue | null {
   return useContext(MessageFilterContext);
 }

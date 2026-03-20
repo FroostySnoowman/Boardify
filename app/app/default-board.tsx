@@ -28,7 +28,6 @@ const BG = '#f5f0e8';
 const SHIFT = 5;
 const PRESS_IN = 60;
 
-/** Matches HomeScreen board rows — explicit row + flex so label never stacks under the shadow. */
 const boardRow = StyleSheet.create({
   face: {
     position: 'relative',

@@ -257,7 +257,6 @@ const styles = StyleSheet.create({
     gap: 12,
     width: '100%',
     overflow: 'hidden',
-    /** Room for neub shadow inside clip so it doesn’t paint past the card edge */
     paddingBottom: SHIFT + 6,
   },
   boardBtnWrap: {

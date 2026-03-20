@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { hapticLight } from '../utils/haptics';
 
 let SwiftContextMenu: any;
@@ -44,6 +45,7 @@ interface ContextMenuProps {
   onMenuItemCommit?: () => void;
   activationMethod?: 'singlePress' | 'longPress';
   onSinglePress?: () => void;
+  triggerWrapperStyle?: StyleProp<ViewStyle>;
 }
 
 export function ContextMenu({
@@ -53,6 +55,7 @@ export function ContextMenu({
   onMenuItemCommit,
   activationMethod = 'singlePress',
   onSinglePress,
+  triggerWrapperStyle,
 }: ContextMenuProps) {
   const [androidMenuVisible, setAndroidMenuVisible] = useState(false);
   const androidMenuOpacity = useRef(new Animated.Value(0)).current;
@@ -160,13 +163,15 @@ export function ContextMenu({
       </Section>
     );
 
+    const triggerWrapStyle = [styles.triggerWrapper, triggerWrapperStyle];
+
     if (activationMethod === 'singlePress' && SwiftMenu) {
       return (
         <Host colorScheme="light">
           <SwiftMenu label={
             <View
               ref={triggerRef}
-              style={styles.triggerWrapper}
+              style={triggerWrapStyle}
               collapsable={false}
               renderToHardwareTextureAndroid
             >
@@ -186,7 +191,7 @@ export function ContextMenu({
             <SwiftContextMenu.Trigger>
               <View
                 ref={triggerRef}
-                style={styles.triggerWrapper}
+                style={triggerWrapStyle}
                 collapsable={false}
                 renderToHardwareTextureAndroid
               >
@@ -273,10 +278,6 @@ export function ContextMenu({
 }
 
 const styles = StyleSheet.create({
-  /**
-   * Do not use overflow: 'hidden' here — it breaks expo-glass-effect (GlassView) compositing
-   * so the control paints behind tab content. zIndex keeps the trigger above siblings.
-   */
   triggerWrapper: {
     width: '100%',
     borderRadius: 22.5,

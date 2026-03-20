@@ -6,7 +6,6 @@ export type BoardListItem = {
   updatedAt: string;
 };
 
-/** Until boards come from the API, Home and account prefs share this list. */
 export const MOCK_BOARDS: BoardListItem[] = [
   {
     id: '1',

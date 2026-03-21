@@ -113,7 +113,6 @@ const BOARD_VIEW_MENU_ITEMS: { label: string; value: BoardViewMode }[] = [
 interface BoardScreenProps {
   boardName?: string;
   onBack?: () => void;
-  /** Called when the user picks an item from the header filter (view mode) menu. */
   onBoardViewSelect?: (mode: BoardViewMode) => void;
   glassBottomBar?: BoardGlassBottomBarProps;
 }

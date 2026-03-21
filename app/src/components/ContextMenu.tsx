@@ -1,3 +1,10 @@
+/**
+ * Swift `Menu` / glass triggers: compositing after dismiss can leave a square halo behind
+ * rounded glass. Mitigations: clip the trigger (`overflow: 'hidden'` + `borderRadius`),
+ * keep `elevation: 0`, moderate `zIndex`. iOS 26 Liquid Glass also shows a transient
+ * shadow glitch (platform): https://stackoverflow.com/q/79868812
+ * Expo: https://github.com/expo/expo/issues/42501
+ */
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -12,6 +19,9 @@ import {
 } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { hapticLight } from '../utils/haptics';
+
+const ANDROID_HW_TEXTURE =
+  Platform.OS === 'android' ? ({ renderToHardwareTextureAndroid: true } as const) : null;
 
 let SwiftContextMenu: any;
 let SwiftMenu: any;
@@ -42,7 +52,6 @@ interface ContextMenuProps {
   trigger: React.ReactNode;
   options: ContextMenuOption[];
   onSelect?: (value: string) => void;
-  onMenuItemCommit?: () => void;
   activationMethod?: 'singlePress' | 'longPress';
   onSinglePress?: () => void;
   triggerWrapperStyle?: StyleProp<ViewStyle>;
@@ -52,7 +61,6 @@ export function ContextMenu({
   trigger,
   options,
   onSelect,
-  onMenuItemCommit,
   activationMethod = 'singlePress',
   onSinglePress,
   triggerWrapperStyle,
@@ -139,7 +147,6 @@ export function ContextMenu({
       if (onSelect) {
         onSelect(option.value);
       }
-      onMenuItemCommit?.();
     }, 150);
   };
 
@@ -156,7 +163,6 @@ export function ContextMenu({
               if (onSelect) {
                 onSelect(option.value);
               }
-              onMenuItemCommit?.();
             }}
           />
         ))}
@@ -173,7 +179,7 @@ export function ContextMenu({
               ref={triggerRef}
               style={triggerWrapStyle}
               collapsable={false}
-              renderToHardwareTextureAndroid
+              {...(ANDROID_HW_TEXTURE ?? {})}
             >
               {trigger}
             </View>
@@ -193,7 +199,7 @@ export function ContextMenu({
                 ref={triggerRef}
                 style={triggerWrapStyle}
                 collapsable={false}
-                renderToHardwareTextureAndroid
+                {...(ANDROID_HW_TEXTURE ?? {})}
               >
                 {trigger}
               </View>
@@ -281,9 +287,10 @@ const styles = StyleSheet.create({
   triggerWrapper: {
     width: '100%',
     borderRadius: 22.5,
-    overflow: 'visible',
-    zIndex: 2000,
-    elevation: 20,
+    overflow: 'hidden',
+    zIndex: 40,
+    // High elevation draws a rectangular shadow behind rounded views on Android; keep flat.
+    elevation: 0,
   },
   androidMenuOverlay: {
     ...StyleSheet.absoluteFillObject,

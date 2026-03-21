@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, InteractionManager } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
@@ -66,8 +66,6 @@ export function ActivitiesHeader({
   const tabTitle = useTabTitle();
   const { sortMode, setSortMode } = useBoardSort();
   const { messageFilter, setMessageFilter } = useMessageFilter();
-  const [sortGlassRemountKey, setSortGlassRemountKey] = useState(0);
-  const [filterGlassRemountKey, setFilterGlassRemountKey] = useState(0);
   const isGlassAvailable = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
   const openCreateBoard = useCallback(() => {
     hapticLight();
@@ -144,14 +142,8 @@ export function ActivitiesHeader({
             <View style={styles.homeSide}>
               <ContextMenu
                 options={boardSortMenuOptions}
-                onMenuItemCommit={() => {
-                  InteractionManager.runAfterInteractions(() => {
-                    setTimeout(() => setSortGlassRemountKey((k) => k + 1), 450);
-                  });
-                }}
                 trigger={
                   <Pressable
-                    key={sortGlassRemountKey}
                     hitSlop={12}
                     accessibilityLabel="Filter boards"
                     style={styles.glassPressable}
@@ -195,14 +187,8 @@ export function ActivitiesHeader({
               {isMessagesTab ? (
                 <ContextMenu
                   options={messageFilterMenuOptions}
-                  onMenuItemCommit={() => {
-                    InteractionManager.runAfterInteractions(() => {
-                      setTimeout(() => setFilterGlassRemountKey((k) => k + 1), 450);
-                    });
-                  }}
                   trigger={
                     <Pressable
-                      key={filterGlassRemountKey}
                       hitSlop={12}
                       accessibilityLabel="Filter notifications"
                       style={styles.glassPressable}

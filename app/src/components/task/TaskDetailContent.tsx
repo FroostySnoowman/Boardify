@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import type {
 import { TaskDatetimeField } from './TaskDatetimeField';
 
 const SHIFT = 5;
+const MEMBERS_SCROLL_PADDING = 12;
 
 const LABEL_PRESETS: TaskLabel[] = [
   { id: 'lp-1', name: 'Design', color: '#F3D9B1' },
@@ -50,6 +51,8 @@ type Props = {
 export function TaskDetailContent({ task, onChange }: Props) {
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [activeDateField, setActiveDateField] = useState<'start' | 'due' | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const membersSectionYRef = useRef(0);
 
   const labels = task.labels ?? [];
   const assignees = task.assignees ?? [];
@@ -132,6 +135,28 @@ export function TaskDetailContent({ task, onChange }: Props) {
     [assignees]
   );
 
+  const toggleMemberPickerFromQuickAdd = useCallback(() => {
+    setMemberPickerOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            scrollRef.current?.scrollTo({
+              y: Math.max(0, membersSectionYRef.current - MEMBERS_SCROLL_PADDING),
+              animated: true,
+            });
+          });
+        });
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleMemberPickerHere = useCallback(() => {
+    hapticLight();
+    setMemberPickerOpen((o) => !o);
+  }, []);
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -139,6 +164,7 @@ export function TaskDetailContent({ task, onChange }: Props) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
       <ScrollView
+        ref={scrollRef}
         style={styles.flex}
         contentContainerStyle={styles.scrollInner}
         keyboardShouldPersistTaps="handled"
@@ -161,34 +187,11 @@ export function TaskDetailContent({ task, onChange }: Props) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.quickRow}
         >
-          <QuickChip
-            icon="users"
-            label="Assign"
-            onPress={() => setMemberPickerOpen((v) => !v)}
-          />
+          <QuickChip icon="users" label="Assign" onPress={toggleMemberPickerFromQuickAdd} />
           <QuickChip icon="check-square" label="Checklist" onPress={addChecklist} />
           <QuickChip icon="paperclip" label="Attach" onPress={addAttachment} />
         </ScrollView>
         <Text style={styles.quickHint}>Dates, labels, and more — in the sections below.</Text>
-
-        {memberPickerOpen && availableMembers.length > 0 ? (
-          <View style={styles.pickerCard}>
-            <Text style={styles.pickerTitle}>Assign someone</Text>
-            {availableMembers.map((m) => (
-              <Pressable
-                key={m.id}
-                onPress={() => addMember(m)}
-                style={({ pressed }) => [styles.pickerRow, pressed && { opacity: 0.85 }]}
-              >
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{m.initials}</Text>
-                </View>
-                <Text style={styles.pickerName}>{m.name}</Text>
-                <Feather name="plus-circle" size={20} color="#0a0a0a" />
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
 
         <Section title="Description" icon="align-left">
           <TextInput
@@ -243,32 +246,90 @@ export function TaskDetailContent({ task, onChange }: Props) {
           </View>
         </Section>
 
-        <Section title="Members" icon="users">
-          <View style={styles.memberRow}>
-            {assignees.map((m) => (
+        <View
+          onLayout={(e) => {
+            membersSectionYRef.current = e.nativeEvent.layout.y;
+          }}
+        >
+          <Section title="Members" icon="users">
+            <View style={styles.memberRow}>
+              <View style={styles.memberAssigneesCluster}>
+                {assignees.map((m) => (
+                  <Pressable
+                    key={m.id}
+                    onPress={() => removeMember(m.id)}
+                    accessibilityLabel={`${m.name}, assigned. Tap to remove from card.`}
+                    style={({ pressed }) => [styles.memberChip, pressed && styles.memberChipPressed]}
+                  >
+                    <View style={styles.memberChipAvatar}>
+                      <Text style={styles.memberChipAvatarText}>{m.initials}</Text>
+                    </View>
+                    <View style={styles.memberChipRemoveRow} accessibilityElementsHidden={true}>
+                      <View style={styles.memberChipRemoveIcon}>
+                        <Feather name="x" size={15} color="#525252" />
+                      </View>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
               <Pressable
-                key={m.id}
-                onPress={() => removeMember(m.id)}
-                style={({ pressed }) => [styles.avatarLarge, pressed && { opacity: 0.85 }]}
+                onPress={toggleMemberPickerHere}
+                accessibilityLabel={memberPickerOpen ? 'Hide people you can add' : 'Show people you can add'}
+                style={({ pressed }) => [
+                  styles.addCircle,
+                  memberPickerOpen && styles.addCircleOpen,
+                  pressed && { opacity: 0.88 },
+                ]}
               >
-                <Text style={styles.avatarLargeText}>{m.initials}</Text>
-                <View style={styles.avatarRemove}>
-                  <Feather name="x" size={10} color="#fff" />
-                </View>
+                <Feather
+                  name={memberPickerOpen ? 'chevron-up' : 'plus'}
+                  size={22}
+                  color={memberPickerOpen ? '#0a0a0a' : '#666'}
+                />
               </Pressable>
-            ))}
-            <Pressable
-              onPress={() => {
-                hapticLight();
-                setMemberPickerOpen(true);
-              }}
-              style={styles.addCircle}
-            >
-              <Feather name="plus" size={22} color="#666" />
-            </Pressable>
-          </View>
-          <Text style={styles.hint}>Tap a face to unassign · + to pick someone</Text>
-        </Section>
+            </View>
+            {memberPickerOpen ? (
+              <View style={styles.memberPickerInset}>
+                <Text style={styles.memberPickerTitle}>Choose someone to add</Text>
+                <Text style={styles.memberPickerSubtitle}>Tap a row — no extra button needed</Text>
+                {availableMembers.length > 0 ? (
+                  availableMembers.map((m, i) => (
+                    <Pressable
+                      key={m.id}
+                      onPress={() => addMember(m)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Add ${m.name}`}
+                      style={({ pressed }) => [
+                        styles.memberPickerRow,
+                        i < availableMembers.length - 1 && styles.memberPickerRowBorder,
+                        pressed && styles.memberPickerRowPressed,
+                      ]}
+                    >
+                      <View style={styles.memberPickerRowInner}>
+                        <View style={styles.avatar}>
+                          <Text style={styles.avatarText}>{m.initials}</Text>
+                        </View>
+                        <Text style={styles.pickerName} numberOfLines={1}>
+                          {m.name}
+                        </Text>
+                        <Feather name="chevron-right" size={18} color="#999" />
+                      </View>
+                    </Pressable>
+                  ))
+                ) : (
+                  <Text style={styles.memberPickerEmpty}>
+                    Everyone available is already on this card.
+                  </Text>
+                )}
+              </View>
+            ) : null}
+            {memberPickerOpen ? (
+              <Text style={styles.memberHint}>Tap a profile or its remove control to take someone off the card.</Text>
+            ) : assignees.length === 0 ? (
+              <Text style={styles.memberHint}>Tap + to add someone.</Text>
+            ) : null}
+          </Section>
+        </View>
 
         <Section title="Checklists" icon="check-square">
           {checklists.map((cl) => (
@@ -527,31 +588,66 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     lineHeight: 17,
   },
-  pickerCard: {
-    marginBottom: 16,
-    padding: 12,
-    backgroundColor: '#faf8f5',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#000',
+  memberPickerInset: {
+    alignSelf: 'stretch',
+    width: '100%',
+    marginTop: 12,
+    paddingTop: 10,
+    paddingHorizontal: 8,
+    paddingBottom: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#ddd',
+    backgroundColor: '#f6f6f6',
+    borderRadius: 10,
   },
-  pickerTitle: {
-    fontSize: 13,
-    fontWeight: '800',
+  memberPickerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#0a0a0a',
+    marginBottom: 2,
+  },
+  memberPickerSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#888',
     marginBottom: 8,
   },
-  pickerRow: {
+  memberPickerRow: {
+    alignSelf: 'stretch',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  memberPickerRowInner: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
+    minHeight: 48,
     paddingVertical: 10,
-    gap: 10,
+    paddingHorizontal: 4,
+  },
+  memberPickerRowPressed: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  memberPickerRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e8e8e8',
+  },
+  memberPickerEmpty: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#888',
+    paddingVertical: 10,
+    lineHeight: 20,
   },
   pickerName: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     fontSize: 16,
     fontWeight: '600',
     color: '#0a0a0a',
+    marginLeft: 12,
+    marginRight: 8,
   },
   avatar: {
     width: 36,
@@ -621,6 +717,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     lineHeight: 17,
   },
+  memberHint: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 2,
+    marginBottom: 0,
+    lineHeight: 16,
+  },
   chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -643,50 +746,78 @@ const styles = StyleSheet.create({
   },
   memberRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 14,
+    paddingVertical: 4,
+    marginBottom: 2,
   },
-  avatarLarge: {
-    position: 'relative',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#c4b5fd',
+  memberAssigneesCluster: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    flex: 1,
+    alignItems: 'flex-start',
+    gap: 16,
+    minWidth: 0,
+  },
+  memberChip: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    width: 56,
+    paddingTop: 2,
+    paddingBottom: 4,
+  },
+  memberChipPressed: {
+    opacity: 0.88,
+  },
+  memberChipAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f5f0e8',
     borderWidth: 2,
     borderColor: '#000',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarLargeText: {
-    fontSize: 13,
+  memberChipAvatarText: {
+    fontSize: 17,
     fontWeight: '800',
-    color: '#1e1b4b',
+    color: '#0a0a0a',
   },
-  avatarRemove: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#000',
+  memberChipRemoveRow: {
+    width: 56,
+    marginTop: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
+  },
+  memberChipRemoveIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d4d4d4',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     borderWidth: 2,
     borderColor: '#000',
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fafafa',
+  },
+  addCircleOpen: {
+    borderStyle: 'solid',
+    backgroundColor: '#eee',
   },
   clBlock: {
     marginBottom: 14,

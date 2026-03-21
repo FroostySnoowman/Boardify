@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 const DateTimePickerNative =
@@ -159,7 +158,6 @@ export function TaskDatetimeField({
         <Text style={[styles.rowText, !hasValidTaskIso(valueIso) && styles.rowPlaceholder]}>
           {displayText}
         </Text>
-        <Feather name="calendar" size={20} color="#666" />
       </Pressable>
 
       {hasValidTaskIso(valueIso) ? (

@@ -9,6 +9,11 @@ import {
   UIManager,
 } from 'react-native';
 import { GlassRoundIconButton } from '../components/GlassRoundIconButton';
+import {
+  BoardGlassBottomBar,
+  BOARD_GLASS_BOTTOM_BAR_CLEARANCE,
+  type BoardGlassBottomBarProps,
+} from '../components/BoardGlassBottomBar';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, cancelAnimation } from 'react-native-reanimated';
@@ -97,9 +102,15 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 interface BoardScreenProps {
   boardName?: string;
   onBack?: () => void;
+  /** Handlers for the floating glass bar (filter, notifications, settings, expand). */
+  glassBottomBar?: BoardGlassBottomBarProps;
 }
 
-export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScreenProps) {
+export default function BoardScreen({
+  boardName = 'My Board',
+  onBack,
+  glassBottomBar,
+}: BoardScreenProps) {
   const insets = useSafeAreaInsets();
   const [columns, setColumns] = useState<BoardColumnData[]>(INITIAL_COLUMNS);
   const [expanded, setExpanded] = useState<ExpandedCardLayout | null>(null);
@@ -407,7 +418,10 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={[
           styles.columnsScroll,
-          { paddingHorizontal: isWeb ? 24 : 16 },
+          {
+            paddingHorizontal: isWeb ? 24 : 16,
+            paddingBottom: 24 + insets.bottom + BOARD_GLASS_BOTTOM_BAR_CLEARANCE,
+          },
         ]}
         style={styles.columnsScrollView}
         nestedScrollEnabled
@@ -481,6 +495,8 @@ export default function BoardScreen({ boardName = 'My Board', onBack }: BoardScr
           </Animated.View>
         </View>
       ) : null}
+
+      <BoardGlassBottomBar {...glassBottomBar} />
 
       {expanded ? (
         <BoardCardExpandOverlay

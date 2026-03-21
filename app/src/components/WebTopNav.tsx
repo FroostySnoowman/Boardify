@@ -54,7 +54,7 @@ export function WebTopNav({
   const menuOpacity = React.useRef(new Animated.Value(0)).current;
   const menuScale = React.useRef(new Animated.Value(0.95)).current;
 
-  const isMobile = windowWidth < 1024; // lg breakpoint
+  const isMobile = windowWidth < 1024;
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {

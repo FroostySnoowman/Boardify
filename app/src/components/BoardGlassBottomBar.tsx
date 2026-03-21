@@ -28,8 +28,6 @@ type TripleStripProps = {
 function GlassTripleStrip({ onFilterPress, onBellPress, onSettingsPress }: TripleStripProps) {
   const isGlass = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
 
-  // Single child View: Fabric mounts GlassView children into UIVisualEffectView.contentView;
-  // multiple roots (e.g. Fragment) can break hit-testing for nested Pressables.
   const row = (
     <View style={styles.tripleInner} collapsable={false}>
       <Pressable
@@ -92,7 +90,7 @@ export function BoardGlassBottomBar({
       <View
         style={[
           styles.inner,
-          { paddingBottom: Math.max(insets.bottom, 10) + 10 },
+          { paddingBottom: Math.max(insets.bottom, 10) + 4 },
         ]}
       >
         <View style={styles.row}>

@@ -62,7 +62,7 @@ function GlassTripleStrip({ onFilterPress, onBellPress, onSettingsPress }: Tripl
   if (isGlass) {
     return (
       <GlassView
-        isInteractive={false}
+        isInteractive
         colorScheme="light"
         tintColor="rgba(255, 255, 255, 0.42)"
         style={styles.tripleGlass}

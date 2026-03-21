@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { useNavigationState } from '@react-navigation/native';
 import { router, usePathname } from 'expo-router';
 import { GlassView, isLiquidGlassAvailable, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { ContextMenu } from './ContextMenu';
@@ -27,30 +28,28 @@ interface User {
   email?: string | null;
 }
 
-function useIsHomeTab() {
-  const pathname = usePathname();
-  return React.useMemo(() => {
-    if (!pathname) return false;
-    return (
-      pathname === '/' ||
-      pathname === '/(tabs)' ||
-      pathname === '/(tabs)/' ||
-      pathname === '/index' ||
-      pathname === '/(tabs)/index'
-    );
-  }, [pathname]);
-}
+type TabsScreenName = 'index' | 'messages' | 'account';
 
-function useTabTitle() {
-  const pathname = usePathname() ?? '';
-  if (pathname.includes('messages')) return 'Messages';
-  if (pathname.includes('account')) return 'Account';
-  return 'Home';
-}
+/** Which tab is selected under `(tabs)`, even when a root-stack modal (e.g. /create-board) owns `usePathname()`. */
+function useSelectedTabsScreen(): TabsScreenName {
+  const fromNav = useNavigationState((state) => {
+    const routes = state?.routes as { name: string; state?: { routes: { name: string }[]; index: number } }[] | undefined;
+    if (!routes) return null;
+    const tabs = routes.find((r) => r.name === '(tabs)');
+    const inner = tabs?.state;
+    if (!inner?.routes || typeof inner.index !== 'number') return null;
+    const name = inner.routes[inner.index]?.name;
+    if (name === 'index' || name === 'messages' || name === 'account') {
+      return name;
+    }
+    return null;
+  });
 
-function useIsMessagesTab() {
   const pathname = usePathname() ?? '';
-  return pathname.includes('messages');
+  if (fromNav) return fromNav;
+  if (pathname.includes('messages')) return 'messages';
+  if (pathname.includes('account')) return 'account';
+  return 'index';
 }
 
 export function ActivitiesHeader({
@@ -61,9 +60,11 @@ export function ActivitiesHeader({
   user?: User | null;
 }) {
   const insets = useSafeAreaInsets();
-  const isHomeTab = useIsHomeTab();
-  const isMessagesTab = useIsMessagesTab();
-  const tabTitle = useTabTitle();
+  const tabScreen = useSelectedTabsScreen();
+  const isHomeTab = tabScreen === 'index';
+  const isMessagesTab = tabScreen === 'messages';
+  const tabTitle =
+    tabScreen === 'messages' ? 'Messages' : tabScreen === 'account' ? 'Account' : 'Home';
   const { sortMode, setSortMode } = useBoardSort();
   const { messageFilter, setMessageFilter } = useMessageFilter();
   const isGlassAvailable = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();

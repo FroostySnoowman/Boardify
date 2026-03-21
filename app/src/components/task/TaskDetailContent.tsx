@@ -54,6 +54,7 @@ export function TaskDetailContent({ task, onChange }: Props) {
   const [activeDateField, setActiveDateField] = useState<TaskDatetimeFieldKey | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const membersSectionYRef = useRef(0);
+  const checklistsSectionYRef = useRef(0);
 
   const labels = task.labels ?? [];
   const assignees = task.assignees ?? [];
@@ -158,6 +159,18 @@ export function TaskDetailContent({ task, onChange }: Props) {
     setMemberPickerOpen((o) => !o);
   }, []);
 
+  const scrollToChecklists = useCallback(() => {
+    hapticLight();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, checklistsSectionYRef.current - MEMBERS_SCROLL_PADDING),
+          animated: true,
+        });
+      });
+    });
+  }, []);
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -189,7 +202,7 @@ export function TaskDetailContent({ task, onChange }: Props) {
           contentContainerStyle={styles.quickRow}
         >
           <QuickChip icon="users" label="Assign" onPress={toggleMemberPickerFromQuickAdd} />
-          <QuickChip icon="check-square" label="Checklist" onPress={addChecklist} />
+          <QuickChip icon="check-square" label="Checklist" onPress={scrollToChecklists} />
           <QuickChip icon="paperclip" label="Attach" onPress={addAttachment} />
         </ScrollView>
         <Text style={styles.quickHint}>Dates, labels, and more — in the sections below.</Text>
@@ -352,19 +365,25 @@ export function TaskDetailContent({ task, onChange }: Props) {
           </Section>
         </View>
 
-        <Section title="Checklists" icon="check-square">
-          {checklists.map((cl) => (
-            <ChecklistBlock
-              key={cl.id}
-              checklist={cl}
-              onChange={(next) => updateChecklist(cl.id, next)}
-              onRemove={() =>
-                onChange({ ...task, checklists: checklists.filter((c) => c.id !== cl.id) })
-              }
-            />
-          ))}
-          <GhostButton icon="plus" label="Add another checklist" onPress={addChecklist} />
-        </Section>
+        <View
+          onLayout={(e) => {
+            checklistsSectionYRef.current = e.nativeEvent.layout.y;
+          }}
+        >
+          <Section title="Checklists" icon="check-square">
+            {checklists.map((cl) => (
+              <ChecklistBlock
+                key={cl.id}
+                checklist={cl}
+                onChange={(next) => updateChecklist(cl.id, next)}
+                onRemove={() =>
+                  onChange({ ...task, checklists: checklists.filter((c) => c.id !== cl.id) })
+                }
+              />
+            ))}
+            <GhostButton icon="plus" label="Add checklist" onPress={addChecklist} />
+          </Section>
+        </View>
 
         <Section title="Attachments" icon="paperclip">
           {attachments.map((a) => (
@@ -471,11 +490,18 @@ function GhostButton({
 }) {
   return (
     <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.ghostBtn, pressed && { opacity: 0.85 }]}
+      onPress={() => {
+        hapticLight();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.ghostBtnOuter, pressed && { opacity: 0.85 }]}
     >
-      <Feather name={icon} size={16} color="#0a0a0a" />
-      <Text style={styles.ghostBtnText}>{label}</Text>
+      <View style={styles.ghostBtnRow}>
+        <View style={styles.ghostBtnIcon}>
+          <Feather name={icon} size={16} color="#0a0a0a" />
+        </View>
+        <Text style={styles.ghostBtnText}>{label}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -974,14 +1000,28 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 2,
   },
-  ghostBtn: {
+  ghostBtnOuter: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
+    alignSelf: 'stretch',
+    marginTop: 8,
     paddingVertical: 8,
   },
+  ghostBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+  },
+  ghostBtnIcon: {
+    marginRight: 8,
+    flexGrow: 0,
+    flexShrink: 0,
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   ghostBtnText: {
+    flexShrink: 1,
     fontSize: 15,
     fontWeight: '700',
     color: '#0a0a0a',

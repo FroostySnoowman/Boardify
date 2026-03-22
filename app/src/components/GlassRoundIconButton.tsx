@@ -96,6 +96,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   menuLabelGlyphNudge: {
-    transform: [{ translateX: -8 }, { translateY: -4 }],
+    transform: [{ translateX: -11 }, { translateY: -6 }],
   },
 });

@@ -84,18 +84,15 @@ export function ActivitiesHeader({
     size = 22,
     swiftMenuTrigger?: boolean
   ) => {
-    const glyph = (
-      <Feather
-        name={icon}
-        size={size}
-        color={iconColor}
-        style={
-          swiftMenuTrigger && Platform.OS === 'ios'
-            ? { lineHeight: size, textAlign: 'center' as const }
-            : undefined
-        }
-      />
-    );
+    const feather = <Feather name={icon} size={size} color={iconColor} />;
+    const glyph =
+      swiftMenuTrigger && Platform.OS === 'ios' ? (
+        <View style={styles.menuLabelGlyphNudge} collapsable={false}>
+          {feather}
+        </View>
+      ) : (
+        feather
+      );
     const useRnGlass = isGlassAvailable && !(swiftMenuTrigger && Platform.OS === 'ios');
     if (useRnGlass) {
       return (
@@ -172,6 +169,7 @@ export function ActivitiesHeader({
             <View style={[styles.homeOrb, styles.homeOrbLeading]} pointerEvents="box-none">
               <ContextMenu
                 options={boardSortMenuOptions}
+                hostMatchContents
                 triggerWrapperStyle={styles.contextMenuOrbTriggerWrap}
                 trigger={
                   <Pressable
@@ -214,6 +212,7 @@ export function ActivitiesHeader({
               {isMessagesTab ? (
                 <ContextMenu
                   options={messageFilterMenuOptions}
+                  hostMatchContents
                   triggerWrapperStyle={styles.contextMenuOrbTriggerWrap}
                   trigger={
                     <Pressable
@@ -303,7 +302,7 @@ const styles = StyleSheet.create({
   },
   homeOrbLeading: {
     left: 0,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   homeOrbTrailing: {
     right: 0,
@@ -323,11 +322,6 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     backgroundColor: 'rgba(255,255,255,0.85)',
   },
-  swiftMenuIconWrap: {
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   centerIcon: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -338,12 +332,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  /** SwiftUI Menu label area can be larger than 45×45; center RN content so the glyph matches the glass circle. */
   contextMenuOrbTriggerWrap: {
     width: 45,
     minHeight: 45,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  swiftMenuIconWrap: {
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  /** Offsets MenuLabel + glass; tune against Expo RN bridge vs liquid glass (often right/down bias). */
+  menuLabelGlyphNudge: {
+    transform: [{ translateX: -8 }, { translateY: -4 }],
   },
   title: {
     fontSize: 22,

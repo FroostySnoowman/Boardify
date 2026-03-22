@@ -21,7 +21,7 @@ let SwiftMenu: any;
 let Button: any;
 let Section: any;
 let Host: any;
-let swiftMenuGlassModifiers: any[] | undefined;
+let menuGlassModifiers: any[] | undefined;
 
 if (Platform.OS === 'ios') {
   try {
@@ -32,7 +32,7 @@ if (Platform.OS === 'ios') {
     Button = swiftUI.Button;
     Section = swiftUI.Section;
     Host = swiftUI.Host;
-    swiftMenuGlassModifiers = [buttonStyle('glass')];
+    menuGlassModifiers = [buttonStyle('glass')];
   } catch (error) {
     console.warn('SwiftUI components not available');
   }
@@ -51,6 +51,11 @@ interface ContextMenuProps {
   activationMethod?: 'singlePress' | 'longPress';
   onSinglePress?: () => void;
   triggerWrapperStyle?: StyleProp<ViewStyle>;
+  /**
+   * iOS: sync RN `Host` size to SwiftUI and tighten `Menu` label layout for small orb triggers.
+   * Omit for full-width labels (e.g. Account theme row).
+   */
+  hostMatchContents?: boolean;
 }
 
 export function ContextMenu({
@@ -60,6 +65,7 @@ export function ContextMenu({
   activationMethod = 'singlePress',
   onSinglePress,
   triggerWrapperStyle,
+  hostMatchContents = false,
 }: ContextMenuProps) {
   const [androidMenuVisible, setAndroidMenuVisible] = useState(false);
   const androidMenuOpacity = useRef(new Animated.Value(0)).current;
@@ -174,10 +180,17 @@ export function ContextMenu({
 
     if (activationMethod === 'singlePress' && SwiftMenu) {
       return (
-        <View style={styles.iosSwiftMenuLift} collapsable={false}>
-          <Host colorScheme="light" style={hostSlotStyle}>
+        <View
+          style={[styles.iosSwiftMenuLift, hostMatchContents && styles.iosOrbMenuHostRow]}
+          collapsable={false}
+        >
+          <Host
+            colorScheme="light"
+            style={hostSlotStyle}
+            matchContents={hostMatchContents ? true : undefined}
+          >
             <SwiftMenu
-              modifiers={swiftMenuGlassModifiers}
+              modifiers={menuGlassModifiers}
               label={
               <View
                 ref={triggerRef}
@@ -197,9 +210,16 @@ export function ContextMenu({
 
     if (SwiftContextMenu) {
       return (
-        <View style={styles.iosSwiftMenuLift} collapsable={false}>
-          <Host colorScheme="light" style={hostSlotStyle}>
-            <SwiftContextMenu modifiers={swiftMenuGlassModifiers}>
+        <View
+          style={[styles.iosSwiftMenuLift, hostMatchContents && styles.iosOrbMenuHostRow]}
+          collapsable={false}
+        >
+          <Host
+            colorScheme="light"
+            style={hostSlotStyle}
+            matchContents={hostMatchContents ? true : undefined}
+          >
+            <SwiftContextMenu modifiers={menuGlassModifiers}>
               <SwiftContextMenu.Trigger>
                 <View
                   ref={triggerRef}
@@ -295,6 +315,11 @@ const styles = StyleSheet.create({
     zIndex: 50,
     overflow: 'visible',
     elevation: 0,
+  },
+  /** Center SwiftUI `Host` in the 45px orb when its intrinsic width differs from the column. */
+  iosOrbMenuHostRow: {
+    width: '100%',
+    alignItems: 'center',
   },
   /** Fills the parent; icon menus sit in 45px-wide headers, full-width rows use the card width. */
   iosHostSlot: {

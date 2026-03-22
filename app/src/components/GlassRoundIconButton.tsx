@@ -12,6 +12,7 @@ export type GlassRoundIconButtonProps = {
   accessibilityLabel: string;
   hitSlop?: number;
   disabled?: boolean;
+  /** iOS SwiftUI Menu: omit GlassView in label; glass comes from Menu `buttonStyle('glass')`. */
   embedInSwiftMenu?: boolean;
 };
 
@@ -28,18 +29,15 @@ export function GlassRoundIconButton({
     isLiquidGlassAvailable() &&
     isGlassEffectAPIAvailable() &&
     !(embedInSwiftMenu && Platform.OS === 'ios');
-  const glyph = (
-    <Feather
-      name={icon}
-      size={size}
-      color={ICON_COLOR}
-      style={
-        embedInSwiftMenu && Platform.OS === 'ios'
-          ? { lineHeight: size, textAlign: 'center' as const }
-          : undefined
-      }
-    />
-  );
+  const feather = <Feather name={icon} size={size} color={ICON_COLOR} />;
+  const glyph =
+    embedInSwiftMenu && Platform.OS === 'ios' ? (
+      <View style={styles.menuLabelGlyphNudge} collapsable={false}>
+        {feather}
+      </View>
+    ) : (
+      feather
+    );
 
   const face = isGlass ? (
     <GlassView
@@ -96,5 +94,8 @@ const styles = StyleSheet.create({
   },
   swiftMenuLabel: {
     backgroundColor: 'transparent',
+  },
+  menuLabelGlyphNudge: {
+    transform: [{ translateX: -8 }, { translateY: -4 }],
   },
 });

@@ -428,6 +428,7 @@ export default function BoardScreen({
         <View style={[styles.headerSide, styles.headerSideEnd]}>
           <ContextMenu
             options={boardViewMenuOptions}
+            hostMatchContents
             trigger={
               <GlassRoundIconButton
                 icon="filter"
@@ -567,10 +568,7 @@ const styles = StyleSheet.create({
   },
   headerFilterMenuTrigger: {
     width: 45,
-    minHeight: 45,
     alignSelf: 'flex-end',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerSideSpacer: {
     width: 45,

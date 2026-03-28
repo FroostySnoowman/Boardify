@@ -58,6 +58,12 @@ export interface BoardColumnProps {
   onColumnListDragMove: (absoluteX: number, absoluteY: number) => void;
   onColumnListDragEnd: () => void;
   onColumnWrapLayout: (colIndex: number, rect: { x: number; y: number; width: number; height: number }) => void;
+  /** Overrides default 280px wrap width (focused board paging). */
+  columnWidth?: number;
+  /** Overrides column `maxHeight` (focused mode uses more vertical space). */
+  columnMaxHeight?: number;
+  /** Overrides vertical card list `maxHeight`. */
+  cardScrollMaxHeight?: number;
 }
 
 function BoardColumnInner({
@@ -91,6 +97,9 @@ function BoardColumnInner({
   onColumnListDragMove,
   onColumnListDragEnd,
   onColumnWrapLayout,
+  columnWidth,
+  columnMaxHeight,
+  cardScrollMaxHeight,
 }: BoardColumnProps) {
   const cardRefs = useRef<Record<string, React.ElementRef<typeof DraggableBoardCard> | null>>({});
   const listRef = useRef<React.ElementRef<typeof GHScrollView> | null>(null);
@@ -195,11 +204,15 @@ function BoardColumnInner({
     <View
       ref={wrapRef}
       collapsable={false}
-      style={[styles.wrap, isDraggingThisColumn && styles.wrapDraggingSource]}
+      style={[
+        styles.wrap,
+        columnWidth != null && { width: columnWidth, marginRight: 0 },
+        isDraggingThisColumn && styles.wrapDraggingSource,
+      ]}
       onLayout={remeasureColumn}
     >
       <View style={styles.shadow} />
-      <View style={styles.column}>
+      <View style={[styles.column, columnMaxHeight != null && { maxHeight: columnMaxHeight }]}>
         <DraggableColumnHeader
           title={title}
           cardCount={cards.length}
@@ -218,7 +231,7 @@ function BoardColumnInner({
             onScrollViewRef?.(r);
           }}
           scrollEnabled={listScrollEnabled}
-          style={styles.cardScroll}
+          style={[styles.cardScroll, cardScrollMaxHeight != null && { maxHeight: cardScrollMaxHeight }]}
           contentContainerStyle={styles.cardList}
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"

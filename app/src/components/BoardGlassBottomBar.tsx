@@ -22,6 +22,10 @@ export type BoardGlassBottomBarProps = {
   onBellPress?: () => void;
   onSettingsPress?: () => void;
   onExpandPress?: () => void;
+  /** When false, hides the fullscreen control (Table / Calendar / Dashboard). Default true. */
+  showExpandButton?: boolean;
+  /** When true, expand shows minimize icon — focused list mode is active. */
+  expandActive?: boolean;
   /** Bottom “Board / List / Calendar” layout menu (left of the triple pill). */
   onLayoutMenuSelect?: (mode: BoardBottomBarLayoutMode) => void;
 };
@@ -62,7 +66,8 @@ const GLASS_PAIR_WIDTH = TRIPLE_PILL_WIDTH + ROW_GAP + EXPAND_ORB_SIZE;
  * Full bar width (shell + fallback). Merged glass uses inner margins so visual gaps match `ROW_GAP - EXPAND_SHIFT_LEFT`.
  * (Layout menu orb omitted for now — add `LAYOUT_MENU_ORB_SIZE + ROW_GAP` when restoring left control.)
  */
-const ROW_TOTAL_WIDTH = GLASS_PAIR_WIDTH - EXPAND_SHIFT_LEFT;
+const ROW_TOTAL_WIDTH_WITH_EXPAND = GLASS_PAIR_WIDTH - EXPAND_SHIFT_LEFT;
+const ROW_TOTAL_WIDTH_PILL_ONLY = TRIPLE_PILL_WIDTH;
 /** From **pill** left edge to bell column center (for window centering). */
 const BELL_CENTER_X_FROM_PILL_LEFT =
   TRIPLE_PILL_PADDING_H + TRIPLE_SLOT + TRIPLE_ICON_GAP + TRIPLE_SLOT / 2;
@@ -191,14 +196,20 @@ function BoardBottomLayoutMenu({
 }
 */
 
-function BoardExpandGlassPressable({ onPress }: { onPress: () => void }) {
+function BoardExpandGlassPressable({
+  onPress,
+  active,
+}: {
+  onPress: () => void;
+  active?: boolean;
+}) {
   return (
     <Pressable
       collapsable={false}
       onPress={onPress}
       hitSlop={10}
       accessibilityRole="button"
-      accessibilityLabel="Expand"
+      accessibilityLabel={active ? 'Exit focused list view' : 'Focus one list at a time'}
       android_ripple={null}
       style={styles.expandPressable}
     >
@@ -209,7 +220,7 @@ function BoardExpandGlassPressable({ onPress }: { onPress: () => void }) {
         style={styles.expandGlass}
       >
         <View style={styles.expandGlassInner} collapsable={false}>
-          <Feather name="maximize-2" size={ICON_SIZE} color={ICON_COLOR} />
+          <Feather name={active ? 'minimize-2' : 'maximize-2'} size={ICON_SIZE} color={ICON_COLOR} />
         </View>
       </GlassView>
     </Pressable>
@@ -222,17 +233,23 @@ export function BoardGlassBottomBar({
   onSettingsPress,
   onExpandPress,
   onLayoutMenuSelect,
+  showExpandButton = true,
+  expandActive = false,
 }: BoardGlassBottomBarProps) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const noop = () => {};
   const useNativeGlass = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
 
+  const rowTotalWidth = showExpandButton ? ROW_TOTAL_WIDTH_WITH_EXPAND : ROW_TOTAL_WIDTH_PILL_ONLY;
+
   /** Align bell with window horizontal center (reference: centered “middle mark” toolbars). */
   const rowLeft = useMemo(
     () =>
-      windowWidth / 2 + EXPAND_SHIFT_LEFT - BELL_CENTER_X_FROM_PILL_LEFT,
-    [windowWidth],
+      showExpandButton
+        ? windowWidth / 2 + EXPAND_SHIFT_LEFT - BELL_CENTER_X_FROM_PILL_LEFT
+        : windowWidth / 2 - BELL_CENTER_X_FROM_PILL_LEFT,
+    [windowWidth, showExpandButton],
   );
 
   const strip = (
@@ -268,30 +285,40 @@ export function BoardGlassBottomBar({
         <View style={styles.barTrack} pointerEvents="box-none">
           <View
             collapsable={false}
-            style={[styles.rowShell, { left: rowLeft, width: ROW_TOTAL_WIDTH }]}
+            style={[styles.rowShell, { left: rowLeft, width: rowTotalWidth }]}
           >
             {useNativeGlass ? (
               <GlassContainer
                 spacing={ROW_GAP}
                 pointerEvents="box-none"
-                style={styles.glassMergedRow}
+                style={[styles.glassMergedRow, { width: rowTotalWidth }]}
               >
                 {/* <BoardBottomLayoutMenu onSelect={onLayoutMenuSelect} inGlassMerge /> */}
                 {strip}
-                <BoardExpandGlassPressable onPress={onExpand} />
+                {showExpandButton ? (
+                  <BoardExpandGlassPressable onPress={onExpand} active={expandActive} />
+                ) : null}
               </GlassContainer>
             ) : (
               <View style={styles.bottomBarRow} pointerEvents="box-none">
                 {/* <BoardBottomLayoutMenu onSelect={onLayoutMenuSelect} /> */}
-                <View style={styles.fallbackGlassPair} pointerEvents="box-none">
+                <View
+                  style={[
+                    styles.fallbackGlassPair,
+                    !showExpandButton && styles.fallbackGlassPairCompact,
+                  ]}
+                  pointerEvents="box-none"
+                >
                   {strip}
-                  <View style={styles.expandFallbackNudge}>
-                    <GlassRoundIconButton
-                      icon="maximize-2"
-                      accessibilityLabel="Expand"
-                      onPress={onExpand}
-                    />
-                  </View>
+                  {showExpandButton ? (
+                    <View style={styles.expandFallbackNudge}>
+                      <GlassRoundIconButton
+                        icon={expandActive ? 'minimize-2' : 'maximize-2'}
+                        accessibilityLabel={expandActive ? 'Exit focused list view' : 'Focus one list at a time'}
+                        onPress={onExpand}
+                      />
+                    </View>
+                  ) : null}
                 </View>
               </View>
             )}
@@ -364,7 +391,6 @@ const styles = StyleSheet.create({
    * (`flex-end` matched bottoms and made the orb look visually low.)
    */
   glassMergedRow: {
-    width: ROW_TOTAL_WIDTH,
     minHeight: GLASS_ROW_MIN_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
@@ -378,6 +404,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: ROW_GAP,
     overflow: 'visible',
+  },
+  fallbackGlassPairCompact: {
+    width: TRIPLE_PILL_WIDTH,
+    gap: 0,
   },
   expandPressable: {
     opacity: 1,

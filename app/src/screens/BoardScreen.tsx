@@ -193,6 +193,11 @@ export default function BoardScreen({
   const { width: screenW, height: screenH } = useWindowDimensions();
   const [columns, setColumns] = useState<BoardColumnData[]>(INITIAL_COLUMNS);
   const [viewMode, setViewMode] = useState<BoardViewMode>('board');
+  /** One list per screen with paged horizontal scrolling (board view only). */
+  const [boardFocusMode, setBoardFocusMode] = useState(false);
+  const [focusPageIndex, setFocusPageIndex] = useState(0);
+  const prevBoardFocusRef = useRef(false);
+  const boardFocusModeRef = useRef(false);
   const [expanded, setExpanded] = useState<ExpandedCardLayout | null>(null);
   const [dragging, setDragging] = useState<DraggingState | null>(null);
   const [hoverTarget, setHoverTarget] = useState<{ col: number; insertIndex: number } | null>(null);
@@ -215,6 +220,21 @@ export default function BoardScreen({
   const lastAbsRef = useRef({ x: 0, y: 0 });
   type GHScrollViewRef = React.ElementRef<typeof GHScrollView>;
   const horizontalScrollRef = useRef<GHScrollViewRef | null>(null);
+
+  useEffect(() => {
+    boardFocusModeRef.current = boardFocusMode;
+  }, [boardFocusMode]);
+
+  useEffect(() => {
+    setFocusPageIndex((p) => Math.min(p, columns.length));
+  }, [columns.length]);
+
+  useEffect(() => {
+    if (viewMode !== 'board') {
+      setBoardFocusMode(false);
+    }
+  }, [viewMode]);
+
   const columnScrollRefs = useRef<(GHScrollViewRef | null)[]>([]);
   const measureFnsRef = useRef<Record<number, () => void>>({});
   const draggingRef = useRef<DraggingState | null>(null);
@@ -256,6 +276,45 @@ export default function BoardScreen({
   useEffect(() => {
     listHoverInsertRef.current = listHoverInsert;
   }, [listHoverInsert]);
+
+  useEffect(() => {
+    if (boardFocusMode && listDragging != null) {
+      setListDragging(null);
+      setListHoverInsert(null);
+    }
+  }, [boardFocusMode, listDragging]);
+
+  /** Sync horizontal scroll offset when entering / exiting focused list mode. */
+  useEffect(() => {
+    if (viewMode !== 'board') {
+      prevBoardFocusRef.current = boardFocusMode;
+      return;
+    }
+    const prev = prevBoardFocusRef.current;
+    if (prev !== boardFocusMode) {
+      requestAnimationFrame(() => {
+        if (boardFocusMode) {
+          const colStride = 280 + 16;
+          const idx = Math.min(
+            columns.length,
+            Math.max(0, Math.round(horizontalScrollXRef.current / colStride))
+          );
+          horizontalScrollRef.current?.scrollTo({ x: idx * screenW, animated: false });
+          horizontalScrollXRef.current = idx * screenW;
+          setFocusPageIndex(idx);
+        } else {
+          const page = Math.min(
+            columns.length,
+            Math.max(0, Math.round(horizontalScrollXRef.current / screenW))
+          );
+          const x = page * (280 + 16);
+          horizontalScrollRef.current?.scrollTo({ x, animated: false });
+          horizontalScrollXRef.current = x;
+        }
+      });
+    }
+    prevBoardFocusRef.current = boardFocusMode;
+  }, [boardFocusMode, viewMode, columns.length, screenW]);
 
   useEffect(() => {
     return () => {
@@ -710,18 +769,20 @@ export default function BoardScreen({
     const id = setInterval(() => {
       const { x, y } = lastAbsRef.current;
       const { width: sw, height: sh } = Dimensions.get('window');
-      if (x < EDGE) {
-        horizontalScrollRef.current?.scrollTo({
-          x: Math.max(0, horizontalScrollXRef.current - SPEED),
-          animated: false,
-        });
-        requestAnimationFrame(remeasureAllColumns);
-      } else if (x > sw - EDGE) {
-        horizontalScrollRef.current?.scrollTo({
-          x: horizontalScrollXRef.current + SPEED,
-          animated: false,
-        });
-        requestAnimationFrame(remeasureAllColumns);
+      if (!boardFocusModeRef.current) {
+        if (x < EDGE) {
+          horizontalScrollRef.current?.scrollTo({
+            x: Math.max(0, horizontalScrollXRef.current - SPEED),
+            animated: false,
+          });
+          requestAnimationFrame(remeasureAllColumns);
+        } else if (x > sw - EDGE) {
+          horizontalScrollRef.current?.scrollTo({
+            x: horizontalScrollXRef.current + SPEED,
+            animated: false,
+          });
+          requestAnimationFrame(remeasureAllColumns);
+        }
       }
       for (let ci = 0; ci < columns.length; ci++) {
         const L = columnLayoutsRef.current[ci];
@@ -763,7 +824,11 @@ export default function BoardScreen({
   const draggingListColumn =
     listDragging != null ? columns[listDragging.fromIndex] ?? null : null;
 
-  const columnDragEnabled = expanded == null && dragging == null;
+  const columnDragEnabled = expanded == null && dragging == null && !boardFocusMode;
+
+  const focusColumnWidth = Math.round(Math.min(screenW * 0.88, screenW - 32));
+  const focusColumnMaxH = Math.min(580, Math.round(screenH * 0.58));
+  const focusCardScrollMax = Math.max(300, focusColumnMaxH - 130);
 
   const boardViewMenuOptions = useMemo(
     () =>
@@ -781,15 +846,20 @@ export default function BoardScreen({
 
   const boardGlassBottomBarProps = useMemo((): BoardGlassBottomBarProps => {
     return {
+      ...glassBottomBar,
       onLayoutMenuSelect: (mode) => {
         const view: BoardViewMode =
           mode === 'list' ? 'table' : mode === 'board' ? 'board' : 'calendar';
         setViewMode(view);
         onBoardViewSelect?.(view);
       },
-      ...glassBottomBar,
+      showExpandButton: viewMode === 'board',
+      expandActive: boardFocusMode,
+      onExpandPress: () => {
+        setBoardFocusMode((v) => !v);
+      },
     };
-  }, [glassBottomBar, onBoardViewSelect]);
+  }, [boardFocusMode, glassBottomBar, onBoardViewSelect, viewMode]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -831,28 +901,36 @@ export default function BoardScreen({
       </View>
 
       {viewMode === 'board' ? (
-        <GHScrollView
-          ref={horizontalScrollRef}
-          horizontal
-          scrollEnabled={dragging === null && listDragging === null}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.columnsScroll,
-            {
-              paddingHorizontal: isWeb ? 24 : 16,
-              paddingBottom: 24 + insets.bottom + BOARD_GLASS_BOTTOM_BAR_CLEARANCE,
-            },
-          ]}
-          style={styles.columnsScrollView}
-          nestedScrollEnabled
-          scrollEventThrottle={16}
-          // @ts-expect-error RN ScrollView iOS prop; RNGH typings omit it
-          delayContentTouches={false}
-          onScroll={(e) => {
-            horizontalScrollXRef.current = e.nativeEvent.contentOffset.x;
-            requestAnimationFrame(remeasureAllColumns);
-          }}
-        >
+        <View style={styles.boardArea}>
+          <GHScrollView
+            ref={horizontalScrollRef}
+            horizontal
+            pagingEnabled={boardFocusMode}
+            scrollEnabled={dragging === null && listDragging === null}
+            showsHorizontalScrollIndicator={!boardFocusMode}
+            contentContainerStyle={[
+              styles.columnsScroll,
+              {
+                paddingHorizontal: boardFocusMode ? 0 : isWeb ? 24 : 16,
+                paddingBottom: 24 + insets.bottom + BOARD_GLASS_BOTTOM_BAR_CLEARANCE,
+                alignItems: boardFocusMode ? 'stretch' : 'flex-start',
+              },
+            ]}
+            style={styles.columnsScrollView}
+            nestedScrollEnabled
+            scrollEventThrottle={16}
+            // @ts-expect-error RN ScrollView iOS prop; RNGH typings omit it
+            delayContentTouches={false}
+            onScroll={(e) => {
+              horizontalScrollXRef.current = e.nativeEvent.contentOffset.x;
+              requestAnimationFrame(remeasureAllColumns);
+            }}
+            onMomentumScrollEnd={(e) => {
+              if (!boardFocusMode) return;
+              const x = e.nativeEvent.contentOffset.x;
+              setFocusPageIndex(Math.min(columns.length, Math.max(0, Math.round(x / screenW))));
+            }}
+          >
           {listDragging
             ? (() => {
                 const nodes: React.ReactNode[] = [];
@@ -899,55 +977,125 @@ export default function BoardScreen({
                         onColumnListDragMove={onColumnListDragMove}
                         onColumnListDragEnd={onColumnListDragEnd}
                         onColumnWrapLayout={onColumnWrapLayout}
+                        columnWidth={boardFocusMode ? focusColumnWidth : undefined}
+                        columnMaxHeight={boardFocusMode ? focusColumnMaxH : undefined}
+                        cardScrollMaxHeight={boardFocusMode ? focusCardScrollMax : undefined}
                       />
                     );
                   }
                 }
                 return nodes;
               })()
-            : columns.map((col, i) => (
-                <BoardColumn
-                  key={col.id}
-                  columnIndex={i}
-                  title={col.title}
-                  cards={col.cards}
-                  onAddCard={noopAddCard}
-                  expandedCardId={expandedCardId}
-                  onCardPress={handleCardPress}
-                  draggingCardId={dragging?.cardId ?? null}
-                  hoverInsertIndex={hoverTarget?.col === i ? hoverTarget.insertIndex : -1}
-                  onListLayout={onListLayout}
-                  onColumnScroll={onColumnScroll}
-                  translateX={translateX}
-                  translateY={translateY}
-                  scale={scale}
-                  onDragBegin={onDragBegin}
-                  onDragMove={onDragMove}
-                  onDragEnd={onDragEnd}
-                  onScrollViewRef={columnScrollRefSetters[i]}
-                  registerColumnMeasure={registerColumnMeasure}
-                  unregisterColumnMeasure={unregisterColumnMeasure}
-                  listScrollEnabled={dragging === null && listDragging === null}
-                  listDraggingActive={false}
-                  isDraggingThisColumn={false}
-                  columnDragEnabled={columnDragEnabled}
-                  translateListX={translateListX}
-                  translateListY={translateListY}
-                  scaleList={scaleList}
-                  onColumnListDragBegin={onColumnListDragBegin}
-                  onColumnListDragMove={onColumnListDragMove}
-                  onColumnListDragEnd={onColumnListDragEnd}
-                  onColumnWrapLayout={onColumnWrapLayout}
+            : columns.map((col, i) =>
+                boardFocusMode ? (
+                  <View key={col.id} style={[styles.focusPage, { width: screenW }]}>
+                    <BoardColumn
+                      columnIndex={i}
+                      title={col.title}
+                      cards={col.cards}
+                      onAddCard={noopAddCard}
+                      expandedCardId={expandedCardId}
+                      onCardPress={handleCardPress}
+                      draggingCardId={dragging?.cardId ?? null}
+                      hoverInsertIndex={hoverTarget?.col === i ? hoverTarget.insertIndex : -1}
+                      onListLayout={onListLayout}
+                      onColumnScroll={onColumnScroll}
+                      translateX={translateX}
+                      translateY={translateY}
+                      scale={scale}
+                      onDragBegin={onDragBegin}
+                      onDragMove={onDragMove}
+                      onDragEnd={onDragEnd}
+                      onScrollViewRef={columnScrollRefSetters[i]}
+                      registerColumnMeasure={registerColumnMeasure}
+                      unregisterColumnMeasure={unregisterColumnMeasure}
+                      listScrollEnabled={dragging === null && listDragging === null}
+                      listDraggingActive={false}
+                      isDraggingThisColumn={false}
+                      columnDragEnabled={columnDragEnabled}
+                      translateListX={translateListX}
+                      translateListY={translateListY}
+                      scaleList={scaleList}
+                      onColumnListDragBegin={onColumnListDragBegin}
+                      onColumnListDragMove={onColumnListDragMove}
+                      onColumnListDragEnd={onColumnListDragEnd}
+                      onColumnWrapLayout={onColumnWrapLayout}
+                      columnWidth={focusColumnWidth}
+                      columnMaxHeight={focusColumnMaxH}
+                      cardScrollMaxHeight={focusCardScrollMax}
+                    />
+                  </View>
+                ) : (
+                  <BoardColumn
+                    key={col.id}
+                    columnIndex={i}
+                    title={col.title}
+                    cards={col.cards}
+                    onAddCard={noopAddCard}
+                    expandedCardId={expandedCardId}
+                    onCardPress={handleCardPress}
+                    draggingCardId={dragging?.cardId ?? null}
+                    hoverInsertIndex={hoverTarget?.col === i ? hoverTarget.insertIndex : -1}
+                    onListLayout={onListLayout}
+                    onColumnScroll={onColumnScroll}
+                    translateX={translateX}
+                    translateY={translateY}
+                    scale={scale}
+                    onDragBegin={onDragBegin}
+                    onDragMove={onDragMove}
+                    onDragEnd={onDragEnd}
+                    onScrollViewRef={columnScrollRefSetters[i]}
+                    registerColumnMeasure={registerColumnMeasure}
+                    unregisterColumnMeasure={unregisterColumnMeasure}
+                    listScrollEnabled={dragging === null && listDragging === null}
+                    listDraggingActive={false}
+                    isDraggingThisColumn={false}
+                    columnDragEnabled={columnDragEnabled}
+                    translateListX={translateListX}
+                    translateListY={translateListY}
+                    scaleList={scaleList}
+                    onColumnListDragBegin={onColumnListDragBegin}
+                    onColumnListDragMove={onColumnListDragMove}
+                    onColumnListDragEnd={onColumnListDragEnd}
+                    onColumnWrapLayout={onColumnWrapLayout}
+                  />
+                )
+              )}
+          {boardFocusMode ? (
+            <View style={[styles.focusPage, { width: screenW }]}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => hapticLight()}
+                style={[styles.addListWrap, { width: focusColumnWidth }, styles.addListWrapCentered]}
+              >
+                <View style={styles.addListShadow} />
+                <View style={styles.addList}>
+                  <Feather name="plus" size={20} color="#666" />
+                  <Text style={styles.addListText}>Add list</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity activeOpacity={0.8} onPress={() => hapticLight()} style={styles.addListWrap}>
+              <View style={styles.addListShadow} />
+              <View style={styles.addList}>
+                <Feather name="plus" size={20} color="#666" />
+                <Text style={styles.addListText}>Add list</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        </GHScrollView>
+          {boardFocusMode ? (
+            <View style={styles.focusDotsRow} pointerEvents="none">
+              {Array.from({ length: columns.length + 1 }, (_, i) => (
+                <View
+                  key={`dot-${i}`}
+                  style={[styles.focusDot, i === focusPageIndex && styles.focusDotActive]}
                 />
               ))}
-          <TouchableOpacity activeOpacity={0.8} onPress={() => hapticLight()} style={styles.addListWrap}>
-            <View style={styles.addListShadow} />
-            <View style={styles.addList}>
-              <Feather name="plus" size={20} color="#666" />
-              <Text style={styles.addListText}>Add list</Text>
             </View>
-          </TouchableOpacity>
-        </GHScrollView>
+          ) : null}
+        </View>
       ) : viewMode === 'table' ? (
         <BoardTableView
           columns={columns}
@@ -1153,6 +1301,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingHorizontal: 8,
   },
+  boardArea: {
+    flex: 1,
+    minHeight: 0,
+  },
   columnsScrollView: {
     flexGrow: 1,
     zIndex: 0,
@@ -1160,6 +1312,35 @@ const styles = StyleSheet.create({
   columnsScroll: {
     paddingBottom: 24,
     alignItems: 'flex-start',
+  },
+  focusPage: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    flexShrink: 0,
+    paddingTop: 4,
+  },
+  focusDotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 7,
+    paddingBottom: 6,
+    paddingTop: 2,
+  },
+  focusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#c4c4c4',
+  },
+  focusDotActive: {
+    backgroundColor: '#0a0a0a',
+    width: 9,
+    height: 9,
+    borderRadius: 4,
+  },
+  addListWrapCentered: {
+    alignSelf: 'center',
   },
   addListWrap: {
     position: 'relative',

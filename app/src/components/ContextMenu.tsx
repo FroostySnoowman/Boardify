@@ -51,11 +51,8 @@ interface ContextMenuProps {
   activationMethod?: 'singlePress' | 'longPress';
   onSinglePress?: () => void;
   triggerWrapperStyle?: StyleProp<ViewStyle>;
-  /**
-   * iOS: sync RN `Host` size to SwiftUI and tighten `Menu` label layout for small orb triggers.
-   * Omit for full-width labels (e.g. Account theme row).
-   */
   hostMatchContents?: boolean;
+  iosGlassMenuTrigger?: boolean;
 }
 
 export function ContextMenu({
@@ -66,7 +63,12 @@ export function ContextMenu({
   onSinglePress,
   triggerWrapperStyle,
   hostMatchContents = false,
+  iosGlassMenuTrigger = true,
 }: ContextMenuProps) {
+  const iosMenuModifiers =
+    iosGlassMenuTrigger && menuGlassModifiers && menuGlassModifiers.length > 0
+      ? menuGlassModifiers
+      : [];
   const [androidMenuVisible, setAndroidMenuVisible] = useState(false);
   const androidMenuOpacity = useRef(new Animated.Value(0)).current;
   const androidMenuScale = useRef(new Animated.Value(0.9)).current;
@@ -174,6 +176,7 @@ export function ContextMenu({
     const triggerWrapStyle = [
       styles.triggerWrapper,
       styles.triggerWrapperIos,
+      !iosGlassMenuTrigger && styles.triggerWrapperPlain,
       triggerWrapperStyle,
     ];
     const hostSlotStyle = [styles.iosHostSlot];
@@ -190,7 +193,7 @@ export function ContextMenu({
             matchContents={hostMatchContents ? true : undefined}
           >
             <SwiftMenu
-              modifiers={menuGlassModifiers}
+              modifiers={iosMenuModifiers}
               label={
               <View
                 ref={triggerRef}
@@ -219,7 +222,7 @@ export function ContextMenu({
             style={hostSlotStyle}
             matchContents={hostMatchContents ? true : undefined}
           >
-            <SwiftContextMenu modifiers={menuGlassModifiers}>
+            <SwiftContextMenu modifiers={iosMenuModifiers}>
               <SwiftContextMenu.Trigger>
                 <View
                   ref={triggerRef}
@@ -316,12 +319,10 @@ const styles = StyleSheet.create({
     overflow: 'visible',
     elevation: 0,
   },
-  /** Center SwiftUI `Host` in the 45px orb when its intrinsic width differs from the column. */
   iosOrbMenuHostRow: {
     width: '100%',
     alignItems: 'center',
   },
-  /** Fills the parent; icon menus sit in 45px-wide headers, full-width rows use the card width. */
   iosHostSlot: {
     width: '100%',
     minWidth: 0,
@@ -334,6 +335,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 40,
     elevation: 0,
+  },
+  triggerWrapperPlain: {
+    borderRadius: 0,
   },
   triggerWrapperIos: {
     overflow: 'visible',

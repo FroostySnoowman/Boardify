@@ -68,6 +68,7 @@ export default function AccountScreen() {
           label: config.theme === mode ? `✓ ${base}` : base,
           value: mode,
           onPress: () => {
+            hapticLight();
             setConfig((c) => ({ ...c, theme: mode }));
           },
         };
@@ -130,16 +131,11 @@ export default function AccountScreen() {
               <ConfigRowDivider />
               {Platform.OS === 'ios' ? (
                 <ContextMenu
+                  iosGlassMenuTrigger={false}
                   triggerWrapperStyle={styles.themeMenuTriggerWrap}
                   options={themeMenuOptions}
                   trigger={
-                    <View style={styles.configRow}>
-                      <View style={styles.configLabelBlock}>
-                        <Text style={styles.configLabel}>Theme</Text>
-                        <Text style={styles.configSublabel}>{themeSublabel}</Text>
-                      </View>
-                      <Feather name="chevron-right" size={18} color="#666" />
-                    </View>
+                    <ConfigRow label="Theme" sublabel={themeSublabel} showChevron />
                   }
                 />
               ) : (

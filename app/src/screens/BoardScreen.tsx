@@ -21,6 +21,7 @@ import Animated, { useAnimatedStyle, useSharedValue, cancelAnimation } from 'rea
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import { BoardColumn } from '../components/BoardColumn';
+import { BoardTableView } from '../components/BoardTableView';
 import {
   BoardCardExpandOverlay,
   type ExpandedCardLayout,
@@ -125,6 +126,7 @@ export default function BoardScreen({
 }: BoardScreenProps) {
   const insets = useSafeAreaInsets();
   const [columns, setColumns] = useState<BoardColumnData[]>(INITIAL_COLUMNS);
+  const [viewMode, setViewMode] = useState<BoardViewMode>('board');
   const [expanded, setExpanded] = useState<ExpandedCardLayout | null>(null);
   const [dragging, setDragging] = useState<DraggingState | null>(null);
   const [hoverTarget, setHoverTarget] = useState<{ col: number; insertIndex: number } | null>(null);
@@ -219,7 +221,7 @@ export default function BoardScreen({
 
   const isWeb = Platform.OS === 'web';
 
-  const handleCardPress = useCallback(
+  const openCardAt = useCallback(
     (
       columnIndex: number,
       cardIndex: number,
@@ -241,6 +243,17 @@ export default function BoardScreen({
       });
     },
     [columns]
+  );
+
+  const handleCardPress = useCallback(
+    (
+      columnIndex: number,
+      cardIndex: number,
+      layout: { x: number; y: number; width: number; height: number }
+    ) => {
+      openCardAt(columnIndex, cardIndex, layout);
+    },
+    [openCardAt]
   );
 
   const expandedCardKey =
@@ -395,13 +408,15 @@ export default function BoardScreen({
   const boardViewMenuOptions = useMemo(
     () =>
       BOARD_VIEW_MENU_ITEMS.map(({ label, value }) => ({
-        label,
+        label: viewMode === value ? `✓ ${label}` : label,
         value,
         onPress: () => {
+          hapticLight();
+          setViewMode(value);
           onBoardViewSelect?.(value);
         },
       })),
-    [onBoardViewSelect]
+    [onBoardViewSelect, viewMode]
   );
 
   const boardGlassBottomBarProps = useMemo((): BoardGlassBottomBarProps => {
@@ -409,6 +424,7 @@ export default function BoardScreen({
       onLayoutMenuSelect: (mode) => {
         const view: BoardViewMode =
           mode === 'list' ? 'table' : mode === 'board' ? 'board' : 'calendar';
+        setViewMode(view);
         onBoardViewSelect?.(view);
       },
       ...glassBottomBar,
@@ -454,63 +470,78 @@ export default function BoardScreen({
         </View>
       </View>
 
-      <GHScrollView
-        ref={horizontalScrollRef}
-        horizontal
-        scrollEnabled={dragging === null}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.columnsScroll,
-          {
-            paddingHorizontal: isWeb ? 24 : 16,
-            paddingBottom: 24 + insets.bottom + BOARD_GLASS_BOTTOM_BAR_CLEARANCE,
-          },
-        ]}
-        style={styles.columnsScrollView}
-        nestedScrollEnabled
-        scrollEventThrottle={16}
-        // @ts-expect-error RN ScrollView iOS prop; RNGH typings omit it
-        delayContentTouches={false}
-        onScroll={(e) => {
-          horizontalScrollXRef.current = e.nativeEvent.contentOffset.x;
-          requestAnimationFrame(remeasureAllColumns);
-        }}
-      >
-        {columns.map((col, i) => (
-          <BoardColumn
-            key={col.title + i}
-            columnIndex={i}
-            title={col.title}
-            cards={col.cards}
-            onAddCard={noopAddCard}
-            expandedCardKey={expandedCardKey}
-            onCardPress={handleCardPress}
-            draggingCardId={dragging?.cardId ?? null}
-            hoverInsertIndex={hoverTarget?.col === i ? hoverTarget.insertIndex : -1}
-            onListLayout={onListLayout}
-            onColumnScroll={onColumnScroll}
-            translateX={translateX}
-            translateY={translateY}
-            scale={scale}
-            onDragBegin={onDragBegin}
-            onDragMove={onDragMove}
-            onDragEnd={onDragEnd}
-            onScrollViewRef={columnScrollRefSetters[i]}
-            registerColumnMeasure={registerColumnMeasure}
-            unregisterColumnMeasure={unregisterColumnMeasure}
-            listScrollEnabled={dragging === null}
-          />
-        ))}
-        <TouchableOpacity activeOpacity={0.8} onPress={() => hapticLight()} style={styles.addListWrap}>
-          <View style={styles.addListShadow} />
-          <View style={styles.addList}>
-            <Feather name="plus" size={20} color="#666" />
-            <Text style={styles.addListText}>Add list</Text>
-          </View>
-        </TouchableOpacity>
-      </GHScrollView>
+      {viewMode === 'board' ? (
+        <GHScrollView
+          ref={horizontalScrollRef}
+          horizontal
+          scrollEnabled={dragging === null}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.columnsScroll,
+            {
+              paddingHorizontal: isWeb ? 24 : 16,
+              paddingBottom: 24 + insets.bottom + BOARD_GLASS_BOTTOM_BAR_CLEARANCE,
+            },
+          ]}
+          style={styles.columnsScrollView}
+          nestedScrollEnabled
+          scrollEventThrottle={16}
+          // @ts-expect-error RN ScrollView iOS prop; RNGH typings omit it
+          delayContentTouches={false}
+          onScroll={(e) => {
+            horizontalScrollXRef.current = e.nativeEvent.contentOffset.x;
+            requestAnimationFrame(remeasureAllColumns);
+          }}
+        >
+          {columns.map((col, i) => (
+            <BoardColumn
+              key={col.title + i}
+              columnIndex={i}
+              title={col.title}
+              cards={col.cards}
+              onAddCard={noopAddCard}
+              expandedCardKey={expandedCardKey}
+              onCardPress={handleCardPress}
+              draggingCardId={dragging?.cardId ?? null}
+              hoverInsertIndex={hoverTarget?.col === i ? hoverTarget.insertIndex : -1}
+              onListLayout={onListLayout}
+              onColumnScroll={onColumnScroll}
+              translateX={translateX}
+              translateY={translateY}
+              scale={scale}
+              onDragBegin={onDragBegin}
+              onDragMove={onDragMove}
+              onDragEnd={onDragEnd}
+              onScrollViewRef={columnScrollRefSetters[i]}
+              registerColumnMeasure={registerColumnMeasure}
+              unregisterColumnMeasure={unregisterColumnMeasure}
+              listScrollEnabled={dragging === null}
+            />
+          ))}
+          <TouchableOpacity activeOpacity={0.8} onPress={() => hapticLight()} style={styles.addListWrap}>
+            <View style={styles.addListShadow} />
+            <View style={styles.addList}>
+              <Feather name="plus" size={20} color="#666" />
+              <Text style={styles.addListText}>Add list</Text>
+            </View>
+          </TouchableOpacity>
+        </GHScrollView>
+      ) : viewMode === 'table' ? (
+        <BoardTableView
+          columns={columns}
+          bottomClearance={BOARD_GLASS_BOTTOM_BAR_CLEARANCE}
+          onCardPress={openCardAt}
+        />
+      ) : (
+        <View style={styles.viewPlaceholder}>
+          <Text style={styles.viewPlaceholderTitle}>
+            {BOARD_VIEW_MENU_ITEMS.find((x) => x.value === viewMode)?.label ?? 'View'}
+          </Text>
+          <Text style={styles.viewPlaceholderHint}>This workspace view is coming soon.</Text>
+        </View>
+      )}
 
-      {dragging && draggingCard ? (
+      {viewMode === 'board' && dragging && draggingCard ? (
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
           <Animated.View
             style={[
@@ -639,5 +670,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#666',
+  },
+  viewPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingBottom: BOARD_GLASS_BOTTOM_BAR_CLEARANCE + 24,
+  },
+  viewPlaceholderTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0a0a0a',
+    marginBottom: 8,
+  },
+  viewPlaceholderHint: {
+    fontSize: 15,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });

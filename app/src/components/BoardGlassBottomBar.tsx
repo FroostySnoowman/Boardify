@@ -42,12 +42,8 @@ const TRIPLE_ROW_HEIGHT = 44;
 const ROW_GAP = 16;
 const EXPAND_ORB_SIZE = 45;
 const PILL_TRACK_HEIGHT = TRIPLE_ROW_HEIGHT + TRIPLE_PILL_PADDING_V * 2;
-/** Top inset to vertically center the expand hit target in the row. */
-const EXPAND_ORB_TOP = (PILL_TRACK_HEIGHT - EXPAND_ORB_SIZE) / 2;
 /** Explicit width so the bar shell matches pill + gap + orb. */
 const ROW_TOTAL_WIDTH = TRIPLE_PILL_WIDTH + ROW_GAP + EXPAND_ORB_SIZE;
-/** X offset of expand orb’s left edge from the bar shell’s left edge. */
-const EXPAND_ORB_LEFT = TRIPLE_PILL_WIDTH + ROW_GAP;
 /** Horizontal distance from row’s left edge (pill’s left) to the bell column’s center. */
 const BELL_CENTER_X_FROM_ROW_LEFT =
   TRIPLE_PILL_PADDING_H + TRIPLE_SLOT + TRIPLE_ICON_GAP + TRIPLE_SLOT / 2;
@@ -111,27 +107,31 @@ function GlassTripleStrip({ onFilterPress, onBellPress, onSettingsPress }: Glass
 }
 
 /**
- * Visual-only orb for `GlassContainer` merge. Touches are handled by a sibling overlay `Pressable`
- * — nested `Pressable` inside native `GlassView` often does not receive hits on iOS.
+ * Same pattern as `GlassRoundIconButton`: `Pressable` wraps `GlassView` with `isInteractive`.
+ * A sibling `Pressable` outside `GlassContainer` often loses hit tests to the native glass subtree.
  */
-function BoardExpandGlassNative() {
+function BoardExpandGlassPressable({ onPress }: { onPress: () => void }) {
   return (
-    <GlassView
-      pointerEvents="none"
-      isInteractive={false}
-      colorScheme="light"
-      tintColor="rgba(255, 255, 255, 0.42)"
-      style={styles.expandGlass}
+    <Pressable
+      collapsable={false}
+      onPress={onPress}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel="Expand"
+      android_ripple={null}
+      style={styles.expandPressable}
     >
-      <View
-        style={styles.expandGlassInner}
-        pointerEvents="none"
-        accessible={false}
-        importantForAccessibility="no-hide-descendants"
+      <GlassView
+        isInteractive
+        colorScheme="light"
+        tintColor="rgba(255, 255, 255, 0.42)"
+        style={styles.expandGlass}
       >
-        <Feather name="maximize-2" size={ICON_SIZE} color={ICON_COLOR} />
-      </View>
-    </GlassView>
+        <View style={styles.expandGlassInner} collapsable={false}>
+          <Feather name="maximize-2" size={ICON_SIZE} color={ICON_COLOR} />
+        </View>
+      </GlassView>
+    </Pressable>
   );
 }
 
@@ -184,26 +184,18 @@ export function BoardGlassBottomBar({
       >
         <View style={styles.barTrack} pointerEvents="box-none">
           {useNativeGlass ? (
-            <View style={[styles.rowShell, { left: rowLeft, width: ROW_TOTAL_WIDTH }]}>
+            <View
+              collapsable={false}
+              style={[styles.rowShell, { left: rowLeft, width: ROW_TOTAL_WIDTH }]}
+            >
               <GlassContainer
-                spacing={22}
+                spacing={ROW_GAP}
                 pointerEvents="box-none"
                 style={styles.glassMergedRow}
               >
                 {strip}
-                <BoardExpandGlassNative />
+                <BoardExpandGlassPressable onPress={onExpand} />
               </GlassContainer>
-              <Pressable
-                onPress={onExpand}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Expand"
-                android_ripple={null}
-                style={[
-                  styles.expandHitOverlay,
-                  { left: EXPAND_ORB_LEFT, top: EXPAND_ORB_TOP },
-                ]}
-              />
             </View>
           ) : (
             <View style={[styles.row, { left: rowLeft }]}>
@@ -260,12 +252,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: ROW_GAP,
   },
-  expandHitOverlay: {
-    position: 'absolute',
-    width: EXPAND_ORB_SIZE,
-    height: EXPAND_ORB_SIZE,
-    zIndex: 50,
-    backgroundColor: 'transparent',
+  expandPressable: {
+    opacity: 1,
+    overflow: 'visible',
   },
   tripleGlass: {
     width: TRIPLE_PILL_WIDTH,

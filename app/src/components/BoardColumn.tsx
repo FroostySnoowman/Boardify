@@ -5,6 +5,7 @@ import Animated, { Easing, LinearTransition, type SharedValue } from 'react-nati
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import { DraggableBoardCard } from './DraggableBoardCard';
+import { DraggableColumnHeader } from './DraggableColumnHeader';
 import { BoardCardPlaceholder } from './BoardCardPlaceholder';
 import type { BoardCardData } from '../types/board';
 
@@ -42,6 +43,20 @@ export interface BoardColumnProps {
   registerColumnMeasure?: (colIndex: number, fn: () => void) => void;
   unregisterColumnMeasure?: (colIndex: number) => void;
   listScrollEnabled?: boolean;
+  /** True while a list (column) drag is active — disables card drag. */
+  listDraggingActive?: boolean;
+  isDraggingThisColumn?: boolean;
+  columnDragEnabled?: boolean;
+  translateListX: SharedValue<number>;
+  translateListY: SharedValue<number>;
+  scaleList: SharedValue<number>;
+  onColumnListDragBegin: (args: {
+    columnIndex: number;
+    measure: (cb: (x: number, y: number, w: number, h: number) => void) => void;
+  }) => void;
+  onColumnListDragMove: (absoluteX: number, absoluteY: number) => void;
+  onColumnListDragEnd: () => void;
+  onColumnWrapLayout: (colIndex: number, rect: { x: number; y: number; width: number; height: number }) => void;
 }
 
 function BoardColumnInner({
@@ -65,9 +80,20 @@ function BoardColumnInner({
   registerColumnMeasure,
   unregisterColumnMeasure,
   listScrollEnabled = true,
+  listDraggingActive = false,
+  isDraggingThisColumn = false,
+  columnDragEnabled = true,
+  translateListX,
+  translateListY,
+  scaleList,
+  onColumnListDragBegin,
+  onColumnListDragMove,
+  onColumnListDragEnd,
+  onColumnWrapLayout,
 }: BoardColumnProps) {
   const cardRefs = useRef<Record<string, React.ElementRef<typeof DraggableBoardCard> | null>>({});
   const listRef = useRef<React.ElementRef<typeof GHScrollView> | null>(null);
+  const wrapRef = useRef<View | null>(null);
 
   const handleAddCard = () => {
     hapticLight();
@@ -85,10 +111,23 @@ function BoardColumnInner({
     });
   }, [columnIndex, onListLayout]);
 
+  const measureWrap = useCallback(() => {
+    wrapRef.current?.measureInWindow((x, y, w, h) => {
+      onColumnWrapLayout(columnIndex, { x, y, width: w, height: h });
+    });
+  }, [columnIndex, onColumnWrapLayout]);
+
+  const remeasureColumn = useCallback(() => {
+    requestAnimationFrame(() => {
+      measureList();
+      measureWrap();
+    });
+  }, [measureList, measureWrap]);
+
   useEffect(() => {
-    registerColumnMeasure?.(columnIndex, measureList);
+    registerColumnMeasure?.(columnIndex, remeasureColumn);
     return () => unregisterColumnMeasure?.(columnIndex);
-  }, [columnIndex, measureList, registerColumnMeasure, unregisterColumnMeasure]);
+  }, [columnIndex, remeasureColumn, registerColumnMeasure, unregisterColumnMeasure]);
 
   const insertAt = hoverInsertIndex;
 
@@ -116,7 +155,9 @@ function BoardColumnInner({
           card={c}
           columnIndex={columnIndex}
           cardIndex={originalIndex}
-          dragEnabled={draggingCardId === null || draggingCardId === c.id}
+          dragEnabled={
+            !listDraggingActive && (draggingCardId === null || draggingCardId === c.id)
+          }
           translateX={translateX}
           translateY={translateY}
           scale={scale}
@@ -150,13 +191,26 @@ function BoardColumnInner({
   }
 
   return (
-    <View style={styles.wrap}>
+    <View
+      ref={wrapRef}
+      collapsable={false}
+      style={[styles.wrap, isDraggingThisColumn && styles.wrapDraggingSource]}
+      onLayout={remeasureColumn}
+    >
       <View style={styles.shadow} />
       <View style={styles.column}>
-        <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>{title}</Text>
-          <Text style={styles.count}>{cards.length}</Text>
-        </View>
+        <DraggableColumnHeader
+          title={title}
+          cardCount={cards.length}
+          columnIndex={columnIndex}
+          dragEnabled={columnDragEnabled}
+          translateX={translateListX}
+          translateY={translateListY}
+          scale={scaleList}
+          onDragBegin={onColumnListDragBegin}
+          onDragMove={onColumnListDragMove}
+          onDragEnd={onColumnListDragEnd}
+        />
         <GHScrollView
           ref={(r: React.ElementRef<typeof GHScrollView> | null) => {
             listRef.current = r;
@@ -172,9 +226,7 @@ function BoardColumnInner({
           // @ts-expect-error RN ScrollView iOS prop; RNGH typings omit it
           delayContentTouches={false}
           onScroll={(e) => onColumnScroll(columnIndex, e.nativeEvent.contentOffset.y)}
-          onLayout={() => {
-            requestAnimationFrame(measureList);
-          }}
+          onLayout={remeasureColumn}
         >
           {nodes}
         </GHScrollView>
@@ -195,6 +247,13 @@ const styles = StyleSheet.create({
     width: 280,
     marginRight: 16,
     flexShrink: 0,
+  },
+  wrapDraggingSource: {
+    width: 0,
+    minWidth: 0,
+    marginRight: 0,
+    opacity: 0,
+    overflow: 'hidden',
   },
   shadow: {
     position: 'absolute',
@@ -217,24 +276,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     maxHeight: 520,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0a0a0a',
-    flex: 1,
-  },
-  count: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
   },
   cardScroll: {
     maxHeight: 420,

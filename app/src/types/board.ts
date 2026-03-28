@@ -62,6 +62,7 @@ export type BoardCardData = {
 };
 
 export type BoardColumnData = {
+  id: string;
   title: string;
   cards: BoardCardData[];
 };

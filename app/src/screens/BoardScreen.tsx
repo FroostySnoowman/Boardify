@@ -21,6 +21,7 @@ import Animated, { useAnimatedStyle, useSharedValue, cancelAnimation } from 'rea
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import { BoardColumn } from '../components/BoardColumn';
+import { BoardColumnPlaceholder } from '../components/BoardColumnPlaceholder';
 import { BoardTableView } from '../components/BoardTableView';
 import {
   BoardCardExpandOverlay,
@@ -30,14 +31,17 @@ import { BoardCard } from '../components/BoardCard';
 import type { BoardCardData, BoardColumnData } from '../types/board';
 import {
   BOARD_CARD_ROW_HEIGHT,
+  computeColumnHoverInsertIndex,
   computeHoverInsertIndex,
   moveCardToHover,
+  reorderColumns,
 } from '../board/boardDragUtils';
 
 const SHIFT = 5;
 
 const INITIAL_COLUMNS: BoardColumnData[] = [
   {
+    id: 'col-todo',
     title: 'To Do',
     cards: [
       {
@@ -71,6 +75,7 @@ const INITIAL_COLUMNS: BoardColumnData[] = [
     ],
   },
   {
+    id: 'col-in-progress',
     title: 'In Progress',
     cards: [
       { id: 'c-1-0', title: 'Board view layout', subtitle: 'You', labelColor: '#a5d6a5' },
@@ -78,6 +83,7 @@ const INITIAL_COLUMNS: BoardColumnData[] = [
     ],
   },
   {
+    id: 'col-done',
     title: 'Done',
     cards: [
       { id: 'c-2-0', title: 'Auth & login screen' },
@@ -90,6 +96,14 @@ const INITIAL_COLUMNS: BoardColumnData[] = [
 type DraggingState = {
   cardId: string;
   fromCol: number;
+  fromIndex: number;
+  startX: number;
+  startY: number;
+  width: number;
+  height: number;
+};
+
+type ListDraggingState = {
   fromIndex: number;
   startX: number;
   startY: number;
@@ -130,10 +144,15 @@ export default function BoardScreen({
   const [expanded, setExpanded] = useState<ExpandedCardLayout | null>(null);
   const [dragging, setDragging] = useState<DraggingState | null>(null);
   const [hoverTarget, setHoverTarget] = useState<{ col: number; insertIndex: number } | null>(null);
+  const [listDragging, setListDragging] = useState<ListDraggingState | null>(null);
+  const [listHoverInsert, setListHoverInsert] = useState<number | null>(null);
 
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
+  const translateListX = useSharedValue(0);
+  const translateListY = useSharedValue(0);
+  const scaleList = useSharedValue(1);
 
   const columnLayoutsRef = useRef<Array<{ x: number; y: number; width: number; height: number } | null>>([]);
   const columnScrollYRef = useRef<number[]>([]);
@@ -147,6 +166,9 @@ export default function BoardScreen({
   const hoverRef = useRef<{ col: number; insertIndex: number } | null>(null);
   const pendingHoverRef = useRef<{ col: number; insertIndex: number } | null>(null);
   const hoverRafRef = useRef<number | null>(null);
+  const listDraggingRef = useRef<ListDraggingState | null>(null);
+  const listHoverInsertRef = useRef<number | null>(null);
+  const columnWrapLayoutsRef = useRef<Array<{ x: number; width: number } | null>>([]);
 
   const flushHoverRaf = useCallback(() => {
     hoverRafRef.current = null;
@@ -173,6 +195,14 @@ export default function BoardScreen({
   }, [hoverTarget]);
 
   useEffect(() => {
+    listDraggingRef.current = listDragging;
+  }, [listDragging]);
+
+  useEffect(() => {
+    listHoverInsertRef.current = listHoverInsert;
+  }, [listHoverInsert]);
+
+  useEffect(() => {
     return () => {
       if (hoverRafRef.current != null) {
         cancelAnimationFrame(hoverRafRef.current);
@@ -189,6 +219,16 @@ export default function BoardScreen({
     translateY.value = 0;
     scale.value = 1;
   }, [dragging, translateX, translateY, scale]);
+
+  useEffect(() => {
+    if (listDragging != null) return;
+    cancelAnimation(translateListX);
+    cancelAnimation(translateListY);
+    cancelAnimation(scaleList);
+    translateListX.value = 0;
+    translateListY.value = 0;
+    scaleList.value = 1;
+  }, [listDragging, translateListX, translateListY, scaleList]);
 
   const noopAddCard = useCallback(() => {}, []);
 
@@ -278,6 +318,17 @@ export default function BoardScreen({
     []
   );
 
+  const onColumnWrapLayout = useCallback(
+    (colIndex: number, rect: { x: number; y: number; width: number; height: number }) => {
+      const arr = columnWrapLayoutsRef.current;
+      while (arr.length <= colIndex) {
+        arr.push(null);
+      }
+      arr[colIndex] = { x: rect.x, width: rect.width };
+    },
+    []
+  );
+
   const onColumnScroll = useCallback((colIndex: number, scrollY: number) => {
     columnScrollYRef.current[colIndex] = scrollY;
   }, []);
@@ -356,8 +407,52 @@ export default function BoardScreen({
     setHoverTarget(null);
   }, []);
 
+  const onColumnListDragBegin = useCallback(
+    (args: {
+      columnIndex: number;
+      measure: (cb: (x: number, y: number, w: number, h: number) => void) => void;
+    }) => {
+      args.measure((x, y, w, h) => {
+        const next: ListDraggingState = {
+          fromIndex: args.columnIndex,
+          startX: x,
+          startY: y,
+          width: w > 0 ? w : 260,
+          height: h > 0 ? h : 48,
+        };
+        listDraggingRef.current = next;
+        setListDragging(next);
+        setListHoverInsert(args.columnIndex);
+      });
+    },
+    []
+  );
+
+  const onColumnListDragMove = useCallback((absX: number, absY: number) => {
+    lastAbsRef.current = { x: absX, y: absY };
+    const from = listDraggingRef.current?.fromIndex ?? null;
+    const next = computeColumnHoverInsertIndex(
+      absX,
+      columnWrapLayoutsRef.current,
+      columns.length,
+      from
+    );
+    setListHoverInsert(next);
+  }, [columns.length]);
+
+  const onColumnListDragEnd = useCallback(() => {
+    const d = listDraggingRef.current;
+    const insert = listHoverInsertRef.current;
+    if (d != null && insert != null) {
+      setColumns((prev) => reorderColumns(prev, d.fromIndex, insert));
+    }
+    listDraggingRef.current = null;
+    setListDragging(null);
+    setListHoverInsert(null);
+  }, []);
+
   useEffect(() => {
-    if (!dragging) return;
+    if (!dragging && !listDragging) return;
     const EDGE = 56;
     const SPEED = 5;
     const id = setInterval(() => {
@@ -391,7 +486,7 @@ export default function BoardScreen({
       }
     }, 16);
     return () => clearInterval(id);
-  }, [dragging, columns.length, remeasureAllColumns]);
+  }, [dragging, listDragging, columns.length, remeasureAllColumns]);
 
   const overlayStyle = useAnimatedStyle(() => ({
     transform: [
@@ -401,9 +496,22 @@ export default function BoardScreen({
     ],
   }));
 
+  const listOverlayStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateListX.value },
+      { translateY: translateListY.value },
+      { scale: scaleList.value },
+    ],
+  }));
+
   const draggingCard = dragging
     ? columns[dragging.fromCol]?.cards.find((c) => c.id === dragging.cardId)
     : null;
+
+  const draggingListColumn =
+    listDragging != null ? columns[listDragging.fromIndex] ?? null : null;
+
+  const columnDragEnabled = expanded == null && dragging == null;
 
   const boardViewMenuOptions = useMemo(
     () =>
@@ -474,7 +582,7 @@ export default function BoardScreen({
         <GHScrollView
           ref={horizontalScrollRef}
           horizontal
-          scrollEnabled={dragging === null}
+          scrollEnabled={dragging === null && listDragging === null}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[
             styles.columnsScroll,
@@ -493,31 +601,93 @@ export default function BoardScreen({
             requestAnimationFrame(remeasureAllColumns);
           }}
         >
-          {columns.map((col, i) => (
-            <BoardColumn
-              key={col.title + i}
-              columnIndex={i}
-              title={col.title}
-              cards={col.cards}
-              onAddCard={noopAddCard}
-              expandedCardKey={expandedCardKey}
-              onCardPress={handleCardPress}
-              draggingCardId={dragging?.cardId ?? null}
-              hoverInsertIndex={hoverTarget?.col === i ? hoverTarget.insertIndex : -1}
-              onListLayout={onListLayout}
-              onColumnScroll={onColumnScroll}
-              translateX={translateX}
-              translateY={translateY}
-              scale={scale}
-              onDragBegin={onDragBegin}
-              onDragMove={onDragMove}
-              onDragEnd={onDragEnd}
-              onScrollViewRef={columnScrollRefSetters[i]}
-              registerColumnMeasure={registerColumnMeasure}
-              unregisterColumnMeasure={unregisterColumnMeasure}
-              listScrollEnabled={dragging === null}
-            />
-          ))}
+          {listDragging
+            ? (() => {
+                const nodes: React.ReactNode[] = [];
+                /** Global “insert before column i” (0..n); must match `computeColumnHoverInsertIndex` / `reorderColumns`. */
+                const insertAt = listHoverInsert ?? 0;
+                const n = columns.length;
+                for (let i = 0; i <= n; i++) {
+                  if (insertAt === i) {
+                    nodes.push(<BoardColumnPlaceholder key={`col-gap-${i}`} />);
+                  }
+                  if (i < n) {
+                    const col = columns[i];
+                    const isBeingDragged = listDragging.fromIndex === i;
+                    nodes.push(
+                      <BoardColumn
+                        key={col.id}
+                        columnIndex={i}
+                        title={col.title}
+                        cards={col.cards}
+                        onAddCard={noopAddCard}
+                        expandedCardKey={expandedCardKey}
+                        onCardPress={handleCardPress}
+                        draggingCardId={dragging?.cardId ?? null}
+                        hoverInsertIndex={hoverTarget?.col === i ? hoverTarget.insertIndex : -1}
+                        onListLayout={onListLayout}
+                        onColumnScroll={onColumnScroll}
+                        translateX={translateX}
+                        translateY={translateY}
+                        scale={scale}
+                        onDragBegin={onDragBegin}
+                        onDragMove={onDragMove}
+                        onDragEnd={onDragEnd}
+                        onScrollViewRef={columnScrollRefSetters[i]}
+                        registerColumnMeasure={registerColumnMeasure}
+                        unregisterColumnMeasure={unregisterColumnMeasure}
+                        listScrollEnabled={dragging === null && listDragging === null}
+                        listDraggingActive={listDragging !== null}
+                        isDraggingThisColumn={isBeingDragged}
+                        columnDragEnabled={columnDragEnabled}
+                        translateListX={translateListX}
+                        translateListY={translateListY}
+                        scaleList={scaleList}
+                        onColumnListDragBegin={onColumnListDragBegin}
+                        onColumnListDragMove={onColumnListDragMove}
+                        onColumnListDragEnd={onColumnListDragEnd}
+                        onColumnWrapLayout={onColumnWrapLayout}
+                      />
+                    );
+                  }
+                }
+                return nodes;
+              })()
+            : columns.map((col, i) => (
+                <BoardColumn
+                  key={col.id}
+                  columnIndex={i}
+                  title={col.title}
+                  cards={col.cards}
+                  onAddCard={noopAddCard}
+                  expandedCardKey={expandedCardKey}
+                  onCardPress={handleCardPress}
+                  draggingCardId={dragging?.cardId ?? null}
+                  hoverInsertIndex={hoverTarget?.col === i ? hoverTarget.insertIndex : -1}
+                  onListLayout={onListLayout}
+                  onColumnScroll={onColumnScroll}
+                  translateX={translateX}
+                  translateY={translateY}
+                  scale={scale}
+                  onDragBegin={onDragBegin}
+                  onDragMove={onDragMove}
+                  onDragEnd={onDragEnd}
+                  onScrollViewRef={columnScrollRefSetters[i]}
+                  registerColumnMeasure={registerColumnMeasure}
+                  unregisterColumnMeasure={unregisterColumnMeasure}
+                  listScrollEnabled={dragging === null && listDragging === null}
+                  listDraggingActive={false}
+                  isDraggingThisColumn={false}
+                  columnDragEnabled={columnDragEnabled}
+                  translateListX={translateListX}
+                  translateListY={translateListY}
+                  scaleList={scaleList}
+                  onColumnListDragBegin={onColumnListDragBegin}
+                  onColumnListDragMove={onColumnListDragMove}
+                  onColumnListDragEnd={onColumnListDragEnd}
+                  onColumnWrapLayout={onColumnWrapLayout}
+                />
+              ))}
           <TouchableOpacity activeOpacity={0.8} onPress={() => hapticLight()} style={styles.addListWrap}>
             <View style={styles.addListShadow} />
             <View style={styles.addList}>
@@ -566,6 +736,36 @@ export default function BoardScreen({
               labelColor={draggingCard.labelColor}
               suppressPress
             />
+          </Animated.View>
+        </View>
+      ) : null}
+
+      {viewMode === 'board' && listDragging && draggingListColumn ? (
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <Animated.View
+            style={[
+              {
+                position: 'absolute',
+                left: listDragging.startX,
+                top: listDragging.startY,
+                width: listDragging.width,
+                minHeight: listDragging.height,
+                zIndex: 9999,
+                elevation: 26,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.22,
+                shadowRadius: 14,
+              },
+              listOverlayStyle,
+            ]}
+          >
+            <View style={styles.listDragOverlayInner}>
+              <Text style={styles.listDragOverlayTitle} numberOfLines={1}>
+                {draggingListColumn.title}
+              </Text>
+              <Text style={styles.listDragOverlayCount}>{draggingListColumn.cards.length}</Text>
+            </View>
           </Animated.View>
         </View>
       ) : null}
@@ -689,5 +889,28 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 22,
+  },
+  listDragOverlayInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#e8e8e8',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#000',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  listDragOverlayTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0a0a0a',
+  },
+  listDragOverlayCount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
   },
 });

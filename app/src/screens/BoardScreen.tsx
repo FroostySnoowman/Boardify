@@ -546,6 +546,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f0e8',
+    overflow: 'visible',
   },
   header: {
     flexDirection: 'row',
@@ -585,6 +586,7 @@ const styles = StyleSheet.create({
   },
   columnsScrollView: {
     flexGrow: 1,
+    zIndex: 0,
   },
   columnsScroll: {
     paddingBottom: 24,

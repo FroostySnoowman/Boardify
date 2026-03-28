@@ -11,8 +11,6 @@ import {
 import { hapticLight } from '../utils/haptics';
 import { GlassRoundIconButton } from './GlassRoundIconButton';
 
-export const BOARD_GLASS_BOTTOM_BAR_CLEARANCE = 96;
-
 const ICON_COLOR = '#0a0a0a';
 const ICON_SIZE = 22;
 
@@ -44,6 +42,13 @@ const ROW_GAP = 16;
 const EXPAND_SHIFT_LEFT = 3;
 const EXPAND_ORB_SIZE = 45;
 const PILL_TRACK_HEIGHT = TRIPLE_ROW_HEIGHT + TRIPLE_PILL_PADDING_V * 2;
+/**
+ * Space inside the native glass row height so `isInteractive` morphs are not clipped by
+ * `GlassContainer` / `UIVisualEffectView` bounds. Row content is bottom-aligned in this height.
+ */
+const EXPAND_INTERACTION_OVERFLOW = 40;
+const GLASS_ROW_MIN_HEIGHT = PILL_TRACK_HEIGHT + EXPAND_INTERACTION_OVERFLOW;
+export const BOARD_GLASS_BOTTOM_BAR_CLEARANCE = 96 + EXPAND_INTERACTION_OVERFLOW;
 /** Explicit width so the bar shell matches pill + gap + orb. */
 const ROW_TOTAL_WIDTH = TRIPLE_PILL_WIDTH + ROW_GAP + EXPAND_ORB_SIZE;
 /** Horizontal distance from row’s left edge (pill’s left) to the bell column’s center. */
@@ -222,38 +227,48 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
     pointerEvents: 'box-none',
-    zIndex: 50,
+    zIndex: 1000,
+    elevation: 24,
+    overflow: 'visible',
   },
   inner: {
     width: '100%',
+    overflow: 'visible',
   },
-  /** Full-bleed horizontal space so `left` matches screen coordinates (no padding skew). */
+  /**
+   * Taller than the pill row: row is pinned to the bottom so interactive glass can move up
+   * without hitting a hard clip at `top: 0`.
+   */
   barTrack: {
     width: '100%',
-    minHeight: PILL_TRACK_HEIGHT,
+    minHeight: GLASS_ROW_MIN_HEIGHT,
     position: 'relative',
     overflow: 'visible',
   },
   rowShell: {
     position: 'absolute',
-    top: 0,
-    minHeight: PILL_TRACK_HEIGHT,
+    bottom: 0,
+    minHeight: GLASS_ROW_MIN_HEIGHT,
+    overflow: 'visible',
   },
-  /** Fills `rowShell`; native glass merge for pill + orb. */
+  /**
+   * Taller than the pill so native glass has room above; bottom-align so overflow is above controls.
+   */
   glassMergedRow: {
     width: '100%',
-    minHeight: PILL_TRACK_HEIGHT,
+    minHeight: GLASS_ROW_MIN_HEIGHT,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: ROW_GAP,
+    overflow: 'visible',
   },
   row: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     width: ROW_TOTAL_WIDTH,
-    minHeight: PILL_TRACK_HEIGHT,
+    minHeight: GLASS_ROW_MIN_HEIGHT,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: ROW_GAP,
   },
   expandPressable: {
@@ -315,7 +330,7 @@ const styles = StyleSheet.create({
     width: EXPAND_ORB_SIZE,
     height: EXPAND_ORB_SIZE,
     borderRadius: EXPAND_ORB_SIZE / 2,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   expandGlassInner: {
     width: EXPAND_ORB_SIZE,

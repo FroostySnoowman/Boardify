@@ -10,7 +10,7 @@ import {
 } from 'expo-glass-effect';
 import { hapticLight } from '../utils/haptics';
 import { GlassRoundIconButton } from './GlassRoundIconButton';
-import { ContextMenu } from './ContextMenu';
+// import { ContextMenu } from './ContextMenu';
 
 const ICON_COLOR = '#0a0a0a';
 const ICON_SIZE = 22;
@@ -60,9 +60,9 @@ const LAYOUT_MENU_ORB_SIZE = 45;
 const GLASS_PAIR_WIDTH = TRIPLE_PILL_WIDTH + ROW_GAP + EXPAND_ORB_SIZE;
 /**
  * Full bar width (shell + fallback). Merged glass uses inner margins so visual gaps match `ROW_GAP - EXPAND_SHIFT_LEFT`.
+ * (Layout menu orb omitted for now — add `LAYOUT_MENU_ORB_SIZE + ROW_GAP` when restoring left control.)
  */
-const ROW_TOTAL_WIDTH =
-  LAYOUT_MENU_ORB_SIZE + ROW_GAP + GLASS_PAIR_WIDTH - EXPAND_SHIFT_LEFT;
+const ROW_TOTAL_WIDTH = GLASS_PAIR_WIDTH - EXPAND_SHIFT_LEFT;
 /** From **pill** left edge to bell column center (for window centering). */
 const BELL_CENTER_X_FROM_PILL_LEFT =
   TRIPLE_PILL_PADDING_H + TRIPLE_SLOT + TRIPLE_ICON_GAP + TRIPLE_SLOT / 2;
@@ -125,12 +125,17 @@ function GlassTripleStrip({ onFilterPress, onBellPress, onSettingsPress }: Glass
   return <View style={[styles.tripleGlass, styles.tripleFallback]}>{row}</View>;
 }
 
+/*
+ * Left “Board / List / Calendar” layout orb — temporarily removed from the bar.
+ * Uncomment this block and the `BoardBottomLayoutMenu` usages below; restore `ContextMenu` import;
+ * set `ROW_TOTAL_WIDTH` back to `LAYOUT_MENU_ORB_SIZE + ROW_GAP + GLASS_PAIR_WIDTH - EXPAND_SHIFT_LEFT`;
+ * restore `rowLeft` to subtract `LAYOUT_MENU_ORB_SIZE + ROW_GAP` before `EXPAND_SHIFT_LEFT`.
+ *
 function BoardBottomLayoutMenu({
   onSelect,
   inGlassMerge,
 }: {
   onSelect?: (mode: BoardBottomBarLayoutMode) => void;
-  /** When true, menu sits inside `GlassContainer` (merge may differ from pill; avoids expo+Swift double-glass ghost). */
   inGlassMerge?: boolean;
 }) {
   const noop = () => {};
@@ -184,6 +189,7 @@ function BoardBottomLayoutMenu({
     </View>
   );
 }
+*/
 
 function BoardExpandGlassPressable({ onPress }: { onPress: () => void }) {
   return (
@@ -225,11 +231,7 @@ export function BoardGlassBottomBar({
   /** Align bell with window horizontal center (reference: centered “middle mark” toolbars). */
   const rowLeft = useMemo(
     () =>
-      windowWidth / 2 -
-      LAYOUT_MENU_ORB_SIZE -
-      ROW_GAP +
-      EXPAND_SHIFT_LEFT -
-      BELL_CENTER_X_FROM_PILL_LEFT,
+      windowWidth / 2 + EXPAND_SHIFT_LEFT - BELL_CENTER_X_FROM_PILL_LEFT,
     [windowWidth],
   );
 
@@ -274,16 +276,13 @@ export function BoardGlassBottomBar({
                 pointerEvents="box-none"
                 style={styles.glassMergedRow}
               >
-                <BoardBottomLayoutMenu
-                  onSelect={onLayoutMenuSelect}
-                  inGlassMerge
-                />
+                {/* <BoardBottomLayoutMenu onSelect={onLayoutMenuSelect} inGlassMerge /> */}
                 {strip}
                 <BoardExpandGlassPressable onPress={onExpand} />
               </GlassContainer>
             ) : (
               <View style={styles.bottomBarRow} pointerEvents="box-none">
-                <BoardBottomLayoutMenu onSelect={onLayoutMenuSelect} />
+                {/* <BoardBottomLayoutMenu onSelect={onLayoutMenuSelect} /> */}
                 <View style={styles.fallbackGlassPair} pointerEvents="box-none">
                   {strip}
                   <View style={styles.expandFallbackNudge}>

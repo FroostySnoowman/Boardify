@@ -1,14 +1,23 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Platform, ScrollView } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../../utils/haptics';
 import { BoardStyleActionButton } from '../BoardStyleActionButton';
-import type { DashboardChartKind, DashboardDimension } from '../../types/dashboard';
-import { dashboardTileTitle } from '../../board/dashboardAggregations';
+import type {
+  DashboardChartKind,
+  DashboardDimension,
+  DashboardLineTimeframe,
+} from '../../types/dashboard';
+import { dashboardTileTitle, dashboardLineTimeframeTitle } from '../../board/dashboardAggregations';
+import {
+  dashboardTileSignature,
+  type ParsedDashboardTileRef,
+} from '../../utils/dashboardAddTileNavigation';
 
 const BG = '#f5f0e8';
 
 const DIMENSIONS: DashboardDimension[] = ['list', 'label', 'member', 'due'];
+const TIMEFRAMES: DashboardLineTimeframe[] = ['week', 'twoWeeks', 'month'];
 
 const cardShadow =
   Platform.OS === 'ios'
@@ -20,16 +29,14 @@ const cardShadow =
       }
     : { elevation: 5 };
 
-function tileKey(kind: DashboardChartKind, dimension: DashboardDimension): string {
-  return `${kind}:${dimension}`;
-}
-
 export type AddDashboardTileFormProps = {
-  existingCombos: Array<{ kind: DashboardChartKind; dimension: DashboardDimension }>;
+  existingCombos: ParsedDashboardTileRef[];
   kind: DashboardChartKind;
   dimension: DashboardDimension;
+  lineTimeframe: DashboardLineTimeframe;
   onKindChange: (k: DashboardChartKind) => void;
   onDimensionChange: (d: DashboardDimension) => void;
+  onLineTimeframeChange: (t: DashboardLineTimeframe) => void;
   onCancel: () => void;
   onAdd: () => void;
 };
@@ -38,13 +45,20 @@ export function AddDashboardTileForm({
   existingCombos,
   kind,
   dimension,
+  lineTimeframe,
   onKindChange,
   onDimensionChange,
+  onLineTimeframeChange,
   onCancel,
   onAdd,
 }: AddDashboardTileFormProps) {
-  const existing = new Set(existingCombos.map((t) => tileKey(t.kind, t.dimension)));
-  const isDuplicate = existing.has(tileKey(kind, dimension));
+  const existing = new Set(existingCombos.map((t) => dashboardTileSignature(t)));
+  const currentSig = dashboardTileSignature({
+    kind,
+    dimension,
+    lineTimeframe: kind === 'line' ? lineTimeframe : undefined,
+  });
+  const isDuplicate = existing.has(currentSig);
   const canAdd = !isDuplicate;
 
   const add = () => {
@@ -82,9 +96,50 @@ export function AddDashboardTileForm({
           >
             <Feather name="pie-chart" size={22} color="#0a0a0a" />
           </Pressable>
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              onKindChange('line');
+            }}
+            style={[styles.kindBtn, kind === 'line' && styles.kindBtnSelected]}
+            accessibilityRole="button"
+            accessibilityLabel="Line chart"
+          >
+            <Feather name="activity" size={22} color="#0a0a0a" />
+          </Pressable>
         </View>
-        <View style={styles.typeCol}>
-          <Text style={styles.typeHeading}>Type</Text>
+        <ScrollView
+          style={styles.rightScroll}
+          contentContainerStyle={styles.rightScrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {kind === 'line' ? (
+            <>
+              <Text style={styles.typeHeading}>Timeframe</Text>
+              {TIMEFRAMES.map((tf) => {
+                const selected = lineTimeframe === tf;
+                return (
+                  <Pressable
+                    key={tf}
+                    onPress={() => {
+                      hapticLight();
+                      onLineTimeframeChange(tf);
+                    }}
+                    style={styles.radioRow}
+                  >
+                    <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
+                      {selected ? <View style={styles.radioInner} /> : null}
+                    </View>
+                    <Text style={styles.radioLabel}>{dashboardLineTimeframeTitle(tf)}</Text>
+                  </Pressable>
+                );
+              })}
+            </>
+          ) : null}
+          <Text style={[styles.typeHeading, kind === 'line' && styles.typeHeadingSecond]}>
+            Type
+          </Text>
           {DIMENSIONS.map((d) => {
             const selected = dimension === d;
             return (
@@ -106,7 +161,7 @@ export function AddDashboardTileForm({
           {isDuplicate ? (
             <Text style={styles.dupHint}>This tile is already on the dashboard.</Text>
           ) : null}
-        </View>
+        </ScrollView>
       </View>
 
       <View style={styles.actions}>
@@ -140,8 +195,8 @@ const styles = StyleSheet.create({
   },
   bodyRow: {
     flexDirection: 'row',
-    minHeight: 200,
-    maxHeight: 340,
+    minHeight: 240,
+    maxHeight: 400,
   },
   kindCol: {
     paddingVertical: 4,
@@ -166,9 +221,12 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     backgroundColor: BG,
   },
-  typeCol: {
+  rightScroll: {
     flex: 1,
     minWidth: 0,
+  },
+  rightScrollContent: {
+    paddingBottom: 4,
   },
   typeHeading: {
     fontSize: 12,
@@ -177,6 +235,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 12,
+  },
+  typeHeadingSecond: {
+    marginTop: 16,
   },
   radioRow: {
     flexDirection: 'row',

@@ -6,11 +6,17 @@ import { hapticLight } from '../../utils/haptics';
 import type {
   DashboardChartKind,
   DashboardDimension,
+  DashboardLineChartData,
+  DashboardLineTimeframe,
   DashboardSeriesRow,
 } from '../../types/dashboard';
-import { dashboardTileTitle } from '../../board/dashboardAggregations';
+import {
+  dashboardLineTimeframeTitle,
+  dashboardTileTitle,
+} from '../../board/dashboardAggregations';
 import { DashboardBarChart } from './DashboardBarChart';
 import { DashboardPieChart } from './DashboardPieChart';
+import { DashboardLineChart } from './DashboardLineChart';
 
 const CARD_SHIFT = 5;
 
@@ -18,10 +24,19 @@ type Props = {
   titleDimension: DashboardDimension;
   kind: DashboardChartKind;
   rows: DashboardSeriesRow[];
+  lineData?: DashboardLineChartData;
+  lineTimeframe?: DashboardLineTimeframe;
   onRemove: () => void;
 };
 
-export function DashboardStatCard({ titleDimension, kind, rows, onRemove }: Props) {
+export function DashboardStatCard({
+  titleDimension,
+  kind,
+  rows,
+  lineData,
+  lineTimeframe,
+  onRemove,
+}: Props) {
   const [chartW, setChartW] = useState(280);
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -29,7 +44,11 @@ export function DashboardStatCard({ titleDimension, kind, rows, onRemove }: Prop
     if (w > 0) setChartW(Math.floor(w));
   };
 
-  const title = dashboardTileTitle(titleDimension);
+  const titleBase = dashboardTileTitle(titleDimension);
+  const title =
+    kind === 'line' && lineTimeframe
+      ? `${titleBase} · ${dashboardLineTimeframeTitle(lineTimeframe)}`
+      : titleBase;
 
   return (
     <View style={styles.wrapOuter}>
@@ -64,7 +83,9 @@ export function DashboardStatCard({ titleDimension, kind, rows, onRemove }: Prop
           />
         </View>
         <View style={styles.chartPad} onLayout={onLayout}>
-          {kind === 'bar' ? (
+          {kind === 'line' && lineData ? (
+            <DashboardLineChart data={lineData} width={chartW} />
+          ) : kind === 'bar' ? (
             <DashboardBarChart rows={rows} width={chartW} />
           ) : (
             <DashboardPieChart rows={rows} />

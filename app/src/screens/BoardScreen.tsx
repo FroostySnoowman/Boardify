@@ -35,7 +35,12 @@ import {
 } from '../components/BoardCardExpandOverlay';
 import { BoardCard } from '../components/BoardCard';
 import type { BoardCardData, BoardColumnData, TaskLabel } from '../types/board';
-import type { DashboardChartKind, DashboardDimension, DashboardTile } from '../types/dashboard';
+import type {
+  DashboardChartKind,
+  DashboardDimension,
+  DashboardLineTimeframe,
+  DashboardTile,
+} from '../types/dashboard';
 import {
   BOARD_CARD_ROW_HEIGHT,
   computeColumnHoverInsertIndex,
@@ -48,6 +53,13 @@ import { toggleStopwatchOnTask } from '../utils/workTime';
 
 const SHIFT = 5;
 
+function daysAgoIso(daysAgo: number): string {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString();
+}
+
 const INITIAL_COLUMNS: BoardColumnData[] = [
   {
     id: 'col-todo',
@@ -56,6 +68,7 @@ const INITIAL_COLUMNS: BoardColumnData[] = [
       {
         id: 'c-0-0',
         title: 'Review design mockups',
+        createdAtIso: daysAgoIso(2),
         subtitle: 'Due soon',
         labelColor: '#F3D9B1',
         description: 'Walk through Figma — focus on nav and empty states.',
@@ -82,12 +95,14 @@ const INITIAL_COLUMNS: BoardColumnData[] = [
       {
         id: 'c-0-1',
         title: 'Sync with backend API',
+        createdAtIso: daysAgoIso(6),
         labelColor: '#a5d6a5',
         dueDate: new Date(Date.now() + 5 * 86400000).toISOString(),
       },
       {
         id: 'c-0-2',
         title: 'Update onboarding flow',
+        createdAtIso: daysAgoIso(11),
         dueDate: new Date(Date.now() + 12 * 86400000).toISOString(),
       },
     ],
@@ -99,6 +114,7 @@ const INITIAL_COLUMNS: BoardColumnData[] = [
       {
         id: 'c-1-0',
         title: 'Board view layout',
+        createdAtIso: daysAgoIso(1),
         subtitle: 'You',
         labelColor: '#a5d6a5',
         dueDate: new Date(Date.now() + 10 * 86400000).toISOString(),
@@ -106,6 +122,7 @@ const INITIAL_COLUMNS: BoardColumnData[] = [
       {
         id: 'c-1-1',
         title: 'Card drag-and-drop',
+        createdAtIso: daysAgoIso(4),
         labelColor: '#F3D9B1',
         dueDate: new Date(Date.now() + 1 * 86400000).toISOString(),
       },
@@ -118,10 +135,11 @@ const INITIAL_COLUMNS: BoardColumnData[] = [
       {
         id: 'c-2-0',
         title: 'Auth & login screen',
+        createdAtIso: daysAgoIso(18),
         dueDate: new Date(Date.now() - 2 * 86400000).toISOString(),
       },
-      { id: 'c-2-1', title: 'Home screen shell' },
-      { id: 'c-2-2', title: 'Neubrutalist theme' },
+      { id: 'c-2-1', title: 'Home screen shell', createdAtIso: daysAgoIso(3) },
+      { id: 'c-2-2', title: 'Neubrutalist theme', createdAtIso: daysAgoIso(0) },
     ],
   },
 ];
@@ -448,7 +466,15 @@ export default function BoardScreen({
         const idx = promptAddCardCol;
         if (idx == null) return prev;
         return prev.map((c, i) =>
-          i === idx ? { ...c, cards: [...c.cards, { id: uid('c'), title }] } : c
+          i === idx
+            ? {
+                ...c,
+                cards: [
+                  ...c.cards,
+                  { id: uid('c'), title, createdAtIso: new Date().toISOString() },
+                ],
+              }
+            : c
         );
       });
     },
@@ -481,8 +507,20 @@ export default function BoardScreen({
   }, []);
 
   const handleDashboardAddTile = useCallback(
-    (kind: DashboardChartKind, dimension: DashboardDimension) => {
-      setDashboardTiles((prev) => [...prev, { id: uid('dash'), kind, dimension }]);
+    (
+      kind: DashboardChartKind,
+      dimension: DashboardDimension,
+      lineTimeframe?: DashboardLineTimeframe
+    ) => {
+      setDashboardTiles((prev) => [
+        ...prev,
+        {
+          id: uid('dash'),
+          kind,
+          dimension,
+          ...(kind === 'line' ? { lineTimeframe: lineTimeframe ?? 'week' } : {}),
+        },
+      ]);
     },
     []
   );
@@ -491,7 +529,7 @@ export default function BoardScreen({
     useCallback(() => {
       const r = consumePendingDashboardAddTile();
       if (r?.status === 'added') {
-        handleDashboardAddTile(r.kind, r.dimension);
+        handleDashboardAddTile(r.kind, r.dimension, r.lineTimeframe);
       }
     }, [handleDashboardAddTile])
   );

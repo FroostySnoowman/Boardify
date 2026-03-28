@@ -6,7 +6,10 @@ import { router } from 'expo-router';
 import { hapticLight } from '../../utils/haptics';
 import type { BoardColumnData } from '../../types/board';
 import type { DashboardTile } from '../../types/dashboard';
-import { aggregateDashboardSeries } from '../../board/dashboardAggregations';
+import {
+  aggregateDashboardLineChart,
+  aggregateDashboardSeries,
+} from '../../board/dashboardAggregations';
 import { DashboardStatCard } from './DashboardStatCard';
 
 const EDGE_PAD_H = Platform.select({ web: 24, default: 16 }) ?? 16;
@@ -33,16 +36,41 @@ export function BoardDashboardView({
       pathname: '/add-dashboard-tile',
       params: {
         tiles: JSON.stringify(
-          tiles.map((t) => ({ kind: t.kind, dimension: t.dimension }))
+          tiles.map((t) =>
+            t.kind === 'line'
+              ? {
+                  kind: t.kind,
+                  dimension: t.dimension,
+                  lineTimeframe: t.lineTimeframe ?? 'week',
+                }
+              : { kind: t.kind, dimension: t.dimension }
+          )
         ),
       },
     });
   }, [tiles]);
 
-  const seriesByTile = useMemo(() => {
-    const m = new Map<string, ReturnType<typeof aggregateDashboardSeries>>();
+  const chartByTile = useMemo(() => {
+    const m = new Map<
+      string,
+      | { kind: 'bar' | 'pie'; rows: ReturnType<typeof aggregateDashboardSeries> }
+      | {
+          kind: 'line';
+          lineData: ReturnType<typeof aggregateDashboardLineChart>;
+          lineTimeframe: NonNullable<DashboardTile['lineTimeframe']>;
+        }
+    >();
     for (const t of tiles) {
-      m.set(t.id, aggregateDashboardSeries(columns, t.dimension));
+      if (t.kind === 'line') {
+        const tf = t.lineTimeframe ?? 'week';
+        m.set(t.id, {
+          kind: 'line',
+          lineData: aggregateDashboardLineChart(columns, t.dimension, tf),
+          lineTimeframe: tf,
+        });
+      } else {
+        m.set(t.id, { kind: t.kind, rows: aggregateDashboardSeries(columns, t.dimension) });
+      }
     }
     return m;
   }, [columns, tiles]);
@@ -92,15 +120,25 @@ export function BoardDashboardView({
             </View>
           </View>
         ) : (
-          tiles.map((t) => (
-            <DashboardStatCard
-              key={t.id}
-              titleDimension={t.dimension}
-              kind={t.kind}
-              rows={seriesByTile.get(t.id) ?? []}
-              onRemove={() => onRemoveTile(t.id)}
-            />
-          ))
+          tiles.map((t) => {
+            const payload = chartByTile.get(t.id);
+            const rows =
+              payload && payload.kind !== 'line' ? payload.rows : [];
+            const lineData = payload?.kind === 'line' ? payload.lineData : undefined;
+            const lineTimeframe =
+              payload?.kind === 'line' ? payload.lineTimeframe : undefined;
+            return (
+              <DashboardStatCard
+                key={t.id}
+                titleDimension={t.dimension}
+                kind={t.kind}
+                rows={rows}
+                lineData={lineData}
+                lineTimeframe={lineTimeframe}
+                onRemove={() => onRemoveTile(t.id)}
+              />
+            );
+          })
         )}
       </ScrollView>
     </>

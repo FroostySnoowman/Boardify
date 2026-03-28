@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, LayoutChangeEvent, Platform } from 'react-native';
+import React, { useState, type ReactNode } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  LayoutChangeEvent,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ContextMenu } from '../ContextMenu';
 import { hapticLight } from '../../utils/haptics';
@@ -14,9 +22,9 @@ import {
   dashboardLineTimeframeTitle,
   dashboardTileTitle,
 } from '../../board/dashboardAggregations';
-import { DashboardBarChart } from './DashboardBarChart';
+import { DashboardBarChart, minWidthForBarChart } from './DashboardBarChart';
 import { DashboardPieChart } from './DashboardPieChart';
-import { DashboardLineChart } from './DashboardLineChart';
+import { DashboardLineChart, minWidthForLineChart } from './DashboardLineChart';
 
 const CARD_SHIFT = 5;
 
@@ -49,6 +57,31 @@ export function DashboardStatCard({
     kind === 'line' && lineTimeframe
       ? `${titleBase} · ${dashboardLineTimeframeTitle(lineTimeframe)}`
       : titleBase;
+
+  const barPlotW =
+    kind === 'bar' && rows.length > 0
+      ? Math.max(chartW, minWidthForBarChart(rows.length))
+      : chartW;
+  const linePlotW =
+    kind === 'line' && lineData && lineData.xLabels.length > 0
+      ? Math.max(chartW, minWidthForLineChart(lineData.xLabels.length))
+      : chartW;
+
+  const barNeedsHScroll = kind === 'bar' && rows.length > 0 && barPlotW > chartW;
+  const lineNeedsHScroll =
+    kind === 'line' &&
+    lineData &&
+    lineData.xLabels.length > 0 &&
+    linePlotW > chartW;
+
+  let chartBody: ReactNode;
+  if (kind === 'line' && lineData) {
+    chartBody = <DashboardLineChart data={lineData} width={linePlotW} />;
+  } else if (kind === 'bar') {
+    chartBody = <DashboardBarChart rows={rows} width={barPlotW} />;
+  } else {
+    chartBody = <DashboardPieChart rows={rows} />;
+  }
 
   return (
     <View style={styles.wrapOuter}>
@@ -83,12 +116,19 @@ export function DashboardStatCard({
           />
         </View>
         <View style={styles.chartPad} onLayout={onLayout}>
-          {kind === 'line' && lineData ? (
-            <DashboardLineChart data={lineData} width={chartW} />
-          ) : kind === 'bar' ? (
-            <DashboardBarChart rows={rows} width={chartW} />
+          {barNeedsHScroll || lineNeedsHScroll ? (
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator
+              keyboardShouldPersistTaps="handled"
+              style={[styles.chartHScroll, { width: chartW }]}
+              contentContainerStyle={styles.chartHScrollContent}
+            >
+              {chartBody}
+            </ScrollView>
           ) : (
-            <DashboardPieChart rows={rows} />
+            chartBody
           )}
         </View>
       </View>
@@ -148,5 +188,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 14,
     backgroundColor: '#fff',
+  },
+  chartHScroll: {
+    flexGrow: 0,
+  },
+  chartHScrollContent: {
+    paddingRight: 10,
   },
 });

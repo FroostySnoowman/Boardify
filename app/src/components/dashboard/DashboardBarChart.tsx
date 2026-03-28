@@ -11,6 +11,14 @@ const PAD_B = 2;
 const GRID_LINES = 4;
 const X_LABEL_MIN_H = 36;
 
+/** Minimum width per category so labels and bars stay readable; enables horizontal scroll when card is narrower. */
+const MIN_INNER_SLOT_PX = 52;
+
+export function minWidthForBarChart(rowCount: number): number {
+  if (rowCount <= 0) return PAD_L + PAD_R + 120;
+  return PAD_L + PAD_R + rowCount * MIN_INNER_SLOT_PX;
+}
+
 /** Monotonic unique tick values (rounded labels can collide without this). */
 function buildYTicks(maxVal: number, divisions: number): number[] {
   const seen = new Set<number>();

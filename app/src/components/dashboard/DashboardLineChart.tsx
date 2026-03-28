@@ -12,6 +12,16 @@ const GRID_LINES = 4;
 const X_LABEL_ROW_H = 22;
 const LEGEND_H = 22;
 
+/** Minimum horizontal gap between consecutive x points (inner width). */
+const MIN_LINE_GAP_PX = 40;
+
+export function minWidthForLineChart(pointCount: number): number {
+  if (pointCount <= 0) return PAD_L + PAD_R + 120;
+  if (pointCount === 1) return PAD_L + PAD_R + 100;
+  const innerMin = (pointCount - 1) * MIN_LINE_GAP_PX + MIN_LINE_GAP_PX;
+  return PAD_L + PAD_R + innerMin;
+}
+
 function buildYTicks(maxVal: number, divisions: number): number[] {
   const seen = new Set<number>();
   const ticks: number[] = [];

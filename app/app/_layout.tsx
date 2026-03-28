@@ -168,6 +168,7 @@ function AppContent() {
         <Stack.Screen name="profile" options={createBoardModalOptions} />
         <Stack.Screen name="login" options={modalScreenOptions} />
         <Stack.Screen name="create-board" options={createBoardModalOptions} />
+        <Stack.Screen name="add-dashboard-tile" options={createBoardModalOptions} />
         <Stack.Screen name="default-board" options={createBoardModalOptions} />
         <Stack.Screen name="board" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" options={{ headerShown: false }} />

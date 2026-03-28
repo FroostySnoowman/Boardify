@@ -20,11 +20,14 @@ import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, cancelAnimation } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { hapticLight } from '../utils/haptics';
+import { consumePendingDashboardAddTile } from '../utils/dashboardAddTileNavigation';
 import { BoardColumn } from '../components/BoardColumn';
 import { BoardColumnPlaceholder } from '../components/BoardColumnPlaceholder';
 import { BoardTableView, type TableRowDragState } from '../components/BoardTableView';
 import { BoardCalendarView } from '../components/BoardCalendarView';
+import { BoardDashboardView } from '../components/dashboard/BoardDashboardView';
 import { PromptModal } from '../components/PromptModal';
 import {
   BoardCardExpandOverlay,
@@ -32,6 +35,7 @@ import {
 } from '../components/BoardCardExpandOverlay';
 import { BoardCard } from '../components/BoardCard';
 import type { BoardCardData, BoardColumnData, TaskLabel } from '../types/board';
+import type { DashboardChartKind, DashboardDimension, DashboardTile } from '../types/dashboard';
 import {
   BOARD_CARD_ROW_HEIGHT,
   computeColumnHoverInsertIndex,
@@ -266,6 +270,10 @@ export default function BoardScreen({
   const [tableRowDragging, setTableRowDragging] = useState<TableRowDragState | null>(null);
   const [promptAddCardCol, setPromptAddCardCol] = useState<number | null>(null);
   const [promptAddList, setPromptAddList] = useState(false);
+  const [dashboardTiles, setDashboardTiles] = useState<DashboardTile[]>(() => [
+    { id: uid('dash'), kind: 'bar', dimension: 'list' },
+    { id: uid('dash'), kind: 'bar', dimension: 'due' },
+  ]);
 
   useEffect(() => {
     if (tableRowDragging != null) return;
@@ -470,6 +478,26 @@ export default function BoardScreen({
         ),
       }))
     );
+  }, []);
+
+  const handleDashboardAddTile = useCallback(
+    (kind: DashboardChartKind, dimension: DashboardDimension) => {
+      setDashboardTiles((prev) => [...prev, { id: uid('dash'), kind, dimension }]);
+    },
+    []
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const r = consumePendingDashboardAddTile();
+      if (r?.status === 'added') {
+        handleDashboardAddTile(r.kind, r.dimension);
+      }
+    }, [handleDashboardAddTile])
+  );
+
+  const handleDashboardRemoveTile = useCallback((id: string) => {
+    setDashboardTiles((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const tableRowOverlayStyle = useAnimatedStyle(() => ({
@@ -907,6 +935,13 @@ export default function BoardScreen({
           columns={columns}
           bottomClearance={BOARD_GLASS_BOTTOM_BAR_CLEARANCE}
           onOpenTask={handleCalendarOpenTask}
+        />
+      ) : viewMode === 'dashboard' ? (
+        <BoardDashboardView
+          columns={columns}
+          tiles={dashboardTiles}
+          bottomClearance={BOARD_GLASS_BOTTOM_BAR_CLEARANCE}
+          onRemoveTile={handleDashboardRemoveTile}
         />
       ) : (
         <View style={styles.viewPlaceholder}>

@@ -4,79 +4,20 @@ import {
   Text,
   TextInput,
   ScrollView,
-  Pressable,
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
   Keyboard,
 } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  cancelAnimation,
-} from 'react-native-reanimated';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticLight } from '../src/utils/haptics';
+import { BoardStyleActionButton } from '../src/components/BoardStyleActionButton';
 
 const BELOW_HEADER_GAP = 10;
 
 const BG = '#f5f0e8';
-const SHIFT = 5;
-const PRESS_IN = 60;
-const PRESS_OUT = 100;
-
-function BoardStyleButton({
-  shadowColor,
-  onPress,
-  disabled,
-  label,
-  labelStyle,
-}: {
-  shadowColor: string;
-  onPress: () => void;
-  disabled?: boolean;
-  label: string;
-  labelStyle: object;
-}) {
-  const offset = useSharedValue(0);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: offset.value }, { translateY: offset.value }],
-  }));
-
-  return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      onPressIn={() => {
-        if (!disabled) {
-          offset.value = withTiming(SHIFT, { duration: PRESS_IN });
-        }
-      }}
-      onPressOut={() => {
-        cancelAnimation(offset);
-        offset.value = 0;
-      }}
-      style={styles.boardBtnWrap}
-    >
-      <View
-        style={[styles.boardBtnShadow, { backgroundColor: shadowColor }]}
-        pointerEvents="none"
-      />
-      <Animated.View
-        style={[
-          styles.boardBtnFace,
-          disabled && styles.boardBtnFaceDisabled,
-          animatedStyle,
-        ]}
-      >
-        <Text style={[styles.boardBtnLabel, labelStyle]}>{label}</Text>
-      </Animated.View>
-    </Pressable>
-  );
-}
 
 export default function CreateBoardScreen() {
   const insets = useSafeAreaInsets();
@@ -164,13 +105,13 @@ export default function CreateBoardScreen() {
             />
 
             <View style={styles.actions}>
-              <BoardStyleButton
+              <BoardStyleActionButton
                 shadowColor="#e0e0e0"
                 onPress={close}
                 label="Cancel"
                 labelStyle={styles.labelCancel}
               />
-              <BoardStyleButton
+              <BoardStyleActionButton
                 shadowColor={canSubmit ? '#a5d6a5' : '#d0d0d0'}
                 onPress={submit}
                 disabled={!canSubmit}
@@ -257,50 +198,7 @@ const styles = StyleSheet.create({
     gap: 12,
     width: '100%',
     overflow: 'hidden',
-    paddingBottom: SHIFT + 6,
-  },
-  boardBtnWrap: {
-    position: 'relative',
-    flex: 1,
-    minWidth: 0,
-    marginRight: SHIFT,
-    marginBottom: SHIFT,
-    zIndex: 0,
-  },
-  boardBtnShadow: {
-    position: 'absolute',
-    left: SHIFT,
-    top: SHIFT,
-    right: -SHIFT,
-    bottom: -SHIFT,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    zIndex: 0,
-  },
-  boardBtnFace: {
-    position: 'relative',
-    zIndex: 1,
-    elevation: 4,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-  },
-  boardBtnFaceDisabled: {
-    backgroundColor: '#eee',
-  },
-  boardBtnLabel: {
-    fontSize: 17,
-    fontWeight: '700',
-    textAlign: 'center',
-    width: '100%',
-    color: '#0a0a0a',
+    paddingBottom: 11,
   },
   labelCancel: {
     color: '#0a0a0a',

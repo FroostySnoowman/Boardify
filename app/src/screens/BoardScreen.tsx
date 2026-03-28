@@ -7,6 +7,7 @@ import {
   Platform,
   Dimensions,
   UIManager,
+  useWindowDimensions,
 } from 'react-native';
 import { GlassRoundIconButton } from '../components/GlassRoundIconButton';
 import { ContextMenu } from '../components/ContextMenu';
@@ -23,6 +24,7 @@ import { hapticLight } from '../utils/haptics';
 import { BoardColumn } from '../components/BoardColumn';
 import { BoardColumnPlaceholder } from '../components/BoardColumnPlaceholder';
 import { BoardTableView, type TableRowDragState } from '../components/BoardTableView';
+import { BoardCalendarView } from '../components/BoardCalendarView';
 import { PromptModal } from '../components/PromptModal';
 import {
   BoardCardExpandOverlay,
@@ -73,23 +75,47 @@ const INITIAL_COLUMNS: BoardColumnData[] = [
           { id: 'act2', text: 'You created this card', at: 'Yesterday' },
         ],
       },
-      { id: 'c-0-1', title: 'Sync with backend API', labelColor: '#a5d6a5' },
-      { id: 'c-0-2', title: 'Update onboarding flow' },
+      {
+        id: 'c-0-1',
+        title: 'Sync with backend API',
+        labelColor: '#a5d6a5',
+        dueDate: new Date(Date.now() + 5 * 86400000).toISOString(),
+      },
+      {
+        id: 'c-0-2',
+        title: 'Update onboarding flow',
+        dueDate: new Date(Date.now() + 12 * 86400000).toISOString(),
+      },
     ],
   },
   {
     id: 'col-in-progress',
     title: 'In Progress',
     cards: [
-      { id: 'c-1-0', title: 'Board view layout', subtitle: 'You', labelColor: '#a5d6a5' },
-      { id: 'c-1-1', title: 'Card drag-and-drop', labelColor: '#F3D9B1' },
+      {
+        id: 'c-1-0',
+        title: 'Board view layout',
+        subtitle: 'You',
+        labelColor: '#a5d6a5',
+        dueDate: new Date(Date.now() + 10 * 86400000).toISOString(),
+      },
+      {
+        id: 'c-1-1',
+        title: 'Card drag-and-drop',
+        labelColor: '#F3D9B1',
+        dueDate: new Date(Date.now() + 1 * 86400000).toISOString(),
+      },
     ],
   },
   {
     id: 'col-done',
     title: 'Done',
     cards: [
-      { id: 'c-2-0', title: 'Auth & login screen' },
+      {
+        id: 'c-2-0',
+        title: 'Auth & login screen',
+        dueDate: new Date(Date.now() - 2 * 86400000).toISOString(),
+      },
       { id: 'c-2-1', title: 'Home screen shell' },
       { id: 'c-2-2', title: 'Neubrutalist theme' },
     ],
@@ -142,6 +168,7 @@ export default function BoardScreen({
   glassBottomBar,
 }: BoardScreenProps) {
   const insets = useSafeAreaInsets();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const [columns, setColumns] = useState<BoardColumnData[]>(INITIAL_COLUMNS);
   const [viewMode, setViewMode] = useState<BoardViewMode>('board');
   const [expanded, setExpanded] = useState<ExpandedCardLayout | null>(null);
@@ -301,6 +328,32 @@ export default function BoardScreen({
       });
     },
     [columns]
+  );
+
+  const handleCalendarOpenTask = useCallback(
+    (cardId: string) => {
+      for (let i = 0; i < columns.length; i++) {
+        const j = columns[i].cards.findIndex((c) => c.id === cardId);
+        if (j >= 0) {
+          const w = Math.round(Math.min(screenW * 0.92, 400));
+          const h = 100;
+          setExpanded({
+            columnTitle: columns[i].title,
+            layout: {
+              x: Math.round((screenW - w) / 2),
+              y: Math.round((screenH - h) / 2),
+              width: w,
+              height: h,
+            },
+            columnIndex: i,
+            cardIndex: j,
+            cardId,
+          });
+          return;
+        }
+      }
+    },
+    [columns, screenW, screenH]
   );
 
   const handleCardPress = useCallback(
@@ -839,6 +892,12 @@ export default function BoardScreen({
           scaleTableRow={scaleTableRow}
           rowDragEnabled={expanded == null}
           onSetCardLabels={handleSetTableCardLabels}
+        />
+      ) : viewMode === 'calendar' ? (
+        <BoardCalendarView
+          columns={columns}
+          bottomClearance={BOARD_GLASS_BOTTOM_BAR_CLEARANCE}
+          onOpenTask={handleCalendarOpenTask}
         />
       ) : (
         <View style={styles.viewPlaceholder}>

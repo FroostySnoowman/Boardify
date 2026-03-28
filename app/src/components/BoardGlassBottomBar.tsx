@@ -1,5 +1,12 @@
-import React from 'react';
-import { Pressable, StyleSheet, View, Platform, TouchableWithoutFeedback } from 'react-native';
+import React, { useMemo } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  Platform,
+  TouchableWithoutFeedback,
+  useWindowDimensions,
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -37,6 +44,12 @@ const TRIPLE_PILL_PADDING_V = 4;
 const TRIPLE_INNER_WIDTH = TRIPLE_SLOT * 3 + TRIPLE_ICON_GAP * 2;
 const TRIPLE_PILL_WIDTH = TRIPLE_INNER_WIDTH + TRIPLE_PILL_PADDING_H * 2;
 const TRIPLE_ROW_HEIGHT = 44;
+
+/** Gap between pill and expand; must match `styles.row.gap`. */
+const ROW_GAP = 8;
+/** Horizontal distance from row’s left edge (pill’s left) to the bell column’s center. */
+const BELL_CENTER_X_FROM_ROW_LEFT =
+  TRIPLE_PILL_PADDING_H + TRIPLE_SLOT + TRIPLE_ICON_GAP + TRIPLE_SLOT / 2;
 
 function TripleIconColumn({
   label,
@@ -132,8 +145,15 @@ export function BoardGlassBottomBar({
   onExpandPress,
 }: BoardGlassBottomBarProps) {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const noop = () => {};
   const useNativeGlass = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
+
+  /** Align bell with window horizontal center (reference: centered “middle mark” toolbars). */
+  const rowLeft = useMemo(
+    () => windowWidth / 2 - BELL_CENTER_X_FROM_ROW_LEFT,
+    [windowWidth],
+  );
 
   const strip = (
     <GlassTripleStrip
@@ -165,24 +185,26 @@ export function BoardGlassBottomBar({
           { paddingBottom: Math.max(insets.bottom, 10) + 4 },
         ]}
       >
-        {useNativeGlass ? (
-          <GlassContainer
-            spacing={22}
-            style={styles.row}
-          >
-            {strip}
-            <BoardExpandGlassNative onPress={onExpand} />
-          </GlassContainer>
-        ) : (
-          <View style={styles.row}>
-            {strip}
-            <GlassRoundIconButton
-              icon="maximize-2"
-              accessibilityLabel="Expand"
-              onPress={onExpand}
-            />
-          </View>
-        )}
+        <View style={styles.barTrack} pointerEvents="box-none">
+          {useNativeGlass ? (
+            <GlassContainer
+              spacing={22}
+              style={[styles.row, { left: rowLeft }]}
+            >
+              {strip}
+              <BoardExpandGlassNative onPress={onExpand} />
+            </GlassContainer>
+          ) : (
+            <View style={[styles.row, { left: rowLeft }]}>
+              {strip}
+              <GlassRoundIconButton
+                icon="maximize-2"
+                accessibilityLabel="Expand"
+                onPress={onExpand}
+              />
+            </View>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -196,13 +218,20 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   inner: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
+    width: '100%',
+  },
+  /** Full-bleed horizontal space so `left` matches screen coordinates (no padding skew). */
+  barTrack: {
+    width: '100%',
+    minHeight: TRIPLE_ROW_HEIGHT + TRIPLE_PILL_PADDING_V * 2,
+    position: 'relative',
   },
   row: {
+    position: 'absolute',
+    top: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: ROW_GAP,
   },
   tripleGlass: {
     width: TRIPLE_PILL_WIDTH,

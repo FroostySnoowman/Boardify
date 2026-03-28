@@ -8,6 +8,7 @@ import {
   formatLoggedTotalMs,
   formatTotalTrackedBanner,
   durationFromIsoRange,
+  toggleStopwatchOnTask,
 } from '../../utils/workTime';
 import { formatTaskDateTimeDisplay, hasValidTaskIso } from '../../utils/taskDateTime';
 import { TaskDatetimeField, type TaskDatetimeFieldKey } from './TaskDatetimeField';
@@ -56,34 +57,8 @@ export function TaskWorkTimeSection({ task, onChange, activeField, onActiveChang
 
   const startPause = useCallback(() => {
     hapticLight();
-    if (running) {
-      const start = task.workTimerRunStartedAtMs;
-      if (start == null) return;
-      const segmentMs = Date.now() - start;
-      const nextLog = [...(task.workLog ?? [])];
-      if (segmentMs >= 1000) {
-        const entry: TaskWorkLogEntry = {
-          id: uid(),
-          durationMs: segmentMs,
-          source: 'stopwatch',
-          createdAtIso: new Date().toISOString(),
-        };
-        nextLog.push(entry);
-      }
-      onChange({
-        ...task,
-        workLog: nextLog,
-        workTimerAccumMs: 0,
-        workTimerRunStartedAtMs: undefined,
-      });
-    } else {
-      onChange({
-        ...task,
-        workTimerAccumMs: 0,
-        workTimerRunStartedAtMs: Date.now(),
-      });
-    }
-  }, [running, task, onChange]);
+    onChange(toggleStopwatchOnTask(task));
+  }, [task, onChange]);
 
   const resetTimer = useCallback(() => {
     hapticLight();

@@ -46,6 +46,8 @@ export type ExpandedCardLayout = {
   columnIndex: number;
   cardIndex: number;
   columnTitle: string;
+  /** Stable lookup when columns/cards reorder. */
+  cardId: string;
 };
 
 type Props = {

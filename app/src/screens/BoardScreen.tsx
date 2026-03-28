@@ -22,13 +22,14 @@ import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import { BoardColumn } from '../components/BoardColumn';
 import { BoardColumnPlaceholder } from '../components/BoardColumnPlaceholder';
-import { BoardTableView } from '../components/BoardTableView';
+import { BoardTableView, type TableRowDragState } from '../components/BoardTableView';
+import { PromptModal } from '../components/PromptModal';
 import {
   BoardCardExpandOverlay,
   type ExpandedCardLayout,
 } from '../components/BoardCardExpandOverlay';
 import { BoardCard } from '../components/BoardCard';
-import type { BoardCardData, BoardColumnData } from '../types/board';
+import type { BoardCardData, BoardColumnData, TaskLabel } from '../types/board';
 import {
   BOARD_CARD_ROW_HEIGHT,
   computeColumnHoverInsertIndex,
@@ -36,6 +37,8 @@ import {
   moveCardToHover,
   reorderColumns,
 } from '../board/boardDragUtils';
+import { uid } from '../utils/id';
+import { toggleStopwatchOnTask } from '../utils/workTime';
 
 const SHIFT = 5;
 
@@ -153,6 +156,9 @@ export default function BoardScreen({
   const translateListX = useSharedValue(0);
   const translateListY = useSharedValue(0);
   const scaleList = useSharedValue(1);
+  const translateTableRowX = useSharedValue(0);
+  const translateTableRowY = useSharedValue(0);
+  const scaleTableRow = useSharedValue(1);
 
   const columnLayoutsRef = useRef<Array<{ x: number; y: number; width: number; height: number } | null>>([]);
   const columnScrollYRef = useRef<number[]>([]);
@@ -230,20 +236,31 @@ export default function BoardScreen({
     scaleList.value = 1;
   }, [listDragging, translateListX, translateListY, scaleList]);
 
+  const [tableRowDragging, setTableRowDragging] = useState<TableRowDragState | null>(null);
+  const [promptAddCardCol, setPromptAddCardCol] = useState<number | null>(null);
+  const [promptAddList, setPromptAddList] = useState(false);
+
+  useEffect(() => {
+    if (tableRowDragging != null) return;
+    cancelAnimation(translateTableRowX);
+    cancelAnimation(translateTableRowY);
+    cancelAnimation(scaleTableRow);
+    translateTableRowX.value = 0;
+    translateTableRowY.value = 0;
+    scaleTableRow.value = 1;
+  }, [tableRowDragging, translateTableRowX, translateTableRowY, scaleTableRow]);
+
   const noopAddCard = useCallback(() => {}, []);
 
   const handleUpdateExpandedCard = useCallback(
     (next: BoardCardData) => {
       if (!expanded) return;
-      const { columnIndex: ci, cardIndex: idx } = expanded;
+      const id = expanded.cardId;
       setColumns((prev) =>
-        prev.map((col, i) => {
-          if (i !== ci) return col;
-          return {
-            ...col,
-            cards: col.cards.map((c, j) => (j === idx ? next : c)),
-          };
-        })
+        prev.map((col) => ({
+          ...col,
+          cards: col.cards.map((c) => (c.id === id ? next : c)),
+        }))
       );
     },
     [expanded]
@@ -280,6 +297,7 @@ export default function BoardScreen({
         },
         columnIndex,
         cardIndex,
+        cardId: card.id,
       });
     },
     [columns]
@@ -296,8 +314,114 @@ export default function BoardScreen({
     [openCardAt]
   );
 
-  const expandedCardKey =
-    expanded == null ? null : `${expanded.columnIndex}-${expanded.cardIndex}`;
+  const expandedCardId = expanded?.cardId ?? null;
+
+  const expandedCardResolved = useMemo(() => {
+    if (!expanded) return null;
+    for (let i = 0; i < columns.length; i++) {
+      const j = columns[i].cards.findIndex((c) => c.id === expanded.cardId);
+      if (j >= 0) {
+        return { columnIndex: i, cardIndex: j, card: columns[i].cards[j] };
+      }
+    }
+    return null;
+  }, [columns, expanded]);
+
+  useEffect(() => {
+    if (expanded && expandedCardResolved == null) {
+      setExpanded(null);
+    }
+  }, [expanded, expandedCardResolved]);
+
+  const handleTableMoveCardToColumn = useCallback(
+    (cardId: string, fromCol: number, toCol: number) => {
+      setColumns((prev) => {
+        const len = prev[toCol]?.cards.length ?? 0;
+        return moveCardToHover(prev, cardId, fromCol, toCol, len);
+      });
+    },
+    []
+  );
+
+  const handleTableRowDrop = useCallback(
+    (cardId: string, fromCol: number, toCol: number, insertIndex: number) => {
+      setColumns((prev) => moveCardToHover(prev, cardId, fromCol, toCol, insertIndex));
+    },
+    []
+  );
+
+  const onTableRowDragBegin = useCallback((s: TableRowDragState) => {
+    setTableRowDragging(s);
+  }, []);
+
+  const onTableRowDragEnd = useCallback(() => {
+    setTableRowDragging(null);
+  }, []);
+
+  const handleTableReorderList = useCallback(
+    (columnIndex: number, direction: 'left' | 'right') => {
+      setColumns((prev) => {
+        if (direction === 'left') {
+          if (columnIndex <= 0) return prev;
+          return reorderColumns(prev, columnIndex, columnIndex - 1);
+        }
+        if (columnIndex >= prev.length - 1) return prev;
+        return reorderColumns(prev, columnIndex, columnIndex + 2);
+      });
+    },
+    []
+  );
+
+  const handleAddCardSubmit = useCallback(
+    (title: string) => {
+      setColumns((prev) => {
+        const idx = promptAddCardCol;
+        if (idx == null) return prev;
+        return prev.map((c, i) =>
+          i === idx ? { ...c, cards: [...c.cards, { id: uid('c'), title }] } : c
+        );
+      });
+    },
+    [promptAddCardCol]
+  );
+
+  const handleAddListSubmit = useCallback((title: string) => {
+    setColumns((prev) => [...prev, { id: uid('col'), title, cards: [] }]);
+  }, []);
+
+  const handleTableToggleStopwatch = useCallback((cardId: string) => {
+    hapticLight();
+    setColumns((prev) =>
+      prev.map((col) => ({
+        ...col,
+        cards: col.cards.map((c) => (c.id === cardId ? toggleStopwatchOnTask(c) : c)),
+      }))
+    );
+  }, []);
+
+  const handleSetTableCardLabels = useCallback((cardId: string, labels: TaskLabel[]) => {
+    setColumns((prev) =>
+      prev.map((col) => ({
+        ...col,
+        cards: col.cards.map((c) =>
+          c.id === cardId ? { ...c, labels: labels.length > 0 ? labels : undefined } : c
+        ),
+      }))
+    );
+  }, []);
+
+  const tableRowOverlayStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateTableRowX.value },
+      { translateY: translateTableRowY.value },
+      { scale: scaleTableRow.value },
+    ],
+  }));
+
+  const draggingTableRowCard =
+    tableRowDragging != null
+      ? columns[tableRowDragging.fromCol]?.cards.find((c) => c.id === tableRowDragging.cardId)
+      : null;
 
   const registerColumnMeasure = useCallback((colIndex: number, fn: () => void) => {
     measureFnsRef.current[colIndex] = fn;
@@ -621,7 +745,7 @@ export default function BoardScreen({
                         title={col.title}
                         cards={col.cards}
                         onAddCard={noopAddCard}
-                        expandedCardKey={expandedCardKey}
+                        expandedCardId={expandedCardId}
                         onCardPress={handleCardPress}
                         draggingCardId={dragging?.cardId ?? null}
                         hoverInsertIndex={hoverTarget?.col === i ? hoverTarget.insertIndex : -1}
@@ -660,7 +784,7 @@ export default function BoardScreen({
                   title={col.title}
                   cards={col.cards}
                   onAddCard={noopAddCard}
-                  expandedCardKey={expandedCardKey}
+                  expandedCardId={expandedCardId}
                   onCardPress={handleCardPress}
                   draggingCardId={dragging?.cardId ?? null}
                   hoverInsertIndex={hoverTarget?.col === i ? hoverTarget.insertIndex : -1}
@@ -701,6 +825,20 @@ export default function BoardScreen({
           columns={columns}
           bottomClearance={BOARD_GLASS_BOTTOM_BAR_CLEARANCE}
           onCardPress={openCardAt}
+          onToggleTableStopwatch={handleTableToggleStopwatch}
+          onMoveCardToColumn={handleTableMoveCardToColumn}
+          onAddCard={(colIdx) => setPromptAddCardCol(colIdx)}
+          onAddList={() => setPromptAddList(true)}
+          onReorderList={handleTableReorderList}
+          onTableRowDrop={handleTableRowDrop}
+          tableRowDragging={tableRowDragging}
+          onTableRowDragBegin={onTableRowDragBegin}
+          onTableRowDragEnd={onTableRowDragEnd}
+          translateTableRowX={translateTableRowX}
+          translateTableRowY={translateTableRowY}
+          scaleTableRow={scaleTableRow}
+          rowDragEnabled={expanded == null}
+          onSetCardLabels={handleSetTableCardLabels}
         />
       ) : (
         <View style={styles.viewPlaceholder}>
@@ -772,10 +910,58 @@ export default function BoardScreen({
 
       <BoardGlassBottomBar {...boardGlassBottomBarProps} />
 
-      {expanded ? (
+      {viewMode === 'table' && tableRowDragging && draggingTableRowCard ? (
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <Animated.View
+            style={[
+              {
+                position: 'absolute',
+                left: tableRowDragging.startX,
+                top: tableRowDragging.startY,
+                width: tableRowDragging.width,
+                zIndex: 9998,
+                elevation: 24,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.2,
+                shadowRadius: 12,
+              },
+              tableRowOverlayStyle,
+            ]}
+          >
+            <View style={styles.tableRowDragOverlayInner}>
+              <Text style={styles.tableRowDragTitle} numberOfLines={1}>
+                {draggingTableRowCard.title}
+              </Text>
+              <Text style={styles.tableRowDragSub} numberOfLines={1}>
+                {columns[tableRowDragging.fromCol]?.title ?? ''}
+              </Text>
+            </View>
+          </Animated.View>
+        </View>
+      ) : null}
+
+      <PromptModal
+        visible={promptAddCardCol != null}
+        title="New task"
+        placeholder="Task title"
+        confirmLabel="Add task"
+        onCancel={() => setPromptAddCardCol(null)}
+        onSubmit={handleAddCardSubmit}
+      />
+      <PromptModal
+        visible={promptAddList}
+        title="New list"
+        placeholder="List name"
+        confirmLabel="Add list"
+        onCancel={() => setPromptAddList(false)}
+        onSubmit={handleAddListSubmit}
+      />
+
+      {expanded && expandedCardResolved ? (
         <BoardCardExpandOverlay
           layoutInfo={expanded}
-          card={columns[expanded.columnIndex].cards[expanded.cardIndex]}
+          card={expandedCardResolved.card}
           onUpdateCard={handleUpdateExpandedCard}
           onClose={() => setExpanded(null)}
         />
@@ -912,5 +1098,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#666',
+  },
+  tableRowDragOverlayInner: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#000',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  tableRowDragTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0a0a0a',
+  },
+  tableRowDragSub: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 4,
   },
 });

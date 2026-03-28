@@ -22,7 +22,8 @@ export interface BoardColumnProps {
     cardIndex: number,
     layout: { x: number; y: number; width: number; height: number }
   ) => void;
-  expandedCardKey?: string | null;
+  /** When set, card with this id is hidden (shown in expand overlay). */
+  expandedCardId?: string | null;
   columnIndex: number;
   draggingCardId: string | null;
   hoverInsertIndex: number;
@@ -64,7 +65,7 @@ function BoardColumnInner({
   cards,
   onAddCard,
   onCardPress,
-  expandedCardKey,
+  expandedCardId,
   columnIndex,
   draggingCardId,
   hoverInsertIndex,
@@ -162,7 +163,7 @@ function BoardColumnInner({
           translateY={translateY}
           scale={scale}
           isDraggingThis={draggingCardId === c.id}
-          hidden={expandedCardKey === `${columnIndex}-${originalIndex}`}
+          hidden={expandedCardId != null && expandedCardId === c.id}
           onPress={() => {
             const node = cardRefs.current[c.id];
             if (!node || !onCardPress) return;

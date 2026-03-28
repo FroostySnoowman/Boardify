@@ -25,12 +25,15 @@ export function moveCardToHover(
 
 export function computeHoverInsertIndex(
   localYInList: number,
-  virtualCardCount: number
+  virtualCardCount: number,
+  rowHeight: number = BOARD_CARD_ROW_HEIGHT
 ): number {
-  const row = BOARD_CARD_ROW_HEIGHT;
-  const idx = Math.floor(Math.max(0, localYInList) / row);
+  const idx = Math.floor(Math.max(0, localYInList) / rowHeight);
   return Math.max(0, Math.min(virtualCardCount, idx));
 }
+
+/** Table row slot height for DnD hover (matches ~padding + single-line row in BoardTableView). */
+export const TABLE_ROW_SLOT_HEIGHT = 68;
 
 /** Insert-before index in 0..columns.length using column band midpoints (window coords). */
 export function computeColumnHoverInsertIndex(

@@ -1,3 +1,6 @@
+import type { BoardCardData, TaskWorkLogEntry } from '../types/board';
+import { uid } from './id';
+
 export function formatStopwatchMs(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(totalSec / 3600);
@@ -38,4 +41,35 @@ export function durationFromIsoRange(startIso: string, endIso: string): number |
   const b = new Date(endIso).getTime();
   if (Number.isNaN(a) || Number.isNaN(b) || b <= a) return null;
   return b - a;
+}
+
+/** Start stopwatch if idle, or stop and append a ≥1s segment to workLog (same rules as task detail). */
+export function toggleStopwatchOnTask(task: BoardCardData): BoardCardData {
+  const running = task.workTimerRunStartedAtMs != null;
+  if (running) {
+    const start = task.workTimerRunStartedAtMs;
+    if (start == null) return task;
+    const segmentMs = Date.now() - start;
+    const nextLog = [...(task.workLog ?? [])];
+    if (segmentMs >= 1000) {
+      const entry: TaskWorkLogEntry = {
+        id: uid('w'),
+        durationMs: segmentMs,
+        source: 'stopwatch',
+        createdAtIso: new Date().toISOString(),
+      };
+      nextLog.push(entry);
+    }
+    return {
+      ...task,
+      workLog: nextLog,
+      workTimerAccumMs: 0,
+      workTimerRunStartedAtMs: undefined,
+    };
+  }
+  return {
+    ...task,
+    workTimerAccumMs: 0,
+    workTimerRunStartedAtMs: Date.now(),
+  };
 }

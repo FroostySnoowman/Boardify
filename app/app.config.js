@@ -193,8 +193,8 @@ module.exports = {
         ],
       },
       associatedDomains: [
-        'applinks:boardify.mybreakpoint.app',
-        ...(isRelease ? [] : ['applinks:boardify.mybreakpoint.app?mode=developer']),
+        'applinks:app.mybreakpoint.boardify',
+        ...(isRelease ? [] : ['applinks:app.mybreakpoint.boardify?mode=developer']),
       ],
       entitlements: {
         'aps-environment': isRelease ? 'production' : 'development',
@@ -223,7 +223,7 @@ module.exports = {
         {
           action: 'VIEW',
           autoVerify: true,
-          data: [{ scheme: 'https', host: 'boardify.mybreakpoint.app', pathPrefix: '/' }],
+          data: [{ scheme: 'https', host: 'app.mybreakpoint.boardify', pathPrefix: '/' }],
           category: ['BROWSABLE', 'DEFAULT'],
         },
       ],

@@ -5,12 +5,14 @@ import type { DashboardLineChartData } from '../../types/dashboard';
 
 const CHART_H = 156;
 const PAD_L = 34;
-const PAD_R = 10;
-const PAD_T = 8;
-const PAD_B = 4;
+const PAD_R = 16;
+const PAD_T = 12;
+const PAD_B = 10;
 const GRID_LINES = 4;
 const X_LABEL_ROW_H = 22;
 const LEGEND_H = 22;
+const PLOT_INSET_X = 8;
+const PLOT_INSET_Y = 3;
 
 const MIN_LINE_GAP_PX = 40;
 
@@ -18,7 +20,7 @@ export function minWidthForLineChart(pointCount: number): number {
   if (pointCount <= 0) return PAD_L + PAD_R + 120;
   if (pointCount === 1) return PAD_L + PAD_R + 100;
   const innerMin = (pointCount - 1) * MIN_LINE_GAP_PX + MIN_LINE_GAP_PX;
-  return PAD_L + PAD_R + innerMin;
+  return PAD_L + PAD_R + innerMin + PLOT_INSET_X * 2;
 }
 
 function buildYTicks(maxVal: number, divisions: number): number[] {
@@ -45,7 +47,9 @@ type Props = {
 export function DashboardLineChart({ data, width }: Props) {
   const { xLabels, series } = data;
   const innerW = Math.max(1, width - PAD_L - PAD_R);
+  const plotInnerW = Math.max(1, innerW - PLOT_INSET_X * 2);
   const plotH = CHART_H - PAD_T - PAD_B;
+  const plotInnerH = Math.max(1, plotH - PLOT_INSET_Y * 2);
   const n = xLabels.length;
 
   const maxVal = useMemo(() => {
@@ -68,8 +72,10 @@ export function DashboardLineChart({ data, width }: Props) {
     );
   }
 
-  const xAt = (i: number) => PAD_L + (n <= 1 ? innerW / 2 : (innerW * i) / (n - 1));
-  const yAt = (v: number) => PAD_T + plotH - (v / maxVal) * plotH;
+  const xAt = (i: number) =>
+    PAD_L + PLOT_INSET_X + (n <= 1 ? plotInnerW / 2 : (plotInnerW * i) / (n - 1));
+  const yAt = (v: number) =>
+    PAD_T + PLOT_INSET_Y + plotInnerH - (v / maxVal) * plotInnerH;
 
   const showLegend = series.length > 1;
 

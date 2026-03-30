@@ -29,6 +29,12 @@ function sortRowsDesc(rows: DashboardSeriesRow[]): DashboardSeriesRow[] {
   });
 }
 
+const DASHBOARD_BAR_PALETTE = ['#0a0a0a', '#a5d6a5', '#bfdbfe', '#F3D9B1', '#fecaca', '#d1d5db'];
+
+function paletteColorAt(index: number): string {
+  return DASHBOARD_BAR_PALETTE[index % DASHBOARD_BAR_PALETTE.length];
+}
+
 export function aggregateDashboardSeries(
   columns: BoardColumnData[],
   dimension: DashboardDimension,
@@ -37,10 +43,11 @@ export function aggregateDashboardSeries(
   switch (dimension) {
     case 'list':
       return sortRowsDesc(
-        columns.map((col) => ({
+        columns.map((col, idx) => ({
           id: col.id,
           label: col.title,
           value: col.cards.length,
+          color: paletteColorAt(idx),
         }))
       );
     case 'label': {
@@ -85,10 +92,10 @@ export function aggregateDashboardSeries(
       }
       const rows: DashboardSeriesRow[] = [];
       for (const [id, value] of memberCounts) {
-        rows.push({ id, label: nameById.get(id) ?? id, value });
+        rows.push({ id, label: nameById.get(id) ?? id, value, color: paletteColorAt(rows.length) });
       }
       if (unassigned > 0) {
-        rows.push({ id: '__unassigned__', label: 'Unassigned', value: unassigned });
+        rows.push({ id: '__unassigned__', label: 'Unassigned', value: unassigned, color: '#9ca3af' });
       }
       return sortRowsDesc(rows);
     }
@@ -100,6 +107,13 @@ export function aggregateDashboardSeries(
         overdue: 'Overdue',
         due_later: 'Due later',
         no_due: 'No due date',
+      };
+      const colors: Record<(typeof order)[number], string> = {
+        complete: '#a5d6a5',
+        due_soon: '#F3D9B1',
+        overdue: '#fecaca',
+        due_later: '#bfdbfe',
+        no_due: '#d1d5db',
       };
       const tally: Record<(typeof order)[number], number> = {
         complete: 0,
@@ -129,6 +143,7 @@ export function aggregateDashboardSeries(
         id: key,
         label: labels[key],
         value: tally[key],
+        color: colors[key],
       }));
     }
     default:

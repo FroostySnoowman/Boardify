@@ -8,7 +8,12 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+import Animated, {
+  type SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticLight } from '../utils/haptics';
@@ -38,6 +43,13 @@ const TABLE_SHIFT = 5;
 const TABLE_EDGE_PADDING_H = Platform.select({ web: 24, default: 26 }) ?? 26;
 const ICON_MUTED = '#666';
 const TEXT_PRIMARY = '#0a0a0a';
+const TABLE_ZOOM_MIN = 0.78;
+const TABLE_ZOOM_MAX = 1;
+
+function clamp(value: number, min: number, max: number): number {
+  'worklet';
+  return Math.min(Math.max(value, min), max);
+}
 
 export type TableRowDragState = {
   cardId: string;
@@ -125,6 +137,8 @@ export function BoardTableView({
   onSetCardLabels,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const tableZoom = useSharedValue(1);
+  const tableZoomStart = useSharedValue(1);
 
   const labelCatalog = useMemo(() => {
     const m = new Map<string, TaskLabel>();
@@ -280,6 +294,20 @@ export function BoardTableView({
   }, [tableRowDragging, onTableRowDrop, onTableRowDragEnd]);
 
   const scrollLocked = tableRowDragging != null;
+  const tableZoomStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: tableZoom.value }],
+  }));
+
+  const pinchGesture = useMemo(() => {
+    return Gesture.Pinch()
+      .enabled(!scrollLocked)
+      .onBegin(() => {
+        tableZoomStart.value = tableZoom.value;
+      })
+      .onUpdate((event) => {
+        tableZoom.value = clamp(tableZoomStart.value * event.scale, TABLE_ZOOM_MIN, TABLE_ZOOM_MAX);
+      });
+  }, [scrollLocked, tableZoom, tableZoomStart]);
 
   const buildLabelMenuOptions = useCallback(
     (card: BoardCardData) => {
@@ -500,23 +528,24 @@ export function BoardTableView({
       }}
       scrollEventThrottle={32}
     >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        nestedScrollEnabled
-        scrollEnabled={!scrollLocked}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.hScrollContent,
-          {
-            paddingLeft: TABLE_EDGE_PADDING_H + insets.left,
-            paddingRight: TABLE_EDGE_PADDING_H + insets.right,
-          },
-        ]}
-      >
-        <View style={[styles.tableWrapOuter, { minWidth: TABLE_MIN_WIDTH }]}>
-          <View style={styles.tableShadow} pointerEvents="none" />
-          <View style={styles.tableFace}>
+      <GestureDetector gesture={pinchGesture}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled
+          scrollEnabled={!scrollLocked}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[
+            styles.hScrollContent,
+            {
+              paddingLeft: TABLE_EDGE_PADDING_H + insets.left,
+              paddingRight: TABLE_EDGE_PADDING_H + insets.right,
+            },
+          ]}
+        >
+          <Animated.View style={[styles.tableWrapOuter, tableZoomStyle, { minWidth: TABLE_MIN_WIDTH }]}>
+            <View style={styles.tableShadow} pointerEvents="none" />
+            <View style={styles.tableFace}>
             <View style={styles.tableHeaderRow}>
               <View style={[styles.thCell, styles.colCheck, styles.colAlignCenter]}>
                 <View style={styles.checkboxPlaceholder} />
@@ -698,10 +727,11 @@ export function BoardTableView({
               </TouchableOpacity>
             ) : null}
 
-            <View style={{ height: 24 + bottomClearance + Math.max(insets.bottom, 8) }} />
-          </View>
-        </View>
-      </ScrollView>
+              <View style={{ height: 24 + bottomClearance + Math.max(insets.bottom, 8) }} />
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </GestureDetector>
     </ScrollView>
   );
 }

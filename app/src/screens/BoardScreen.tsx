@@ -24,6 +24,7 @@ import Animated, {
   cancelAnimation,
   withTiming,
   Easing,
+  runOnJS,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
@@ -66,13 +67,34 @@ const FOCUS_LIST_CAROUSEL_GAP = 12;
 
 const BOARD_STRIP_COL_STRIDE = BOARD_STRIP_COLUMN_WIDTH + 16;
 
-const FOCUS_ZOOM_MS = 420;
-const FOCUS_ZOOM_EASING = Easing.inOut(Easing.cubic);
+const FOCUS_ZOOM_MS = 520;
+/** Exit uses a slightly longer ease-out so the “camera” settles on the board column like normal view. */
+const FOCUS_ZOOM_EXIT_MS = 620;
+const FOCUS_ZOOM_EASING = Easing.inOut(Easing.quad);
 const FOCUS_ZOOM_OUT_EASING = Easing.out(Easing.cubic);
-const FOCUS_ZOOM_EPS = 0.008;
-
 function focusZoomStartScale(cardWidth: number): number {
-  return Math.max(0.72, Math.min(1, BOARD_STRIP_COLUMN_WIDTH / cardWidth));
+  const ratio = BOARD_STRIP_COLUMN_WIDTH / cardWidth;
+  return Math.max(0.72, Math.min(1.12, ratio));
+}
+
+/** Exit zoom target: same physics as enter. If too close to 1, use a visible zoom-out so exit always animates. */
+function focusExitZoomTarget(cardWidth: number): number {
+  const z = focusZoomStartScale(cardWidth);
+  if (Math.abs(z - 1) < 0.06) {
+    return 0.88;
+  }
+  return z;
+}
+
+/**
+ * Scale at end of exit `withTiming` (before layout returns to default). The raw physics target (zOut) is
+ * too small vs the final state (scale 1), so the last frame looked “too far out” before the jump.
+ * Blend toward 1 and floor so the last frame stays close to normal board scale.
+ */
+function focusExitAnimationEndScale(cardWidth: number): number {
+  const z = focusExitZoomTarget(cardWidth);
+  const blended = z + (1 - z) * 0.5;
+  return Math.max(0.94, Math.min(1, blended));
 }
 
 function stripColumnCenterScreenX(scrollX: number, pad: number, idx: number): number {
@@ -262,6 +284,10 @@ export default function BoardScreen({
   const focusZoomAnchorY = useSharedValue(0);
   const focusExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusExitAnimatingRef = useRef(false);
+  /** Pending RAF from enter-focus effect; must be cancelled on exit or it can fire withTiming(1) and cancel the exit zoom. */
+  const focusEnterRafRef = useRef<number | null>(null);
+  /** Exit zoom is scheduled on the next frame so it does not race same-frame cancellations. */
+  const focusExitRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     boardFocusModeRef.current = boardFocusMode;
@@ -359,8 +385,7 @@ export default function BoardScreen({
             Math.max(0, Math.round(horizontalScrollXRef.current / colStride))
           );
           const x = idx * snap;
-          horizontalScrollRef.current?.scrollTo({ x, animated: false });
-          horizontalScrollXRef.current = x;
+          horizontalScrollRef.current?.scrollTo({ x, animated: true });
           setFocusPageIndex(idx);
         } else {
           const snap =
@@ -370,8 +395,8 @@ export default function BoardScreen({
             Math.max(0, Math.round(horizontalScrollXRef.current / snap))
           );
           const x = page * BOARD_STRIP_COL_STRIDE;
+          // Snap scroll without a second animation — exit zoom already panned the camera to this column.
           horizontalScrollRef.current?.scrollTo({ x, animated: false });
-          horizontalScrollXRef.current = x;
         }
       });
     }
@@ -920,15 +945,48 @@ export default function BoardScreen({
   const focusCardScrollMax = Math.max(300, focusColumnMaxH - 130);
 
   const finalizeFocusExit = useCallback(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7413/ingest/2357af54-9a65-4b9f-ac42-f4147b075378',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00fdb4'},body:JSON.stringify({sessionId:'00fdb4',location:'BoardScreen.tsx:finalizeFocusExit',message:'instant exit (skip timing)',data:{},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
+    if (focusExitRafRef.current != null) {
+      cancelAnimationFrame(focusExitRafRef.current);
+      focusExitRafRef.current = null;
+    }
     if (focusExitTimerRef.current != null) {
       clearTimeout(focusExitTimerRef.current);
       focusExitTimerRef.current = null;
     }
     focusExitAnimatingRef.current = false;
     cancelAnimation(focusZoom);
+    cancelAnimation(focusZoomAnchorX);
+    cancelAnimation(focusZoomAnchorY);
     focusZoom.value = 1;
     setBoardFocusMode(false);
-  }, [focusZoom]);
+  }, [focusZoom, focusZoomAnchorX, focusZoomAnchorY]);
+
+  const completeFocusExitAfterAnimation = useCallback(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7413/ingest/2357af54-9a65-4b9f-ac42-f4147b075378',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00fdb4'},body:JSON.stringify({sessionId:'00fdb4',location:'BoardScreen.tsx:completeFocusExitAfterAnimation',message:'state exit after withTiming',data:{},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+    focusExitAnimatingRef.current = false;
+    setBoardFocusMode(false);
+  }, []);
+
+  const logExitTimingFinished = useCallback(
+    (finished?: boolean) => {
+      const ok = finished === true;
+      // #region agent log
+      fetch('http://127.0.0.1:7413/ingest/2357af54-9a65-4b9f-ac42-f4147b075378',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00fdb4'},body:JSON.stringify({sessionId:'00fdb4',location:'BoardScreen.tsx:withTiming exit cb',message:'exit withTiming callback',data:{finished,ok,runId:'post-fix'},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
+      if (ok) {
+        completeFocusExitAfterAnimation();
+      } else {
+        // Animation was cancelled; still leave focus mode so one tap works (ref was stuck true → second tap used finalizeFocusExit).
+        finalizeFocusExit();
+      }
+    },
+    [completeFocusExitAfterAnimation, finalizeFocusExit]
+  );
 
   const handleBoardFocusExpandPress = useCallback(() => {
     if (viewMode !== 'board') return;
@@ -945,8 +1003,6 @@ export default function BoardScreen({
       const idx = Math.min(maxIdx, Math.max(0, Math.round(sx / BOARD_STRIP_COL_STRIDE)));
       focusZoomAnchorX.value = stripColumnCenterScreenX(sx, pad, idx);
       focusZoomAnchorY.value = screenH * 0.42;
-      cancelAnimation(focusZoom);
-      focusZoom.value = focusZoomStartScale(focusCarousel.cardWidth);
       setBoardFocusMode(true);
       return;
     }
@@ -959,32 +1015,55 @@ export default function BoardScreen({
     const sx = horizontalScrollXRef.current;
     const snap = focusCarousel.snapInterval;
     const idx = Math.min(columns.length, Math.max(0, Math.round(sx / snap)));
-    focusZoomAnchorX.value = focusColumnCenterScreenX(
-      sx,
-      focusCarousel.sidePad,
-      snap,
-      focusCarousel.cardWidth,
-      idx
-    );
-    focusZoomAnchorY.value = screenH * 0.42;
-    const zOut = focusZoomStartScale(focusCarousel.cardWidth);
-    cancelAnimation(focusZoom);
-
-    if (zOut >= 1 - FOCUS_ZOOM_EPS) {
-      finalizeFocusExit();
-      return;
+    const zOut = focusExitZoomTarget(focusCarousel.cardWidth);
+    const zExitEnd = focusExitAnimationEndScale(focusCarousel.cardWidth);
+    if (focusEnterRafRef.current != null) {
+      cancelAnimationFrame(focusEnterRafRef.current);
+      focusEnterRafRef.current = null;
     }
+    if (focusExitRafRef.current != null) {
+      cancelAnimationFrame(focusExitRafRef.current);
+      focusExitRafRef.current = null;
+    }
+    // #region agent log
+    fetch('http://127.0.0.1:7413/ingest/2357af54-9a65-4b9f-ac42-f4147b075378',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00fdb4'},body:JSON.stringify({sessionId:'00fdb4',location:'BoardScreen.tsx:handleBoardFocusExpandPress exit',message:'starting exit zoom',data:{zOut,zExitEnd,cardWidth:focusCarousel.cardWidth,exitAnimatingBefore:focusExitAnimatingRef.current,clearedEnterRaf:true,runId:'post-fix'},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+    // #endregion
+    cancelAnimation(focusZoom);
+    cancelAnimation(focusZoomAnchorX);
+    cancelAnimation(focusZoomAnchorY);
+
+    const padBoard = isWeb ? 24 : 16;
+    const sxBoard = idx * BOARD_STRIP_COL_STRIDE;
+    const anchorEndX = stripColumnCenterScreenX(sxBoard, padBoard, idx);
+    const anchorEndY = screenH * 0.44;
 
     focusExitAnimatingRef.current = true;
-    focusZoom.value = withTiming(zOut, {
-      duration: FOCUS_ZOOM_MS,
-      easing: FOCUS_ZOOM_OUT_EASING,
+    focusExitRafRef.current = requestAnimationFrame(() => {
+      focusExitRafRef.current = null;
+      const sx0 = horizontalScrollXRef.current;
+      focusZoomAnchorX.value = focusColumnCenterScreenX(
+        sx0,
+        focusCarousel.sidePad,
+        focusCarousel.snapInterval,
+        focusCarousel.cardWidth,
+        idx
+      );
+      focusZoomAnchorY.value = screenH * 0.42;
+      focusZoom.value = 1;
+      const exitTiming = {
+        duration: FOCUS_ZOOM_EXIT_MS,
+        easing: FOCUS_ZOOM_OUT_EASING,
+      };
+      focusZoomAnchorX.value = withTiming(anchorEndX, exitTiming);
+      focusZoomAnchorY.value = withTiming(anchorEndY, exitTiming);
+      focusZoom.value = withTiming(
+        zExitEnd,
+        exitTiming,
+        (finished) => {
+          runOnJS(logExitTimingFinished)(finished);
+        }
+      );
     });
-    focusExitTimerRef.current = setTimeout(() => {
-      focusExitTimerRef.current = null;
-      focusExitAnimatingRef.current = false;
-      setBoardFocusMode(false);
-    }, FOCUS_ZOOM_MS + 64);
   }, [
     viewMode,
     boardFocusMode,
@@ -998,24 +1077,39 @@ export default function BoardScreen({
     focusZoomAnchorX,
     focusZoomAnchorY,
     finalizeFocusExit,
+    completeFocusExitAfterAnimation,
+    logExitTimingFinished,
   ]);
 
   useEffect(() => {
-    let raf: number | null = null;
     if (!boardFocusMode) {
+      // #region agent log
+      fetch('http://127.0.0.1:7413/ingest/2357af54-9a65-4b9f-ac42-f4147b075378',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'00fdb4'},body:JSON.stringify({sessionId:'00fdb4',location:'BoardScreen.tsx:useEffect boardFocusMode',message:'focus mode off: cancelAnim + zoom=1',data:{},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+      // #endregion
+      if (focusEnterRafRef.current != null) {
+        cancelAnimationFrame(focusEnterRafRef.current);
+        focusEnterRafRef.current = null;
+      }
+      if (focusExitRafRef.current != null) {
+        cancelAnimationFrame(focusExitRafRef.current);
+        focusExitRafRef.current = null;
+      }
       cancelAnimation(focusZoom);
+      cancelAnimation(focusZoomAnchorX);
+      cancelAnimation(focusZoomAnchorY);
       focusZoom.value = 1;
       return () => {
         cancelAnimation(focusZoom);
-        if (raf != null) cancelAnimationFrame(raf);
+        cancelAnimation(focusZoomAnchorX);
+        cancelAnimation(focusZoomAnchorY);
       };
     }
     const cardWidth = Math.round(screenWRef.current * FOCUS_LIST_CARD_WIDTH_RATIO);
     const start = focusZoomStartScale(cardWidth);
     cancelAnimation(focusZoom);
     focusZoom.value = start;
-    raf = requestAnimationFrame(() => {
-      raf = null;
+    focusEnterRafRef.current = requestAnimationFrame(() => {
+      focusEnterRafRef.current = null;
       focusZoom.value = withTiming(1, {
         duration: FOCUS_ZOOM_MS,
         easing: FOCUS_ZOOM_EASING,
@@ -1023,7 +1117,14 @@ export default function BoardScreen({
     });
     return () => {
       cancelAnimation(focusZoom);
-      if (raf != null) cancelAnimationFrame(raf);
+      if (focusEnterRafRef.current != null) {
+        cancelAnimationFrame(focusEnterRafRef.current);
+        focusEnterRafRef.current = null;
+      }
+      if (focusExitRafRef.current != null) {
+        cancelAnimationFrame(focusExitRafRef.current);
+        focusExitRafRef.current = null;
+      }
     };
   }, [boardFocusMode]);
 

@@ -1,7 +1,7 @@
 import React, { useRef, useCallback, useEffect, memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
-import Animated, { Easing, LinearTransition, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, LinearTransition } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import { DraggableBoardCard } from './DraggableBoardCard';
@@ -196,9 +196,10 @@ function BoardColumnInner({
   }
 
   return (
-    <View
+    <Animated.View
       ref={wrapRef}
       collapsable={false}
+      layout={ROW_LAYOUT}
       style={[
         styles.wrap,
         columnWidth != null && { width: columnWidth, marginRight: 0 },
@@ -244,7 +245,7 @@ function BoardColumnInner({
           <Text style={styles.addCardText}>Add card</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

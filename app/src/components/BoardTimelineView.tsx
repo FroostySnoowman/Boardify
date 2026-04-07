@@ -235,6 +235,8 @@ export function BoardTimelineView({ columns, bottomClearance, onOpenTask }: Prop
   const [periodStart, setPeriodStart] = useState(() =>
     normalizePeriodStart(startOfLocalDay(new Date()), 'month')
   );
+  const granularityRef = useRef(granularity);
+  granularityRef.current = granularity;
 
   const leftColW = useMemo(
     () => Math.max(96, Math.min(136, Math.round(windowW * 0.27))),
@@ -364,8 +366,14 @@ export function BoardTimelineView({ columns, bottomClearance, onOpenTask }: Prop
 
   const setGranularityAndNormalize = useCallback((g: TimelineGranularity) => {
     hapticLight();
+    const from = granularityRef.current;
     setGranularity(g);
-    setPeriodStart((p) => normalizePeriodStart(p, g));
+    setPeriodStart((p) => {
+      if (g === 'week' && from !== 'week') {
+        return normalizePeriodStart(startOfLocalDay(new Date()), 'week');
+      }
+      return normalizePeriodStart(p, g);
+    });
   }, []);
 
   const title =

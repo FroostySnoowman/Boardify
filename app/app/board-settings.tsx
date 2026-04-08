@@ -260,7 +260,7 @@ export default function BoardSettingsScreen() {
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Confirm destructive actions"
-                sublabel="Extra check before archive-style actions (when supported)"
+                sublabel="Extra check before archive-style actions"
                 value={settings.confirmBeforeDestructive}
                 onValueChange={(v) => patch({ confirmBeforeDestructive: v })}
               />
@@ -334,14 +334,14 @@ export default function BoardSettingsScreen() {
             <SettingsSection title="Reminders">
               <SettingsToggleRow
                 label="Daily digest reminder"
-                sublabel="Nudge once a day for due cards (requires notifications later)"
+                sublabel="Nudge once a day for due cards"
                 value={settings.dailyDigestReminder}
                 onValueChange={(v) => patch({ dailyDigestReminder: v })}
               />
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Focused list by default"
-                sublabel="Start in one-list focus when opening from shortcuts (reserved)"
+                sublabel="Start in one-list focus when opening from shortcuts"
                 value={settings.focusModeByDefault}
                 onValueChange={(v) => patch({ focusModeByDefault: v })}
               />

@@ -4,7 +4,7 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-# ALLOWED_ORIGINS = "https://your-app.example"
+ALLOWED_ORIGINS = "https://boardify.mybreakpoint.app,https://api.boardify.mybreakpoint.app"
 
 [[d1_databases]]
 binding = "DB"

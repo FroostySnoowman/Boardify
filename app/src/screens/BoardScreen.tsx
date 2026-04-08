@@ -1878,20 +1878,13 @@ export default function BoardScreen({
           bottomClearance={BOARD_GLASS_BOTTOM_BAR_CLEARANCE}
           onRemoveTile={handleDashboardRemoveTile}
         />
-      ) : viewMode === 'timeline' ? (
+      ) : (
         <View style={styles.boardArea}>
           <BoardTimelineView
             columns={columns}
             bottomClearance={BOARD_GLASS_BOTTOM_BAR_CLEARANCE}
             onOpenTask={handleCalendarOpenTask}
           />
-        </View>
-      ) : (
-        <View style={styles.viewPlaceholder}>
-          <Text style={styles.viewPlaceholderTitle}>
-            {BOARD_VIEW_MENU_ITEMS.find((x) => x.value === viewMode)?.label ?? 'View'}
-          </Text>
-          <Text style={styles.viewPlaceholderHint}>This workspace view is coming soon.</Text>
         </View>
       )}
 
@@ -2270,25 +2263,6 @@ const styles = StyleSheet.create({
   },
   inlineNewListActionAddDisabled: {
     color: '#aaa',
-  },
-  viewPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: BOARD_GLASS_BOTTOM_BAR_CLEARANCE + 24,
-  },
-  viewPlaceholderTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    marginBottom: 8,
-  },
-  viewPlaceholderHint: {
-    fontSize: 15,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
   },
   listDragOverlayInner: {
     flexDirection: 'row',

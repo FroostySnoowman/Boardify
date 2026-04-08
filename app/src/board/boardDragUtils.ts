@@ -2,7 +2,6 @@ import type { BoardColumnData } from '../types/board';
 
 export const BOARD_CARD_ROW_HEIGHT = 88;
 
-/** Removes a card from whichever list contains it (for archive / delete). */
 export function removeCardFromBoard(
   columns: BoardColumnData[],
   cardId: string
@@ -82,7 +81,6 @@ export function reorderColumns(
   return next;
 }
 
-/** Removes a list column by index (e.g. dropped on archive). */
 export function removeColumnAtIndex(columns: BoardColumnData[], index: number): BoardColumnData[] {
   const n = columns.length;
   if (index < 0 || index >= n) return columns;

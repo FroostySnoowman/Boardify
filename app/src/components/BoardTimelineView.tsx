@@ -25,10 +25,8 @@ const ROW_MIN_H = 80;
 const LANE_H = 44;
 const LANE_GAP = 10;
 const BAR_H = 36;
-/** Per stacked lane, indent start to the right (same calendar end) so overlaps read as “steps”. */
 const LANE_STEP_X = 9;
 const AVATAR = 20;
-/** Hide assignee chips when the bar is too narrow so titles get the width. */
 const ASSIGNEE_MIN_BAR_W = 104;
 
 export type TimelineGranularity = 'week' | 'month' | 'quarter';
@@ -157,10 +155,6 @@ function monthLabels(rangeStart: Date, rangeEndEx: Date): { label: string; offse
   return labels;
 }
 
-/**
- * Pack bars into vertical lanes using **drawn** width (min-width pills, etc.), not only calendar dates.
- * Otherwise adjacent days can share a lane while their 56px+ bars still overlap horizontally.
- */
 function assignLanesVisual(
   items: { key: string; left: number; width: number }[],
   timelineInnerW: number
@@ -211,7 +205,6 @@ function barDisplayWidth(left: number, rawWidth: number, timelineInnerW: number)
   return Math.min(desired, room);
 }
 
-/** Shift each higher lane right and shorten width so the bar’s end date stays aligned (stair-step). */
 function steppedBarLayout(
   lane: number,
   rawLeft: number,
@@ -675,7 +668,6 @@ const styles = StyleSheet.create({
     borderRightColor: 'rgba(0,0,0,0.12)',
     backgroundColor: BOARD_SCREEN_BG,
   },
-  /** Same band as month header (APR). */
   listHeaderCell: {
     justifyContent: 'center',
     paddingHorizontal: 10,

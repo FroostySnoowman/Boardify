@@ -379,6 +379,48 @@ export default function BoardSettingsScreen() {
               </SettingsInsetChoiceList>
             </SettingsSection>
 
+            <SettingsSection title="Archive & activity">
+              <Text style={styles.sublabel}>
+                Opened from the board’s settings (gear in the bottom bar). Stored on this device;
+                restore sends items back to the board.
+              </Text>
+              <Pressable
+                onPress={() => {
+                  hapticLight();
+                  router.push({ pathname: '/board-archive', params: { boardName } });
+                }}
+                style={({ pressed }) => [styles.navLinkCell, pressed && styles.navLinkRowPressed]}
+              >
+                <View style={styles.navLinkTitleRow}>
+                  <Text style={styles.navLinkTitle} numberOfLines={1}>
+                    Archived items
+                  </Text>
+                  <View style={styles.navLinkChevron} pointerEvents="none">
+                    <Feather name="chevron-right" size={20} color="#666" />
+                  </View>
+                </View>
+                <Text style={styles.navLinkSub}>Tasks and lists removed from the board</Text>
+              </Pressable>
+              <View style={styles.divider} />
+              <Pressable
+                onPress={() => {
+                  hapticLight();
+                  router.push({ pathname: '/board-audit', params: { boardName } });
+                }}
+                style={({ pressed }) => [styles.navLinkCell, pressed && styles.navLinkRowPressed]}
+              >
+                <View style={styles.navLinkTitleRow}>
+                  <Text style={styles.navLinkTitle} numberOfLines={1}>
+                    Activity log
+                  </Text>
+                  <View style={styles.navLinkChevron} pointerEvents="none">
+                    <Feather name="chevron-right" size={20} color="#666" />
+                  </View>
+                </View>
+                <Text style={styles.navLinkSub}>Archive and restore history</Text>
+              </Pressable>
+            </SettingsSection>
+
             <SettingsSection title="Reminders">
               <SettingsToggleRow
                 label="Daily digest reminder"
@@ -623,6 +665,40 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(0,0,0,0.12)',
     marginVertical: 4,
+  },
+  navLinkCell: {
+    alignSelf: 'stretch',
+    width: '100%',
+    paddingVertical: 12,
+  },
+  navLinkRowPressed: {
+    opacity: 0.7,
+  },
+  navLinkTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    flexWrap: 'nowrap',
+    gap: 8,
+  },
+  navLinkChevron: {
+    flexShrink: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  navLinkTitle: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0a0a0a',
+  },
+  navLinkSub: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 4,
+    lineHeight: 18,
   },
   actions: {
     marginTop: 8,

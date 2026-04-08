@@ -170,6 +170,8 @@ function AppContent() {
         <Stack.Screen name="create-board" options={createBoardModalOptions} />
         <Stack.Screen name="board-settings" options={createBoardModalOptions} />
         <Stack.Screen name="board-notifications" options={createBoardModalOptions} />
+        <Stack.Screen name="board-archive" options={createBoardModalOptions} />
+        <Stack.Screen name="board-audit" options={createBoardModalOptions} />
         <Stack.Screen name="add-dashboard-tile" options={createBoardModalOptions} />
         <Stack.Screen name="default-board" options={createBoardModalOptions} />
         <Stack.Screen name="board" options={{ headerShown: false }} />

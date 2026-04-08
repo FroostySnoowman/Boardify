@@ -26,7 +26,6 @@ export interface BoardColumnProps {
   title: string;
   cards: BoardCardData[];
   onAddCard?: () => void;
-  /** Inline quick-add (replaces “Add card” row when true). */
   addCardComposerOpen?: boolean;
   addCardComposerValue?: string;
   onAddCardComposerChangeText?: (text: string) => void;

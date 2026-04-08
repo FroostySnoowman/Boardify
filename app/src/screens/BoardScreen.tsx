@@ -11,6 +11,7 @@ import {
   UIManager,
   useWindowDimensions,
   Keyboard,
+  DeviceEventEmitter,
 } from 'react-native';
 import { GlassRoundIconButton } from '../components/GlassRoundIconButton';
 import { ContextMenu } from '../components/ContextMenu';
@@ -51,6 +52,12 @@ import {
 import { BoardCard } from '../components/BoardCard';
 import type { BoardCardData, BoardColumnData, BoardViewMode, TaskLabel } from '../types/board';
 import { loadBoardSettings, resolveBoardDisplayTitle } from '../storage/boardSettings';
+import {
+  applyPendingRestoreOps,
+  archiveCard,
+  archiveList,
+  consumePendingRestores,
+} from '../storage/boardArchiveStorage';
 import type {
   DashboardChartKind,
   DashboardDimension,
@@ -61,6 +68,7 @@ import {
   boardDropZoneChrome,
   BOARD_DROP_ZONE_CARD_RADIUS,
 } from '../board/boardDropZoneStyles';
+import { BOARD_PENDING_RESTORE_EVENT } from '../board/boardRestoreEvents';
 import {
   BOARD_CARD_ROW_HEIGHT,
   computeColumnHoverInsertIndex,
@@ -236,7 +244,6 @@ interface BoardScreenProps {
   onBoardViewSelect?: (mode: BoardViewMode) => void;
   onOpenBoardSettings?: () => void;
   onOpenBoardNotifications?: () => void;
-  /** Optional overrides merged into the built-in bar props (search/bell/settings always receive real handlers). */
   glassBottomBar?: Partial<BoardGlassBottomBarProps>;
 }
 
@@ -253,6 +260,8 @@ export default function BoardScreen({
   const screenWRef = useRef(screenW);
   screenWRef.current = screenW;
   const [columns, setColumns] = useState<BoardColumnData[]>(INITIAL_COLUMNS);
+  const columnsRef = useRef(columns);
+  columnsRef.current = columns;
   const [viewMode, setViewMode] = useState<BoardViewMode>('board');
   const [boardFocusMode, setBoardFocusMode] = useState(false);
   const [displayBoardTitle, setDisplayBoardTitle] = useState(boardName);
@@ -276,11 +285,28 @@ export default function BoardScreen({
       loadBoardSettings(boardName).then((s) => {
         if (!cancelled) setDisplayBoardTitle(resolveBoardDisplayTitle(boardName, s));
       });
+      (async () => {
+        const ops = await consumePendingRestores(boardName);
+        if (cancelled || ops.length === 0) return;
+        setColumns((prev) => applyPendingRestoreOps(prev, ops));
+      })();
       return () => {
         cancelled = true;
       };
     }, [boardName])
   );
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(BOARD_PENDING_RESTORE_EVENT, (name: string) => {
+      if (name !== boardName) return;
+      void (async () => {
+        const ops = await consumePendingRestores(boardName);
+        if (ops.length === 0) return;
+        setColumns((prev) => applyPendingRestoreOps(prev, ops));
+      })();
+    });
+    return () => sub.remove();
+  }, [boardName]);
   const [focusPageIndex, setFocusPageIndex] = useState(0);
   const prevBoardFocusRef = useRef(false);
   const boardFocusModeRef = useRef(false);
@@ -995,6 +1021,10 @@ export default function BoardScreen({
     dragOverArchivePrevRef.current = false;
     setDragOverArchive(false);
     if (d && overArchive) {
+      const snap = columnsRef.current;
+      const listTitle = snap[d.fromCol]?.title ?? '';
+      const card = snap[d.fromCol]?.cards.find((c) => c.id === d.cardId);
+      if (card) void archiveCard(boardName, card, listTitle);
       void hapticMedium();
       setColumns((prev) => removeCardFromBoard(prev, d.cardId));
     } else if (d && h) {
@@ -1003,7 +1033,7 @@ export default function BoardScreen({
     draggingRef.current = null;
     setDragging(null);
     setHoverTarget(null);
-  }, []);
+  }, [boardName]);
 
   const onColumnListDragBegin = useCallback(
     (args: {
@@ -1065,6 +1095,8 @@ export default function BoardScreen({
     dragOverArchivePrevRef.current = false;
     setDragOverArchive(false);
     if (d != null && overArchive) {
+      const col = columnsRef.current[d.fromIndex];
+      if (col) void archiveList(boardName, col);
       void hapticMedium();
       setColumns((prev) => removeColumnAtIndex(prev, d.fromIndex));
     } else if (d != null && insert != null) {
@@ -1073,7 +1105,7 @@ export default function BoardScreen({
     listDraggingRef.current = null;
     setListDragging(null);
     setListHoverInsert(null);
-  }, []);
+  }, [boardName]);
 
   useEffect(() => {
     if (!dragging && !listDragging) return;
@@ -1381,7 +1413,6 @@ export default function BoardScreen({
         setViewMode(view);
         onBoardViewSelect?.(view);
       },
-      /** Screen routes win over `glassBottomBar` for bell/settings; search defaults to `openCardSearch`. */
       onSearchCardsPress: glassBottomBar?.onSearchCardsPress ?? openCardSearch,
       onBellPress: onOpenBoardNotifications ?? glassBottomBar?.onBellPress ?? boardGlassBarNoopAction,
       onSettingsPress:
@@ -1849,7 +1880,7 @@ export default function BoardScreen({
       ) : null}
 
       {viewMode === 'board' && listDragging && draggingListColumn ? (
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <View pointerEvents="none" style={styles.listDragOverlayRoot}>
           <Animated.View
             style={[
               {
@@ -1937,7 +1968,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f0e8',
     overflow: 'visible',
   },
-  /** Replaces the normal board header while dragging a card (Trello-style). */
   archiveHeaderReplacement: {
     position: 'relative',
     height: BOARD_HEADER_ROW_HEIGHT,
@@ -1954,7 +1984,6 @@ const styles = StyleSheet.create({
   archiveHeaderReplacementActive: {
     backgroundColor: 'rgba(180, 40, 40, 0.42)',
   },
-  /** Drawn inside fixed header height so active state never changes layout. */
   archiveHeaderBottomLine: {
     position: 'absolute',
     left: 0,
@@ -1972,6 +2001,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   cardDragOverlayRoot: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 22000,
+    elevation: 22,
+  },
+  listDragOverlayRoot: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 22000,
     elevation: 22,

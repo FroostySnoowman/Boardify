@@ -17,7 +17,6 @@ const ICON_SIZE = 22;
 export type BoardBottomBarLayoutMode = 'board' | 'list' | 'calendar';
 
 export type BoardGlassBottomBarProps = {
-  /** Opens card search / filter in the board header (magnifying glass, left of notifications). */
   onSearchCardsPress: () => void;
   onBellPress: () => void;
   onSettingsPress: () => void;
@@ -54,7 +53,6 @@ const LAYOUT_MENU_ORB_SIZE = 45;
 const GLASS_PAIR_WIDTH = TRIPLE_PILL_WIDTH + ROW_GAP + EXPAND_ORB_SIZE;
 const ROW_TOTAL_WIDTH_WITH_EXPAND = GLASS_PAIR_WIDTH - EXPAND_SHIFT_LEFT;
 const ROW_TOTAL_WIDTH_PILL_ONLY = TRIPLE_PILL_WIDTH;
-/** Bell is the 2nd icon (index 1): search, bell, settings. */
 const BELL_CENTER_X_FROM_PILL_LEFT =
   TRIPLE_PILL_PADDING_H + TRIPLE_SLOT / 2 + (TRIPLE_SLOT + TRIPLE_ICON_GAP);
 

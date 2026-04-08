@@ -1,0 +1,26 @@
+{
+	"name": "api",
+	"version": "0.0.0",
+	"private": true,
+	"overrides": {
+		"esbuild": "^0.25.0"
+	},
+	"scripts": {
+		"dev": "wrangler dev --env dev --remote",
+		"deploy": "wrangler deploy --env production",
+		"test": "vitest",
+		"types": "wrangler types"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.12.12",
+		"typescript": "^5.9.3",
+		"vitest": "^2.1.8",
+		"wrangler": "^4.65.0"
+	},
+	"dependencies": {
+		"drizzle-orm": "^0.45.1",
+		"kysely": "^0.28.11",
+		"kysely-d1": "^0.4.0",
+		"obscenity": "^0.4.6"
+	}
+}

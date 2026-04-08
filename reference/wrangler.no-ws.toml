@@ -1,0 +1,17 @@
+name = "api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+account_id = "1375a493110484a42c26f22fcda1478c"
+
+[dev]
+port = 8788
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mybreakpoint-db"
+database_id = "0e3cdd00-8198-43fc-a799-1c747349a02b"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "mybreakpoint-images"
+preview_bucket_name = "mybreakpoint-images-dev"

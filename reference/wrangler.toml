@@ -1,0 +1,105 @@
+name = "api"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+account_id = "1375a493110484a42c26f22fcda1478c"
+
+[placement]
+mode = "smart"
+
+# Default bindings (production)
+[[d1_databases]]
+binding = "DB"
+database_name = "mybreakpoint-db"
+database_id = "0e3cdd00-8198-43fc-a799-1c747349a02b"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "mybreakpoint-images"
+
+[[durable_objects.bindings]]
+name = "MATCH_SPECTATE"
+class_name = "MatchSpectate"
+script_name = "api"
+
+[[durable_objects.bindings]]
+name = "LIVE_MATCHES_LIST"
+class_name = "LiveMatchesList"
+script_name = "api"
+
+[[durable_objects.bindings]]
+name = "MESSAGE_WS"
+class_name = "MessageWebSocket"
+script_name = "api"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MatchSpectate", "MessageWebSocket"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["LiveMatchesList"]
+
+[triggers]
+crons = ["* * * * *"]
+
+[dev]
+port = 8787
+
+[env.dev]
+name = "api-dev"
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "mybreakpoint-db-dev"
+database_id = "dac258d9-548d-44c3-8e23-8564207b4ad8"
+preview_database_id = "dac258d9-548d-44c3-8e23-8564207b4ad8"
+
+[[env.dev.r2_buckets]]
+binding = "IMAGES"
+bucket_name = "mybreakpoint-images-dev"
+preview_bucket_name = "mybreakpoint-images-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "MATCH_SPECTATE"
+class_name = "MatchSpectate"
+script_name = "api-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "LIVE_MATCHES_LIST"
+class_name = "LiveMatchesList"
+script_name = "api-dev"
+
+[[env.dev.durable_objects.bindings]]
+name = "MESSAGE_WS"
+class_name = "MessageWebSocket"
+script_name = "api-dev"
+
+[env.production]
+name = "api"
+
+[env.production.triggers]
+crons = ["* * * * *"]
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "mybreakpoint-db"
+database_id = "0e3cdd00-8198-43fc-a799-1c747349a02b"
+
+[[env.production.r2_buckets]]
+binding = "IMAGES"
+bucket_name = "mybreakpoint-images"
+
+[[env.production.durable_objects.bindings]]
+name = "MATCH_SPECTATE"
+class_name = "MatchSpectate"
+script_name = "api"
+
+[[env.production.durable_objects.bindings]]
+name = "LIVE_MATCHES_LIST"
+class_name = "LiveMatchesList"
+script_name = "api"
+
+[[env.production.durable_objects.bindings]]
+name = "MESSAGE_WS"
+class_name = "MessageWebSocket"
+script_name = "api"

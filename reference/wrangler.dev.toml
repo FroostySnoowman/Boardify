@@ -1,0 +1,43 @@
+name = "api-dev"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+account_id = "1375a493110484a42c26f22fcda1478c"
+
+[dev]
+port = 8787
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mybreakpoint-db-dev"
+database_id = "dac258d9-548d-44c3-8e23-8564207b4ad8"
+preview_database_id = "dac258d9-548d-44c3-8e23-8564207b4ad8"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "mybreakpoint-images-dev"
+preview_bucket_name = "mybreakpoint-images-dev"
+
+[[durable_objects.bindings]]
+name = "MATCH_SPECTATE"
+class_name = "MatchSpectate"
+script_name = "api-dev"
+
+[[durable_objects.bindings]]
+name = "LIVE_MATCHES_LIST"
+class_name = "LiveMatchesList"
+script_name = "api-dev"
+
+[[durable_objects.bindings]]
+name = "MESSAGE_WS"
+class_name = "MessageWebSocket"
+script_name = "api-dev"
+
+# Migrations are already applied to the deployed worker
+# Keeping them here causes errors when redeploying
+# [[migrations]]
+# tag = "v1"
+# new_sqlite_classes = ["MatchSpectate", "MessageWebSocket"]
+#
+# [[migrations]]
+# tag = "v2"
+# new_sqlite_classes = ["MatchRadio"]

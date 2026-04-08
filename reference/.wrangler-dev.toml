@@ -1,0 +1,5 @@
+# This file forces wrangler dev to use remote bindings
+# Place this in api/.wrangler-dev.toml
+[dev]
+remote = true
+persist_to = ".wrangler/state/v3"

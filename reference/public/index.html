@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+		/>
+		<title>MyBreakPoint API - Not Found</title>
+		<style>
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			:root {
+				color-scheme: dark;
+				--bg: #020617;
+				--card: #020617;
+				--card-alt: #020617;
+				--accent: #22c55e;
+				--accent-soft: rgba(34, 197, 94, 0.12);
+				--text-main: #e5e7eb;
+				--text-muted: #9ca3af;
+				--border-subtle: rgba(148, 163, 184, 0.3);
+			}
+
+			body {
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 1.5rem;
+				font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+					"Segoe UI", sans-serif;
+				background:
+					radial-gradient(circle at top left, #1e293b 0, transparent 50%),
+					radial-gradient(circle at bottom right, #0f172a 0, #020617 55%);
+				color: var(--text-main);
+				overflow: hidden;
+			}
+
+			.court-grid {
+				position: fixed;
+				inset: 0;
+				pointer-events: none;
+				opacity: 0.18;
+				background-image: linear-gradient(
+						to right,
+						rgba(148, 163, 184, 0.18) 1px,
+						transparent 1px
+					),
+					linear-gradient(
+						to bottom,
+						rgba(148, 163, 184, 0.18) 1px,
+						transparent 1px
+					);
+				background-size: 44px 44px;
+				mask-image: radial-gradient(circle at center, black 0, transparent 70%);
+			}
+
+			main {
+				position: relative;
+				z-index: 1;
+				max-width: 640px;
+				width: 100%;
+				padding: 2.5rem 2.25rem 2.25rem;
+				border-radius: 1.5rem;
+				background: radial-gradient(circle at top, #020617, #020617 60%);
+				box-shadow:
+					0 24px 60px rgba(15, 23, 42, 0.95),
+					0 0 0 1px rgba(15, 23, 42, 1);
+				border: 1px solid rgba(148, 163, 184, 0.18);
+			}
+
+			header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 1.5rem;
+				margin-bottom: 1.75rem;
+			}
+
+			.brand {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+			}
+
+			.logo-mark {
+				width: 36px;
+				height: 36px;
+				border-radius: 999px;
+				background: radial-gradient(circle at 30% 30%, #bbf7d0, #22c55e);
+				position: relative;
+				box-shadow:
+					0 0 0 1px rgba(15, 23, 42, 0.9),
+					0 12px 25px rgba(34, 197, 94, 0.55);
+			}
+
+			.logo-mark::before,
+			.logo-mark::after {
+				content: "";
+				position: absolute;
+				inset: 35% 10%;
+				border-radius: 999px;
+				border: 1.5px solid rgba(15, 23, 42, 0.75);
+			}
+
+			.logo-mark::after {
+				inset: 50% 10%;
+			}
+
+			.brand-text {
+				display: flex;
+				flex-direction: column;
+				gap: 0.1rem;
+			}
+
+			.brand-name {
+				font-size: 0.95rem;
+				font-weight: 600;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				color: #f9fafb;
+			}
+
+			.brand-sub {
+				font-size: 0.75rem;
+				text-transform: uppercase;
+				letter-spacing: 0.16em;
+				color: var(--text-muted);
+			}
+
+			.status-pill {
+				font-size: 0.75rem;
+				text-transform: uppercase;
+				letter-spacing: 0.14em;
+				padding: 0.35rem 0.7rem;
+				border-radius: 999px;
+				border: 1px solid rgba(148, 163, 184, 0.35);
+				color: var(--text-muted);
+				background: radial-gradient(circle at top left, #020617, #020617 70%);
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4rem;
+				white-space: nowrap;
+			}
+
+			.status-dot {
+				width: 6px;
+				height: 6px;
+				border-radius: 999px;
+				background: rgba(248, 250, 252, 0.65);
+			}
+
+			.status-label {
+				opacity: 0.8;
+			}
+
+			.hero {
+				display: flex;
+				flex-direction: column;
+				gap: 0.75rem;
+				margin-bottom: 1.5rem;
+			}
+
+			h1 {
+				font-size: 2rem;
+				line-height: 1.15;
+				font-weight: 700;
+			}
+
+			.hero-highlight {
+				color: var(--accent);
+			}
+
+			.hero-subtitle {
+				font-size: 0.98rem;
+				color: var(--text-muted);
+				max-width: 30rem;
+				line-height: 1.7;
+			}
+
+			.hero-subtitle strong {
+				color: #e5e7eb;
+				font-weight: 500;
+			}
+
+			.meta {
+				display: grid;
+				grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.4fr);
+				gap: 1.15rem;
+				align-items: flex-start;
+			}
+
+			.meta-block {
+				border-radius: 1rem;
+				padding: 1rem 1.1rem;
+				border: 1px solid rgba(148, 163, 184, 0.25);
+				background: radial-gradient(
+					circle at top left,
+					rgba(34, 197, 94, 0.12),
+					rgba(15, 23, 42, 0.92)
+				);
+			}
+
+			.meta-title {
+				font-size: 0.75rem;
+				text-transform: uppercase;
+				letter-spacing: 0.16em;
+				color: var(--text-muted);
+				margin-bottom: 0.45rem;
+			}
+
+			.meta-content {
+				font-size: 0.9rem;
+				color: var(--text-main);
+				line-height: 1.7;
+			}
+
+			.meta-content code {
+				font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+					"Liberation Mono", "Courier New", monospace;
+				font-size: 0.78rem;
+				padding: 0.15rem 0.35rem;
+				border-radius: 999px;
+				background: rgba(15, 23, 42, 0.95);
+				border: 1px solid rgba(148, 163, 184, 0.35);
+			}
+
+			.meta-list {
+				list-style: none;
+				display: grid;
+				gap: 0.25rem;
+				margin-top: 0.25rem;
+			}
+
+			.meta-list li {
+				display: flex;
+				align-items: baseline;
+				gap: 0.45rem;
+				font-size: 0.88rem;
+				color: var(--text-muted);
+			}
+
+			.meta-bullet {
+				width: 6px;
+				height: 6px;
+				border-radius: 999px;
+				background: var(--accent-soft);
+				border: 1px solid var(--accent);
+				margin-top: 0.35rem;
+			}
+
+			.meta-kv {
+				display: flex;
+				justify-content: space-between;
+				align-items: baseline;
+				gap: 0.75rem;
+				font-size: 0.86rem;
+			}
+
+			.meta-kv span:first-child {
+				color: var(--text-muted);
+				text-transform: uppercase;
+				letter-spacing: 0.16em;
+				font-size: 0.75rem;
+			}
+
+			.meta-kv span:last-child {
+				color: var(--text-main);
+				font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+					"Courier New", monospace;
+				font-size: 0.83rem;
+			}
+
+			.meta-kv span.path {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+				max-width: 16rem;
+			}
+
+			.footer {
+				margin-top: 1.25rem;
+				padding-top: 0.9rem;
+				border-top: 1px dashed rgba(75, 85, 99, 0.7);
+				display: flex;
+				justify-content: space-between;
+				gap: 0.75rem;
+				align-items: center;
+				font-size: 0.78rem;
+				color: var(--text-muted);
+			}
+
+			.footer span strong {
+				color: #e5e7eb;
+				font-weight: 500;
+			}
+
+			.footer-links {
+				display: flex;
+				gap: 0.75rem;
+				flex-wrap: wrap;
+			}
+
+			.footer-links a {
+				color: var(--accent);
+				text-decoration: none;
+				font-size: 0.78rem;
+				opacity: 0.9;
+			}
+
+			.footer-links a:hover {
+				opacity: 1;
+				text-decoration: underline;
+				text-underline-offset: 2px;
+			}
+
+			@media (max-width: 720px) {
+				main {
+					padding: 2rem 1.5rem 1.75rem;
+					border-radius: 1.25rem;
+				}
+
+				header {
+					flex-direction: column;
+					align-items: flex-start;
+				}
+
+				h1 {
+					font-size: 1.7rem;
+				}
+
+				.hero-subtitle {
+					font-size: 0.92rem;
+				}
+
+				.meta {
+					grid-template-columns: minmax(0, 1fr);
+				}
+
+				.meta-kv span.path {
+					max-width: 100%;
+				}
+
+				.footer {
+					flex-direction: column;
+					align-items: flex-start;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="court-grid" aria-hidden="true"></div>
+
+		<main>
+			<header>
+				<div class="brand">
+					<div class="logo-mark" aria-hidden="true"></div>
+					<div class="brand-text">
+						<div class="brand-name">MyBreakPoint</div>
+						<div class="brand-sub">Tennis analytics api</div>
+					</div>
+				</div>
+
+				<div class="status-pill" aria-label="404 - Route not found">
+					<div class="status-dot"></div>
+					<span class="status-label">404 · Route not found</span>
+				</div>
+			</header>
+
+			<section class="hero">
+				<h1>
+					This ball never
+					<span class="hero-highlight">made it in.</span>
+				</h1>
+				<p class="hero-subtitle">
+					You've hit an API endpoint that
+					<strong>doesn't exist</strong> in this Worker. Check your route,
+					method, or version and try the request again against a valid path.
+				</p>
+			</section>
+
+			<section class="meta">
+				<div class="meta-block">
+					<div class="meta-title">Quick checks</div>
+					<div class="meta-content">
+						<ul class="meta-list">
+							<li>
+								<span class="meta-bullet"></span>
+								<span>Confirm the URL matches a configured <code>route</code> in <code>wrangler.jsonc</code>.</span>
+							</li>
+							<li>
+								<span class="meta-bullet"></span>
+								<span>Verify the HTTP method (GET, POST, etc.) is supported by the handler.</span>
+							</li>
+							<li>
+								<span class="meta-bullet"></span>
+								<span>If you just deployed, ensure the client is hitting the latest <code>api</code> host or path prefix.</span>
+							</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="meta-block">
+					<div class="meta-title">Request context</div>
+					<div class="meta-content">
+						<div class="meta-kv">
+							<span>Path</span>
+							<span id="path" class="path">/</span>
+						</div>
+						<div class="meta-kv">
+							<span>Environment</span>
+							<span id="env">unknown</span>
+						</div>
+						<div class="meta-kv">
+							<span>Service</span>
+							<span>Cloudflare Worker · MyBreakPoint API</span>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<footer class="footer">
+				<span>
+					<strong>Tip:</strong>
+					This page is served as a static asset from
+					<code>public/index.html</code> in your Worker.
+				</span>
+				<div class="footer-links">
+					<a href="/">Back to site</a>
+					<a href="https://developers.cloudflare.com/workers/" target="_blank" rel="noreferrer">Workers docs</a>
+				</div>
+			</footer>
+		</main>
+
+		<script>
+			(function () {
+				const pathEl = document.getElementById("path");
+				const envEl = document.getElementById("env");
+
+				try {
+					pathEl.textContent = window.location.pathname || "/";
+				} catch {
+					pathEl.textContent = "/";
+				}
+
+				try {
+					const host = window.location.host || "";
+					if (host.includes("localhost") || host.includes("127.0.0.1")) {
+						envEl.textContent = "local";
+					} else if (host.includes("dev") || host.includes("staging")) {
+						envEl.textContent = "staging";
+					} else {
+						envEl.textContent = "production";
+					}
+				} catch {
+					envEl.textContent = "unknown";
+				}
+			})();
+		</script>
+	</body>
+</html>

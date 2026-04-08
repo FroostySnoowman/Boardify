@@ -1,0 +1,150 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "api",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-11-17",
+	"compatibility_flags": [
+		"global_fetch_strictly_public"
+	],
+	"observability": {
+		"enabled": true
+	},
+	"dev": { "port": 8787 },
+	"triggers": { "crons": ["*/5 * * * *"] },
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "mybreakpoint-db",
+			"database_id": "0e3cdd00-8198-43fc-a799-1c747349a02b"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "IMAGES",
+			"bucket_name": "mybreakpoint-images"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "MATCH_SPECTATE",
+				"class_name": "MatchSpectate",
+				"script_name": "api"
+			},
+			{
+				"name": "MATCH_RADIO",
+				"class_name": "MatchRadio",
+				"script_name": "api"
+			},
+			{
+				"name": "LIVE_MATCHES_LIST",
+				"class_name": "LiveMatchesList",
+				"script_name": "api"
+			},
+			{
+				"name": "MESSAGE_WS",
+				"class_name": "MessageWebSocket",
+				"script_name": "api"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["MatchSpectate", "MessageWebSocket"]
+		},
+		{
+			"tag": "v2",
+			"new_sqlite_classes": ["MatchRadio"]
+		},
+		{
+			"tag": "v3",
+			"new_sqlite_classes": ["LiveMatchesList"]
+		}
+	],
+	"env": {
+		"dev": {
+			"name": "api-dev",
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "mybreakpoint-db-dev",
+					"database_id": "dac258d9-548d-44c3-8e23-8564207b4ad8",
+					"preview_database_id": "dac258d9-548d-44c3-8e23-8564207b4ad8"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "IMAGES",
+					"bucket_name": "mybreakpoint-images-dev",
+					"preview_bucket_name": "mybreakpoint-images-dev"
+				}
+			],
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "MATCH_SPECTATE",
+						"class_name": "MatchSpectate",
+						"script_name": "api-dev"
+					},
+					{
+						"name": "MATCH_RADIO",
+						"class_name": "MatchRadio",
+						"script_name": "api-dev"
+					},
+					{
+						"name": "LIVE_MATCHES_LIST",
+						"class_name": "LiveMatchesList",
+						"script_name": "api-dev"
+					},
+					{
+						"name": "MESSAGE_WS",
+						"class_name": "MessageWebSocket",
+						"script_name": "api-dev"
+					}
+				]
+			}
+		},
+		"production": {
+			"name": "api",
+			"triggers": { "crons": ["*/5 * * * *"] },
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "mybreakpoint-db",
+					"database_id": "0e3cdd00-8198-43fc-a799-1c747349a02b"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "IMAGES",
+					"bucket_name": "mybreakpoint-images"
+				}
+			],
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "MATCH_SPECTATE",
+						"class_name": "MatchSpectate",
+						"script_name": "api"
+					},
+					{
+						"name": "MATCH_RADIO",
+						"class_name": "MatchRadio",
+						"script_name": "api"
+					},
+					{
+						"name": "LIVE_MATCHES_LIST",
+						"class_name": "LiveMatchesList",
+						"script_name": "api"
+					},
+					{
+						"name": "MESSAGE_WS",
+						"class_name": "MessageWebSocket",
+						"script_name": "api"
+					}
+				]
+			}
+		}
+	}
+}

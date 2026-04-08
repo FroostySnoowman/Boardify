@@ -28,13 +28,13 @@ import {
 const BELOW_HEADER_GAP = 10;
 const BG = '#f5f0e8';
 
-const VIEW_OPTIONS: { label: string; value: BoardViewMode | 'inherit'; hint?: string }[] = [
+const VIEW_OPTIONS: { label: string; value: BoardViewMode | 'inherit' }[] = [
   { label: 'Board', value: 'board' },
   { label: 'Table', value: 'table' },
   { label: 'Calendar', value: 'calendar' },
   { label: 'Dashboard', value: 'dashboard' },
   { label: 'Timeline', value: 'timeline' },
-  { label: 'Last used', value: 'inherit', hint: 'Stay on whatever view you had open' },
+  { label: 'Last used', value: 'inherit' },
 ];
 
 function resolveBoardName(raw: string | string[] | undefined): string {
@@ -53,12 +53,10 @@ function SettingsSection({ title, children }: { title: string; children: React.R
 
 function SettingsToggleRow({
   label,
-  sublabel,
   value,
   onValueChange,
 }: {
   label: string;
-  sublabel?: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
 }) {
@@ -66,7 +64,6 @@ function SettingsToggleRow({
     <View style={styles.toggleRow}>
       <View style={styles.toggleTextCol}>
         <Text style={styles.toggleLabel}>{label}</Text>
-        {sublabel ? <Text style={styles.toggleSublabel}>{sublabel}</Text> : null}
       </View>
       <Switch
         value={value}
@@ -167,16 +164,8 @@ export default function BoardSettingsScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.card, cardShadow]}>
-            <Text style={styles.helper}>
-              Tune how this board behaves. Preferences are stored on this device for now.
-            </Text>
-
             <SettingsSection title="Board">
               <Text style={styles.metaLabel}>Board name</Text>
-              <Text style={styles.sublabelTiny}>
-                Shown at the top of the board. Home still opens this board by “{boardName}” until that
-                list is synced.
-              </Text>
               <TextInput
                 value={nameDraft}
                 editable={ready}
@@ -204,7 +193,6 @@ export default function BoardSettingsScreen() {
               />
 
               <Text style={[styles.metaLabel, styles.gapTop]}>Description</Text>
-              <Text style={styles.sublabelTiny}>Optional context for you or your team</Text>
               <TextInput
                 value={descDraft}
                 editable={ready}
@@ -220,11 +208,8 @@ export default function BoardSettingsScreen() {
             </SettingsSection>
 
             <SettingsSection title="Default view">
-              <Text style={styles.sublabel}>
-                When you open this board from the home list, start here.
-              </Text>
               <View style={styles.chipWrap}>
-                {VIEW_OPTIONS.map(({ label, value, hint }) => {
+                {VIEW_OPTIONS.map(({ label, value }) => {
                   const selected =
                     value === 'inherit'
                       ? currentDefaultToken === 'inherit'
@@ -243,7 +228,6 @@ export default function BoardSettingsScreen() {
                       style={[styles.chip, selected && styles.chipOn]}
                     >
                       <Text style={[styles.chipText, selected && styles.chipTextOn]}>{label}</Text>
-                      {hint && selected ? <Text style={styles.chipHint}>{hint}</Text> : null}
                     </Pressable>
                   );
                 })}
@@ -253,42 +237,37 @@ export default function BoardSettingsScreen() {
             <SettingsSection title="Productivity">
               <SettingsToggleRow
                 label="Haptic feedback"
-                sublabel="Light taps when you drag cards and use controls"
                 value={settings.hapticsEnabled}
                 onValueChange={(v) => patch({ hapticsEnabled: v })}
               />
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Confirm destructive actions"
-                sublabel="Extra check before archive-style actions"
                 value={settings.confirmBeforeDestructive}
                 onValueChange={(v) => patch({ confirmBeforeDestructive: v })}
               />
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Compact card density"
-                sublabel="Tighter rows in table and list-style views"
                 value={settings.compactCardDensity}
                 onValueChange={(v) => patch({ compactCardDensity: v })}
               />
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Show assignee avatars"
-                sublabel="On cards and timeline bars when space allows"
                 value={settings.showAssigneeAvatars}
                 onValueChange={(v) => patch({ showAssigneeAvatars: v })}
               />
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Open card details on tap"
-                sublabel="Prefer the expanded card sheet over inline edit"
                 value={settings.autoOpenCardDetails}
                 onValueChange={(v) => patch({ autoOpenCardDetails: v })}
               />
             </SettingsSection>
 
             <SettingsSection title="Calendar & timeline">
-              <Text style={styles.sublabel}>First day of the week</Text>
+              <Text style={styles.metaLabel}>First day of the week</Text>
               <View style={styles.row2}>
                 <Pressable
                   onPress={() => {
@@ -334,14 +313,12 @@ export default function BoardSettingsScreen() {
             <SettingsSection title="Reminders">
               <SettingsToggleRow
                 label="Daily digest reminder"
-                sublabel="Nudge once a day for due cards"
                 value={settings.dailyDigestReminder}
                 onValueChange={(v) => patch({ dailyDigestReminder: v })}
               />
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Focused list by default"
-                sublabel="Start in one-list focus when opening from shortcuts"
                 value={settings.focusModeByDefault}
                 onValueChange={(v) => patch({ focusModeByDefault: v })}
               />
@@ -388,13 +365,6 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     padding: 24,
   },
-  helper: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#444',
-    marginBottom: 20,
-    fontWeight: '500',
-  },
   section: {
     marginBottom: 22,
   },
@@ -413,12 +383,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     marginBottom: 6,
-  },
-  sublabelTiny: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-    marginTop: -2,
   },
   gapTop: {
     marginTop: 16,
@@ -447,43 +411,33 @@ const styles = StyleSheet.create({
     minHeight: 88,
     textAlignVertical: 'top',
   },
-  sublabel: {
-    fontSize: 13,
-    color: '#555',
-    marginBottom: 12,
-    lineHeight: 18,
-  },
   chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
+  /** Lighter than card inputs — matches productivity rows / in-app soft pills. */
   chip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#000',
-    backgroundColor: BG,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    backgroundColor: '#f5f5f5',
     maxWidth: '100%',
   },
   chipOn: {
-    backgroundColor: '#e9f2ff',
+    backgroundColor: '#e8f1fc',
     borderColor: '#0c66e4',
   },
   chipText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#0a0a0a',
+    fontWeight: '600',
+    color: '#374151',
   },
   chipTextOn: {
+    fontWeight: '700',
     color: '#0c66e4',
-  },
-  chipHint: {
-    fontSize: 11,
-    color: '#5e6c84',
-    marginTop: 4,
-    fontWeight: '500',
   },
   toggleRow: {
     flexDirection: 'row',
@@ -502,12 +456,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0a0a0a',
   },
-  toggleSublabel: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
-    lineHeight: 18,
-  },
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(0,0,0,0.12)',
@@ -519,23 +467,24 @@ const styles = StyleSheet.create({
   },
   halfChip: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#000',
-    backgroundColor: BG,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
   },
   halfChipOn: {
-    backgroundColor: '#e9f2ff',
+    backgroundColor: '#e8f1fc',
     borderColor: '#0c66e4',
   },
   halfChipText: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#0a0a0a',
+    fontWeight: '600',
+    color: '#374151',
   },
   halfChipTextOn: {
+    fontWeight: '700',
     color: '#0c66e4',
   },
   actions: {

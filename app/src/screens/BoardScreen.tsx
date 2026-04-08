@@ -76,11 +76,7 @@ const BOARD_STRIP_COL_STRIDE = BOARD_STRIP_COLUMN_WIDTH + 16;
 const FOCUS_ZOOM_EXIT_MS = 680;
 const FOCUS_EXIT_EASING = Easing.bezier(0.25, 0.1, 0.25, 1);
 
-/**
- * In-flow archive header row height (matches normal header padding + controls).
- * Used with safe-area top for window Y hit-testing: archive while absY < insets.top + this.
- */
-const BOARD_ARCHIVE_HEADER_ROW_HEIGHT = 68;
+const BOARD_HEADER_ROW_HEIGHT = 69;
 
 function stripColumnCenterScreenX(scrollX: number, pad: number, idx: number): number {
   return pad + idx * BOARD_STRIP_COL_STRIDE + BOARD_STRIP_COLUMN_WIDTH / 2 - scrollX;
@@ -818,7 +814,7 @@ export default function BoardScreen({
   const onDragMove = useCallback(
     (absX: number, absY: number) => {
       lastAbsRef.current = { x: absX, y: absY };
-      const overArchive = absY <= insets.top + BOARD_ARCHIVE_HEADER_ROW_HEIGHT;
+      const overArchive = absY <= insets.top + BOARD_HEADER_ROW_HEIGHT;
       dragOverArchiveRef.current = overArchive;
       if (overArchive !== dragOverArchivePrevRef.current) {
         dragOverArchivePrevRef.current = overArchive;
@@ -1268,6 +1264,12 @@ export default function BoardScreen({
         >
           <Feather name="archive" size={24} color="#fff" style={{ opacity: 0.95 }} />
           <Text style={styles.archiveHeaderReplacementText}>Drop here to archive</Text>
+          <View
+            style={[
+              styles.archiveHeaderBottomLine,
+              dragOverArchive && styles.archiveHeaderBottomLineActive,
+            ]}
+          />
         </View>
       ) : (
         <View style={styles.header}>
@@ -1686,30 +1688,38 @@ const styles = StyleSheet.create({
   },
   /** Replaces the normal board header while dragging a card (Trello-style). */
   archiveHeaderReplacement: {
+    position: 'relative',
+    height: BOARD_HEADER_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    minHeight: BOARD_ARCHIVE_HEADER_ROW_HEIGHT,
     zIndex: 25,
     backgroundColor: 'rgba(0, 0, 0, 0.48)',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.22)',
+    overflow: 'hidden',
   },
   archiveHeaderReplacementActive: {
     backgroundColor: 'rgba(180, 40, 40, 0.42)',
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(255, 255, 255, 0.95)',
   },
+  /** Drawn inside fixed header height so active state never changes layout. */
+  archiveHeaderBottomLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  archiveHeaderBottomLineActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',  },
   archiveHeaderReplacementText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.2,
   },
-  /** Wrapper must set z-index: RN only compares siblings; inner View z-index does not beat header/archive. */
   cardDragOverlayRoot: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 22000,

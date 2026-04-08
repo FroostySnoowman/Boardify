@@ -6,6 +6,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -60,6 +61,10 @@ export default function AddDashboardTileScreen() {
     const taken = existingCombos.some((t) => dashboardTileSignature(t) === sig);
     if (taken) {
       hapticLight();
+      Alert.alert(
+        'Already on dashboard',
+        'This chart combination is already added. Change the chart type or dimension and try again.'
+      );
       return;
     }
     hapticLight();

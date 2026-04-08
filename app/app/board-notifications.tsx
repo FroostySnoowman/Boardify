@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, createElement } from 'react';
+import React, { useCallback, useEffect, useRef, useState, createElement } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,20 @@ import {
   Switch,
   KeyboardAvoidingView,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { hapticLight } from '../src/utils/haptics';
+import {
+  loadBoardNotificationSettings,
+  mergeBoardNotificationSettings,
+  notificationMinutesToDate,
+  dateToNotificationMinutes,
+} from '../src/storage/boardNotificationSettings';
 
 const DateTimePickerNative =
   Platform.OS === 'web'
@@ -112,6 +119,46 @@ export default function BoardNotificationsScreen() {
   const [quietUntil, setQuietUntil] = useState(() => timeOnReferenceDate(8, 0));
   const [iosPicker, setIosPicker] = useState<null | 'from' | 'until'>(null);
   const [androidPicker, setAndroidPicker] = useState<null | 'from' | 'until'>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const quietFromRef = useRef(quietFrom);
+  const quietUntilRef = useRef(quietUntil);
+  const iosQuietDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  quietFromRef.current = quietFrom;
+  quietUntilRef.current = quietUntil;
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancel = false;
+      setHydrated(false);
+      void (async () => {
+        const s = await loadBoardNotificationSettings(boardName);
+        if (cancel) return;
+        setPushEnabled(s.pushEnabled);
+        setEmailDigest(s.emailDigest);
+        setMentionYou(s.mentionYou);
+        setAssignedCard(s.assignedCard);
+        setDueSoon(s.dueSoon);
+        setCommentsFollowed(s.commentsFollowed);
+        setQuietHours(s.quietHours);
+        setQuietFrom(notificationMinutesToDate(s.quietFromMinutes));
+        setQuietUntil(notificationMinutesToDate(s.quietUntilMinutes));
+        setHydrated(true);
+      })();
+      return () => {
+        cancel = true;
+      };
+    }, [boardName])
+  );
+
+  useEffect(() => {
+    return () => {
+      if (iosQuietDebounceRef.current) {
+        clearTimeout(iosQuietDebounceRef.current);
+        iosQuietDebounceRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!quietHours) {
@@ -143,14 +190,50 @@ export default function BoardNotificationsScreen() {
       }
       hapticLight();
       if (which === 'from') {
-        setQuietFrom((prev) => mergeTimeOfDay(prev, date));
+        setQuietFrom((prev) => {
+          const next = mergeTimeOfDay(prev, date);
+          void mergeBoardNotificationSettings(boardName, {
+            quietFromMinutes: dateToNotificationMinutes(next),
+          });
+          return next;
+        });
       } else {
-        setQuietUntil((prev) => mergeTimeOfDay(prev, date));
+        setQuietUntil((prev) => {
+          const next = mergeTimeOfDay(prev, date);
+          void mergeBoardNotificationSettings(boardName, {
+            quietUntilMinutes: dateToNotificationMinutes(next),
+          });
+          return next;
+        });
       }
       setAndroidPicker(null);
     },
-    []
+    [boardName]
   );
+
+  const scheduleIosQuietPersist = useCallback(() => {
+    if (iosQuietDebounceRef.current) {
+      clearTimeout(iosQuietDebounceRef.current);
+    }
+    iosQuietDebounceRef.current = setTimeout(() => {
+      iosQuietDebounceRef.current = null;
+      void mergeBoardNotificationSettings(boardName, {
+        quietFromMinutes: dateToNotificationMinutes(quietFromRef.current),
+        quietUntilMinutes: dateToNotificationMinutes(quietUntilRef.current),
+      });
+    }, 450);
+  }, [boardName]);
+
+  const flushIosQuietPersist = useCallback(() => {
+    if (iosQuietDebounceRef.current) {
+      clearTimeout(iosQuietDebounceRef.current);
+      iosQuietDebounceRef.current = null;
+    }
+    void mergeBoardNotificationSettings(boardName, {
+      quietFromMinutes: dateToNotificationMinutes(quietFromRef.current),
+      quietUntilMinutes: dateToNotificationMinutes(quietUntilRef.current),
+    });
+  }, [boardName]);
 
   const cardShadow =
     Platform.OS === 'ios'
@@ -199,6 +282,11 @@ export default function BoardNotificationsScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {!hydrated ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="large" color="#0a0a0a" />
+            </View>
+          ) : (
           <View style={[styles.card, cardShadow]}>
             <Text style={styles.helper}>
               Manage how you stay updated on “{boardName}”. Delivery respects system notification permissions
@@ -210,14 +298,20 @@ export default function BoardNotificationsScreen() {
                 label="Push notifications"
                 sublabel="Instant alerts when something important happens"
                 value={pushEnabled}
-                onValueChange={setPushEnabled}
+                onValueChange={(v) => {
+                  setPushEnabled(v);
+                  void mergeBoardNotificationSettings(boardName, { pushEnabled: v });
+                }}
               />
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Email digest"
                 sublabel="Once-a-day summary of board activity"
                 value={emailDigest}
-                onValueChange={setEmailDigest}
+                onValueChange={(v) => {
+                  setEmailDigest(v);
+                  void mergeBoardNotificationSettings(boardName, { emailDigest: v });
+                }}
               />
             </SettingsSection>
 
@@ -225,26 +319,38 @@ export default function BoardNotificationsScreen() {
               <SettingsToggleRow
                 label="@mentions of you"
                 value={mentionYou}
-                onValueChange={setMentionYou}
+                onValueChange={(v) => {
+                  setMentionYou(v);
+                  void mergeBoardNotificationSettings(boardName, { mentionYou: v });
+                }}
               />
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Cards assigned to you"
                 value={assignedCard}
-                onValueChange={setAssignedCard}
+                onValueChange={(v) => {
+                  setAssignedCard(v);
+                  void mergeBoardNotificationSettings(boardName, { assignedCard: v });
+                }}
               />
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Due dates approaching"
                 sublabel="Cards due in the next 24 hours"
                 value={dueSoon}
-                onValueChange={setDueSoon}
+                onValueChange={(v) => {
+                  setDueSoon(v);
+                  void mergeBoardNotificationSettings(boardName, { dueSoon: v });
+                }}
               />
               <View style={styles.divider} />
               <SettingsToggleRow
                 label="Comments on followed cards"
                 value={commentsFollowed}
-                onValueChange={setCommentsFollowed}
+                onValueChange={(v) => {
+                  setCommentsFollowed(v);
+                  void mergeBoardNotificationSettings(boardName, { commentsFollowed: v });
+                }}
               />
             </SettingsSection>
 
@@ -253,7 +359,10 @@ export default function BoardNotificationsScreen() {
                 label="Pause overnight"
                 sublabel="Silence push notifications during a daily time window"
                 value={quietHours}
-                onValueChange={setQuietHours}
+                onValueChange={(v) => {
+                  setQuietHours(v);
+                  void mergeBoardNotificationSettings(boardName, { quietHours: v });
+                }}
               />
               {quietHours ? (
                 <>
@@ -266,7 +375,13 @@ export default function BoardNotificationsScreen() {
                           type: 'time',
                           value: toWebTimeValue(quietFrom),
                           onChange: (e: { target: HTMLInputElement }) => {
-                            setQuietFrom((prev) => fromWebTimeValue(e.target.value, prev));
+                            setQuietFrom((prev) => {
+                              const next = fromWebTimeValue(e.target.value, prev);
+                              void mergeBoardNotificationSettings(boardName, {
+                                quietFromMinutes: dateToNotificationMinutes(next),
+                              });
+                              return next;
+                            });
                           },
                           style: webTimeInputRowStyle,
                         })}
@@ -278,7 +393,13 @@ export default function BoardNotificationsScreen() {
                           type: 'time',
                           value: toWebTimeValue(quietUntil),
                           onChange: (e: { target: HTMLInputElement }) => {
-                            setQuietUntil((prev) => fromWebTimeValue(e.target.value, prev));
+                            setQuietUntil((prev) => {
+                              const next = fromWebTimeValue(e.target.value, prev);
+                              void mergeBoardNotificationSettings(boardName, {
+                                quietUntilMinutes: dateToNotificationMinutes(next),
+                              });
+                              return next;
+                            });
                           },
                           style: webTimeInputRowStyle,
                         })}
@@ -341,6 +462,7 @@ export default function BoardNotificationsScreen() {
                             <Pressable
                               onPress={() => {
                                 hapticLight();
+                                flushIosQuietPersist();
                                 setIosPicker(null);
                               }}
                               hitSlop={10}
@@ -360,6 +482,7 @@ export default function BoardNotificationsScreen() {
                                 } else {
                                   setQuietUntil((prev) => mergeTimeOfDay(prev, date));
                                 }
+                                scheduleIosQuietPersist();
                               }}
                               themeVariant="light"
                               {...(Platform.OS === 'ios' ? { textColor: '#0a0a0a' as const } : {})}
@@ -391,6 +514,7 @@ export default function BoardNotificationsScreen() {
               ) : null}
             </SettingsSection>
           </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -432,6 +556,12 @@ const styles = StyleSheet.create({
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
+  },
+  loadingWrap: {
+    minHeight: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 48,
   },
   card: {
     alignSelf: 'stretch',

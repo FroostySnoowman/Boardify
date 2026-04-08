@@ -18,7 +18,11 @@ import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 import { TabScreenChrome } from '../components/TabScreenChrome';
 import { ContextMenu } from '../components/ContextMenu';
 import { boardLabelForId } from '../data/boards';
-import { getStoredDefaultBoardId } from '../storage/accountPrefs';
+import {
+  getStoredDefaultBoardId,
+  loadAccountUiPrefs,
+  saveAccountUiPrefs,
+} from '../storage/accountPrefs';
 
 const SHIFT = 5;
 
@@ -41,20 +45,44 @@ export default function AccountScreen() {
   const [config, setConfig] = useState<AccountConfig>(DEFAULT_CONFIG);
   const isWeb = Platform.OS === 'web';
 
-  const refreshDefaultBoard = useCallback(async () => {
-    const id = await getStoredDefaultBoardId();
-    setConfig((c) => ({ ...c, defaultBoardId: id }));
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
-      refreshDefaultBoard();
-    }, [refreshDefaultBoard])
+      let cancel = false;
+      void (async () => {
+        const [id, ui] = await Promise.all([getStoredDefaultBoardId(), loadAccountUiPrefs()]);
+        if (cancel) return;
+        setConfig((c) => ({
+          ...c,
+          defaultBoardId: id,
+          notificationsEnabled: ui.notificationsEnabled,
+          theme: ui.theme,
+        }));
+      })();
+      return () => {
+        cancel = true;
+      };
+    }, [])
   );
+
+  const persistUiPrefs = useCallback((next: Pick<AccountConfig, 'notificationsEnabled' | 'theme'>) => {
+    void saveAccountUiPrefs({
+      notificationsEnabled: next.notificationsEnabled,
+      theme: next.theme,
+    });
+  }, []);
 
   const updateConfig = <K extends keyof AccountConfig>(key: K, value: AccountConfig[K]) => {
     hapticLight();
-    setConfig((c) => ({ ...c, [key]: value }));
+    setConfig((c) => {
+      const next = { ...c, [key]: value };
+      if (key === 'notificationsEnabled' || key === 'theme') {
+        persistUiPrefs({
+          notificationsEnabled: next.notificationsEnabled,
+          theme: next.theme,
+        });
+      }
+      return next;
+    });
   };
 
   const themeSublabel =
@@ -69,7 +97,14 @@ export default function AccountScreen() {
           value: mode,
           onPress: () => {
             hapticLight();
-            setConfig((c) => ({ ...c, theme: mode }));
+            setConfig((c) => {
+              const next = { ...c, theme: mode };
+              void saveAccountUiPrefs({
+                notificationsEnabled: next.notificationsEnabled,
+                theme: next.theme,
+              });
+              return next;
+            });
           },
         };
       }),

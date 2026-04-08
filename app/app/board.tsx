@@ -19,6 +19,12 @@ export default function BoardRoute() {
             params: { boardName: resolvedName },
           })
         }
+        onOpenBoardNotifications={() =>
+          router.push({
+            pathname: '/board-notifications',
+            params: { boardName: resolvedName },
+          })
+        }
       />
     </>
   );

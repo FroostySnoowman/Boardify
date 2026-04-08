@@ -220,6 +220,7 @@ interface BoardScreenProps {
   onBack?: () => void;
   onBoardViewSelect?: (mode: BoardViewMode) => void;
   onOpenBoardSettings?: () => void;
+  onOpenBoardNotifications?: () => void;
   glassBottomBar?: BoardGlassBottomBarProps;
 }
 
@@ -228,6 +229,7 @@ export default function BoardScreen({
   onBack,
   onBoardViewSelect,
   onOpenBoardSettings,
+  onOpenBoardNotifications,
   glassBottomBar,
 }: BoardScreenProps) {
   const insets = useSafeAreaInsets();
@@ -1236,6 +1238,7 @@ export default function BoardScreen({
         onBoardViewSelect?.(view);
       },
       onSettingsPress: onOpenBoardSettings ?? glassBottomBar?.onSettingsPress,
+      onBellPress: onOpenBoardNotifications ?? glassBottomBar?.onBellPress,
       showExpandButton: viewMode === 'board',
       expandActive: boardFocusMode || focusExitAnimationBusy,
       expandDisabled: focusExitAnimationBusy,
@@ -1248,6 +1251,7 @@ export default function BoardScreen({
     glassBottomBar,
     handleBoardFocusExpandPress,
     onBoardViewSelect,
+    onOpenBoardNotifications,
     onOpenBoardSettings,
     viewMode,
   ]);

@@ -17,7 +17,8 @@ const ICON_SIZE = 22;
 export type BoardBottomBarLayoutMode = 'board' | 'list' | 'calendar';
 
 export type BoardGlassBottomBarProps = {
-  onFilterPress?: () => void;
+  /** Opens card search / filter in the board header (magnifying glass, left of notifications). */
+  onSearchCardsPress?: () => void;
   onBellPress?: () => void;
   onSettingsPress?: () => void;
   onExpandPress?: () => void;
@@ -27,8 +28,8 @@ export type BoardGlassBottomBarProps = {
   onLayoutMenuSelect?: (mode: BoardBottomBarLayoutMode) => void;
 };
 
-type GlassTripleStripProps = {
-  onFilterPress: () => void;
+type GlassIconStripProps = {
+  onSearchCardsPress: () => void;
   onBellPress: () => void;
   onSettingsPress: () => void;
 };
@@ -37,7 +38,9 @@ const TRIPLE_ICON_GAP = 6;
 const TRIPLE_SLOT = 44;
 const TRIPLE_PILL_PADDING_H = 4;
 const TRIPLE_PILL_PADDING_V = 4;
-const TRIPLE_INNER_WIDTH = TRIPLE_SLOT * 3 + TRIPLE_ICON_GAP * 2;
+const STRIP_ICON_COUNT = 3;
+const TRIPLE_INNER_WIDTH =
+  TRIPLE_SLOT * STRIP_ICON_COUNT + TRIPLE_ICON_GAP * (STRIP_ICON_COUNT - 1);
 const TRIPLE_PILL_WIDTH = TRIPLE_INNER_WIDTH + TRIPLE_PILL_PADDING_H * 2;
 const TRIPLE_ROW_HEIGHT = 44;
 const ROW_GAP = 16;
@@ -51,8 +54,9 @@ const LAYOUT_MENU_ORB_SIZE = 45;
 const GLASS_PAIR_WIDTH = TRIPLE_PILL_WIDTH + ROW_GAP + EXPAND_ORB_SIZE;
 const ROW_TOTAL_WIDTH_WITH_EXPAND = GLASS_PAIR_WIDTH - EXPAND_SHIFT_LEFT;
 const ROW_TOTAL_WIDTH_PILL_ONLY = TRIPLE_PILL_WIDTH;
+/** Bell is the 2nd icon (index 1): search, bell, settings. */
 const BELL_CENTER_X_FROM_PILL_LEFT =
-  TRIPLE_PILL_PADDING_H + TRIPLE_SLOT + TRIPLE_ICON_GAP + TRIPLE_SLOT / 2;
+  TRIPLE_PILL_PADDING_H + TRIPLE_SLOT / 2 + (TRIPLE_SLOT + TRIPLE_ICON_GAP);
 
 function TripleIconColumn({
   label,
@@ -79,13 +83,17 @@ function TripleIconColumn({
   );
 }
 
-function GlassTripleStrip({ onFilterPress, onBellPress, onSettingsPress }: GlassTripleStripProps) {
+function GlassIconStrip({
+  onSearchCardsPress,
+  onBellPress,
+  onSettingsPress,
+}: GlassIconStripProps) {
   const isGlass = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
 
   const row = (
     <View style={styles.tripleInner} collapsable={false} pointerEvents="box-none">
-      <TripleIconColumn label="Filter" onPress={onFilterPress}>
-        <Feather name="sliders" size={ICON_SIZE} color={ICON_COLOR} />
+      <TripleIconColumn label="Search cards" onPress={onSearchCardsPress}>
+        <Feather name="search" size={ICON_SIZE} color={ICON_COLOR} />
       </TripleIconColumn>
       <TripleIconColumn label="Notifications" onPress={onBellPress}>
         <Feather name="bell" size={ICON_SIZE} color={ICON_COLOR} />
@@ -158,7 +166,7 @@ function BoardExpandGlassPressable({
 }
 
 export function BoardGlassBottomBar({
-  onFilterPress,
+  onSearchCardsPress,
   onBellPress,
   onSettingsPress,
   onExpandPress,
@@ -183,10 +191,10 @@ export function BoardGlassBottomBar({
   );
 
   const strip = (
-    <GlassTripleStrip
-      onFilterPress={() => {
+    <GlassIconStrip
+      onSearchCardsPress={() => {
         hapticLight();
-        (onFilterPress ?? noop)();
+        (onSearchCardsPress ?? noop)();
       }}
       onBellPress={() => {
         hapticLight();

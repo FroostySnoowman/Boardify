@@ -2,12 +2,14 @@ import React, { useState, useCallback, useRef, useEffect, useLayoutEffect, useMe
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   Platform,
   Dimensions,
   UIManager,
   useWindowDimensions,
+  Keyboard,
 } from 'react-native';
 import { GlassRoundIconButton } from '../components/GlassRoundIconButton';
 import { ContextMenu } from '../components/ContextMenu';
@@ -511,6 +513,52 @@ export default function BoardScreen({
   useEffect(() => {
     if (listDragging != null) closeAddCardComposer();
   }, [listDragging, closeAddCardComposer]);
+
+  const [cardSearchOpen, setCardSearchOpen] = useState(false);
+  const [cardSearchQuery, setCardSearchQuery] = useState('');
+  const cardSearchInputRef = useRef<TextInput | null>(null);
+
+  const closeCardSearch = useCallback(() => {
+    setCardSearchOpen(false);
+    setCardSearchQuery('');
+    Keyboard.dismiss();
+  }, []);
+
+  const openCardSearch = useCallback(() => {
+    setCardSearchOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (expanded != null) closeCardSearch();
+  }, [expanded, closeCardSearch]);
+
+  useEffect(() => {
+    if (dragging != null) closeCardSearch();
+  }, [dragging, closeCardSearch]);
+
+  useEffect(() => {
+    if (listDragging != null) closeCardSearch();
+  }, [listDragging, closeCardSearch]);
+
+  useEffect(() => {
+    if (viewMode !== 'board') closeCardSearch();
+  }, [viewMode, closeCardSearch]);
+
+  useEffect(() => {
+    if (!cardSearchOpen) return;
+    const t = setTimeout(() => cardSearchInputRef.current?.focus(), 280);
+    return () => clearTimeout(t);
+  }, [cardSearchOpen]);
+
+  const boardViewColumns = useMemo((): BoardColumnData[] => {
+    if (!cardSearchOpen) return columns;
+    const q = cardSearchQuery.trim().toLowerCase();
+    if (!q) return columns;
+    return columns.map((col) => ({
+      ...col,
+      cards: col.cards.filter((c) => c.title.toLowerCase().includes(q)),
+    }));
+  }, [columns, cardSearchOpen, cardSearchQuery]);
 
   const handleUpdateExpandedCard = useCallback(
     (next: BoardCardData) => {
@@ -1239,6 +1287,7 @@ export default function BoardScreen({
       },
       onSettingsPress: onOpenBoardSettings ?? glassBottomBar?.onSettingsPress,
       onBellPress: onOpenBoardNotifications ?? glassBottomBar?.onBellPress,
+      onSearchCardsPress: glassBottomBar?.onSearchCardsPress ?? openCardSearch,
       showExpandButton: viewMode === 'board',
       expandActive: boardFocusMode || focusExitAnimationBusy,
       expandDisabled: focusExitAnimationBusy,
@@ -1254,6 +1303,7 @@ export default function BoardScreen({
     onOpenBoardNotifications,
     onOpenBoardSettings,
     viewMode,
+    openCardSearch,
   ]);
 
   return (
@@ -1275,8 +1325,34 @@ export default function BoardScreen({
             ]}
           />
         </View>
+      ) : viewMode === 'board' && cardSearchOpen ? (
+        <View style={[styles.header, styles.headerSearchBar, { height: BOARD_HEADER_ROW_HEIGHT }]}>
+          <TextInput
+            ref={cardSearchInputRef}
+            style={styles.cardSearchInput}
+            placeholder="Filter cards…"
+            placeholderTextColor="#888"
+            value={cardSearchQuery}
+            onChangeText={setCardSearchQuery}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoCapitalize="none"
+            accessibilityLabel="Filter cards"
+          />
+          <View style={[styles.headerSide, styles.headerSideEnd]}>
+            <GlassRoundIconButton
+              icon="x"
+              size={22}
+              accessibilityLabel="Close search"
+              onPress={() => {
+                hapticLight();
+                closeCardSearch();
+              }}
+            />
+          </View>
+        </View>
       ) : (
-        <View style={styles.header}>
+        <View style={[styles.header, { height: BOARD_HEADER_ROW_HEIGHT }]}>
           <View style={styles.headerSide}>
             {onBack ? (
               <GlassRoundIconButton
@@ -1363,7 +1439,7 @@ export default function BoardScreen({
                     nodes.push(<BoardColumnPlaceholder key={`col-gap-${i}`} />);
                   }
                   if (i < n) {
-                    const col = columns[i];
+                    const col = boardViewColumns[i];
                     const isBeingDragged = listDragging.fromIndex === i;
                     nodes.push(
                       <View
@@ -1423,7 +1499,7 @@ export default function BoardScreen({
                 }
                 return nodes;
               })()
-            : columns.map((col, i) => (
+            : boardViewColumns.map((col, i) => (
                 <View
                   key={col.id}
                   style={[
@@ -1738,6 +1814,24 @@ const styles = StyleSheet.create({
     zIndex: 20,
     backgroundColor: '#f5f0e8',
     overflow: 'visible',
+  },
+  headerSearchBar: {
+    paddingVertical: 0,
+    gap: 10,
+  },
+  cardSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    height: 44,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#000',
+    backgroundColor: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#0a0a0a',
   },
   headerSide: {
     width: 45,

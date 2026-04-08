@@ -363,9 +363,9 @@ async function signUpEmail(request: Request, env: Env): Promise<Response> {
     const verifyUrl = `${appUrl}/verify-email?token=${encodeURIComponent(verifyToken)}`
     await sendEmail({
       to: body.email,
-      subject: 'Verify your email - MyBreakPoint',
+      subject: 'Verify your email - Boardify',
       html: emailVerificationHtml(verifyUrl),
-      text: `Verify your MyBreakPoint email by opening this link: ${verifyUrl}\n\nThis link expires in 24 hours.`,
+      text: `Verify your Boardify email by opening this link: ${verifyUrl}\n\nThis link expires in 24 hours.`,
       inlineAttachments: [await getIconAttachment()],
     }, getSmtp(env))
 
@@ -591,7 +591,7 @@ function isAllowedRedirectUrl(returnTo: string, env: Env): boolean {
 function isAllowedAppleNativeReturnTo(returnTo: string): boolean {
   try {
     const u = new URL(returnTo)
-    if (u.protocol === 'mybreakpoint:') {
+    if (u.protocol === 'boardify:' || u.protocol === 'mybreakpoint:') {
       return u.hostname === 'auth' && u.pathname.replace(/\/$/, '') === '/apple-callback'
     }
     if (u.protocol === 'exp:') {
@@ -955,9 +955,9 @@ async function forgotPassword(request: Request, env: Env): Promise<Response> {
 
       await sendEmail({
         to: email,
-        subject: 'Reset Your MyBreakPoint Password',
+        subject: 'Reset Your Boardify Password',
         html: passwordResetEmailHtml(code),
-        text: `Your MyBreakPoint password reset code is: ${code}\n\nThis code expires in 15 minutes.`,
+        text: `Your Boardify password reset code is: ${code}\n\nThis code expires in 15 minutes.`,
         inlineAttachments: [await getIconAttachment()],
       }, getSmtp(env))
     }
@@ -1077,9 +1077,9 @@ async function requestDeleteAccount(request: Request, env: Env): Promise<Respons
 
     await sendEmail({
       to: user.email!,
-      subject: 'Confirm Account Deletion - MyBreakPoint',
+      subject: 'Confirm Account Deletion - Boardify',
       html: accountDeletionEmailHtml(deleteUrl),
-      text: `You requested to delete your MyBreakPoint account. Click this link to confirm: ${deleteUrl}\n\nThis link expires in 1 hour.`,
+      text: `You requested to delete your Boardify account. Click this link to confirm: ${deleteUrl}\n\nThis link expires in 1 hour.`,
       inlineAttachments: [await getIconAttachment()],
     }, getSmtp(env))
 
@@ -1107,24 +1107,13 @@ async function confirmDeleteAccount(request: Request, env: Env, token: string): 
 
     const userId = parseInt(row.identifier.replace('acct_delete:', ''), 10)
 
-    const { results: ownedTeams } = await env.DB.prepare(
-      "SELECT team_id FROM team_members WHERE user_id = ? AND role = 'owner'"
-    ).bind(userId).all<{ team_id: number }>()
-
-    const stmts: D1PreparedStatement[] = []
-
-    stmts.push(env.DB.prepare('DELETE FROM auth_verifications WHERE id = ?').bind(row.id))
-    stmts.push(env.DB.prepare("DELETE FROM auth_verifications WHERE identifier LIKE ?").bind(`%:${userId}`))
-
-    for (const t of ownedTeams || []) {
-      stmts.push(env.DB.prepare('DELETE FROM teams WHERE id = ?').bind(t.team_id))
-    }
-
-    stmts.push(env.DB.prepare('DELETE FROM matches WHERE user_id = ?').bind(userId))
-    stmts.push(env.DB.prepare('DELETE FROM notes WHERE user_id = ?').bind(userId))
-    stmts.push(env.DB.prepare('DELETE FROM calendar_events WHERE user_id = ?').bind(userId))
-
-    stmts.push(env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId))
+    const stmts: D1PreparedStatement[] = [
+      env.DB.prepare('DELETE FROM auth_verifications WHERE id = ?').bind(row.id),
+      env.DB.prepare("DELETE FROM auth_verifications WHERE identifier LIKE ?").bind(`%:${userId}`),
+      env.DB.prepare('DELETE FROM auth_sessions WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM auth_accounts WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId),
+    ]
 
     await env.DB.batch(stmts)
 
@@ -1191,9 +1180,9 @@ async function resendVerificationEmail(request: Request, env: Env): Promise<Resp
     const verifyUrl = `${appUrl}/verify-email?token=${encodeURIComponent(verifyToken)}`
     await sendEmail({
       to: user.email!,
-      subject: 'Verify your email - MyBreakPoint',
+      subject: 'Verify your email - Boardify',
       html: emailVerificationHtml(verifyUrl),
-      text: `Verify your MyBreakPoint email by opening this link: ${verifyUrl}\n\nThis link expires in 24 hours.`,
+      text: `Verify your Boardify email by opening this link: ${verifyUrl}\n\nThis link expires in 24 hours.`,
       inlineAttachments: [await getIconAttachment()],
     }, getSmtp(env))
 
@@ -1223,19 +1212,11 @@ async function deleteUnverifiedAccount(request: Request, env: Env): Promise<Resp
 
   try {
     await env.DB.prepare("DELETE FROM auth_verifications WHERE identifier LIKE ?").bind(`%:${userId}`).run()
-    const { results: ownedTeams } = await env.DB.prepare(
-      "SELECT team_id FROM team_members WHERE user_id = ? AND role = 'owner'"
-    ).bind(userId).all<{ team_id: number }>()
-
-    const stmts: D1PreparedStatement[] = []
-    for (const t of ownedTeams || []) {
-      stmts.push(env.DB.prepare('DELETE FROM teams WHERE id = ?').bind(t.team_id))
-    }
-    stmts.push(env.DB.prepare('DELETE FROM matches WHERE user_id = ?').bind(userId))
-    stmts.push(env.DB.prepare('DELETE FROM notes WHERE user_id = ?').bind(userId))
-    stmts.push(env.DB.prepare('DELETE FROM calendar_events WHERE user_id = ?').bind(userId))
-    stmts.push(env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId))
-    await env.DB.batch(stmts)
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM auth_sessions WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM auth_accounts WHERE user_id = ?').bind(userId),
+      env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId),
+    ])
 
     const token = getAuthToken(request)
     if (token) {

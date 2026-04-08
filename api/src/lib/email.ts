@@ -33,7 +33,7 @@ export async function sendEmail(
   options: EmailOptions,
   smtp?: SmtpConfig
 ): Promise<SmtpResult> {
-  const from = options.from || '"MyBreakPoint" <no-reply@mybreakpoint.app>';
+  const from = options.from || '"Boardify" <no-reply@boardify.app>';
   const toList = Array.isArray(options.to) ? options.to : [options.to];
 
   if (!smtp) {
@@ -86,7 +86,7 @@ export async function sendEmail(
     const greeting = await readResponse();
     if (greeting.code !== 220) throw new Error(`Bad greeting: ${greeting.text}`);
 
-    const ehlo = await cmd('EHLO mybreakpoint.app');
+    const ehlo = await cmd('EHLO boardify.app');
     if (ehlo.code !== 250) throw new Error(`EHLO failed: ${ehlo.text}`);
 
     const auth = await cmd('AUTH LOGIN');
@@ -108,7 +108,7 @@ export async function sendEmail(
     const data = await cmd('DATA');
     if (data.code !== 354) throw new Error(`DATA failed: ${data.text}`);
 
-    const messageId = `${crypto.randomUUID()}@mybreakpoint.app`;
+    const messageId = `${crypto.randomUUID()}@boardify.app`;
     const hasInline = options.inlineAttachments && options.inlineAttachments.length > 0;
     const boundary = hasInline ? `----=_MBP_${crypto.randomUUID().replace(/-/g, '')}` : '';
 
@@ -174,7 +174,7 @@ export async function sendEmail(
   }
 }
 
-const ICON_CID = 'mbp-icon@mybreakpoint.app';
+const ICON_CID = 'boardify-icon@boardify.app';
 const F = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
 const MONO = "'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace";
 
@@ -216,7 +216,7 @@ function emailLayout(content: string): string {
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <meta name="color-scheme" content="dark only"/>
 <meta name="supported-color-schemes" content="dark only"/>
-<title>MyBreakPoint</title>
+<title>Boardify</title>
 <!--[if mso]><style>body,table,td,div,p,span{background-color:${BG}!important;color:${TEXT}!important;font-family:Arial,sans-serif!important;}</style><![endif]-->
 <style>
 :root{color-scheme:dark only;}
@@ -233,11 +233,11 @@ u+.body .gmail-blend-difference{background:#000!important;mix-blend-mode:differe
   <!-- Logo -->
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="${BG}" style="${bg(BG)};"><tr>
     <td align="center" bgcolor="${BG}" style="padding-bottom:8px;${bg(BG)};">
-      <img src="${imgSrc}" alt="MyBreakPoint" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:26px;border:0;"/>
+      <img src="${imgSrc}" alt="Boardify" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:26px;border:0;"/>
     </td>
   </tr><tr>
     <td align="center" bgcolor="${BG}" style="padding-bottom:32px;font-family:${F};font-size:17px;font-weight:700;letter-spacing:0.5px;${bg(BG)};">
-      <div class="gmail-blend-screen" style="display:inline-block;"><div class="gmail-blend-difference" style="display:inline-block;"><span class="mbp-brand" style="color:#ffffff;background:linear-gradient(90deg,${GRADIENT_START},${GRADIENT_END});-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">MyBreakPoint</span></div></div>
+      <div class="gmail-blend-screen" style="display:inline-block;"><div class="gmail-blend-difference" style="display:inline-block;"><span class="mbp-brand" style="color:#ffffff;background:linear-gradient(90deg,${GRADIENT_START},${GRADIENT_END});-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Boardify</span></div></div>
     </td>
   </tr></table>
 
@@ -258,7 +258,7 @@ u+.body .gmail-blend-difference{background:#000!important;mix-blend-mode:differe
   <!-- Footer -->
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="${BG}" style="max-width:460px;width:100%;${bg(BG)};">
   <tr><td align="center" bgcolor="${BG}" style="padding:24px 0 0;font-family:${F};font-size:12px;line-height:1.6;color:${FOOT};${bg(BG)};">
-    &copy; ${year} MyBreakPoint &mdash; The ultimate tennis &amp; pickleball companion.<br/>
+    &copy; ${year} Boardify &mdash; The ultimate tennis &amp; pickleball companion.<br/>
     You received this because an action was requested on your account.
   </td></tr>
   </table>
@@ -325,7 +325,7 @@ export function accountDeletionEmailHtml(deleteUrl: string): string {
         <div class="gmail-blend-screen" style="display:inline-block;"><div class="gmail-blend-difference" style="display:inline-block;"><span style="color:#ffffff;">Delete your account</span></div></div>
       </td></tr>
       <tr><td align="center" bgcolor="${CARD}" style="font-family:${F};font-size:15px;line-height:1.65;color:${BODY};padding-bottom:24px;${bg(CARD)};">
-        You requested to permanently delete your MyBreakPoint account and all associated data.
+        You requested to permanently delete your Boardify account and all associated data.
       </td></tr>
 
       <!-- What will be deleted -->
@@ -384,7 +384,7 @@ export function emailVerificationHtml(verifyUrl: string): string {
         <div class="gmail-blend-screen" style="display:inline-block;"><div class="gmail-blend-difference" style="display:inline-block;"><span style="color:#ffffff;">Verify your email</span></div></div>
       </td></tr>
       <tr><td align="center" bgcolor="${CARD}" style="font-family:${F};font-size:15px;line-height:1.65;color:${BODY};padding-bottom:24px;${bg(CARD)};">
-        You signed up for MyBreakPoint. Click the button below to verify your email and get started.
+        You signed up for Boardify. Click the button below to verify your email and get started.
       </td></tr>
       <tr><td align="center" bgcolor="${CARD}" style="padding-bottom:28px;${bg(CARD)};">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="${CARD}" style="${bg(CARD)};">
@@ -415,7 +415,7 @@ export function parentalConsentEmailHtml(confirmUrl: string): string {
         <div class="gmail-blend-screen" style="display:inline-block;"><div class="gmail-blend-difference" style="display:inline-block;"><span style="color:#ffffff;">Parent or guardian consent</span></div></div>
       </td></tr>
       <tr><td align="center" bgcolor="${CARD}" style="font-family:${F};font-size:15px;line-height:1.65;color:${BODY};padding-bottom:24px;${bg(CARD)};">
-        A child in your care has signed up for MyBreakPoint (tennis, pickleball &amp; padel app) and needs your permission to use the app. By clicking below, you agree to our Terms of Service and Privacy Policy on their behalf and confirm you are their parent or legal guardian.
+        A child in your care has signed up for Boardify (tennis, pickleball &amp; padel app) and needs your permission to use the app. By clicking below, you agree to our Terms of Service and Privacy Policy on their behalf and confirm you are their parent or legal guardian.
       </td></tr>
       <tr><td align="center" bgcolor="${CARD}" style="padding-bottom:28px;${bg(CARD)};">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="${CARD}" style="${bg(CARD)};">

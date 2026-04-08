@@ -467,7 +467,52 @@ export default function BoardScreen({
     scaleTableRow.value = 1;
   }, [tableRowDragging, translateTableRowX, translateTableRowY, scaleTableRow]);
 
-  const noopAddCard = useCallback(() => {}, []);
+  const [addCardComposerCol, setAddCardComposerCol] = useState<number | null>(null);
+  const [addCardComposerDraft, setAddCardComposerDraft] = useState('');
+
+  const closeAddCardComposer = useCallback(() => {
+    setAddCardComposerCol(null);
+    setAddCardComposerDraft('');
+  }, []);
+
+  const openAddCardComposer = useCallback((colIndex: number) => {
+    hapticLight();
+    setAddCardComposerCol(colIndex);
+    setAddCardComposerDraft('');
+  }, []);
+
+  const submitAddCardComposer = useCallback(() => {
+    const title = addCardComposerDraft.trim();
+    const col = addCardComposerCol;
+    if (!title || col == null) return;
+    hapticLight();
+    setColumns((prev) =>
+      prev.map((c, i) =>
+        i === col
+          ? {
+              ...c,
+              cards: [
+                ...c.cards,
+                { id: uid('c'), title, createdAtIso: new Date().toISOString() },
+              ],
+            }
+          : c
+      )
+    );
+    closeAddCardComposer();
+  }, [addCardComposerDraft, addCardComposerCol, closeAddCardComposer]);
+
+  useEffect(() => {
+    if (expanded != null) closeAddCardComposer();
+  }, [expanded, closeAddCardComposer]);
+
+  useEffect(() => {
+    if (dragging != null) closeAddCardComposer();
+  }, [dragging, closeAddCardComposer]);
+
+  useEffect(() => {
+    if (listDragging != null) closeAddCardComposer();
+  }, [listDragging, closeAddCardComposer]);
 
   const handleUpdateExpandedCard = useCallback(
     (next: BoardCardData) => {
@@ -1330,7 +1375,12 @@ export default function BoardScreen({
                           columnIndex={i}
                           title={col.title}
                           cards={col.cards}
-                          onAddCard={noopAddCard}
+                          onAddCard={() => openAddCardComposer(i)}
+                          addCardComposerOpen={addCardComposerCol === i}
+                          addCardComposerValue={addCardComposerCol === i ? addCardComposerDraft : ''}
+                          onAddCardComposerChangeText={setAddCardComposerDraft}
+                          onAddCardComposerSubmit={submitAddCardComposer}
+                          onAddCardComposerCancel={closeAddCardComposer}
                           expandedCardId={expandedCardId}
                           onCardPress={handleCardPress}
                           draggingCardId={dragging?.cardId ?? null}
@@ -1383,7 +1433,12 @@ export default function BoardScreen({
                     columnIndex={i}
                     title={col.title}
                     cards={col.cards}
-                    onAddCard={noopAddCard}
+                    onAddCard={() => openAddCardComposer(i)}
+                    addCardComposerOpen={addCardComposerCol === i}
+                    addCardComposerValue={addCardComposerCol === i ? addCardComposerDraft : ''}
+                    onAddCardComposerChangeText={setAddCardComposerDraft}
+                    onAddCardComposerSubmit={submitAddCardComposer}
+                    onAddCardComposerCancel={closeAddCardComposer}
                     expandedCardId={expandedCardId}
                     onCardPress={handleCardPress}
                     draggingCardId={dragging?.cardId ?? null}

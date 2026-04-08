@@ -1,5 +1,13 @@
 import React, { useRef, useCallback, useEffect, memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  Keyboard,
+} from 'react-native';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import Animated, { Easing, LinearTransition } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
@@ -7,6 +15,7 @@ import { hapticLight } from '../utils/haptics';
 import { DraggableBoardCard } from './DraggableBoardCard';
 import { DraggableColumnHeader } from './DraggableColumnHeader';
 import { BoardCardPlaceholder } from './BoardCardPlaceholder';
+import type { SharedValue } from 'react-native-reanimated';
 import type { BoardCardData } from '../types/board';
 
 const COLUMN_SHIFT = 5;
@@ -17,6 +26,12 @@ export interface BoardColumnProps {
   title: string;
   cards: BoardCardData[];
   onAddCard?: () => void;
+  /** Inline quick-add (replaces “Add card” row when true). */
+  addCardComposerOpen?: boolean;
+  addCardComposerValue?: string;
+  onAddCardComposerChangeText?: (text: string) => void;
+  onAddCardComposerSubmit?: () => void;
+  onAddCardComposerCancel?: () => void;
   onCardPress?: (
     columnIndex: number,
     cardIndex: number,
@@ -65,6 +80,11 @@ function BoardColumnInner({
   title,
   cards,
   onAddCard,
+  addCardComposerOpen = false,
+  addCardComposerValue = '',
+  onAddCardComposerChangeText,
+  onAddCardComposerSubmit,
+  onAddCardComposerCancel,
   onCardPress,
   expandedCardId,
   columnIndex,
@@ -99,11 +119,21 @@ function BoardColumnInner({
   const cardRefs = useRef<Record<string, React.ElementRef<typeof DraggableBoardCard> | null>>({});
   const listRef = useRef<React.ElementRef<typeof GHScrollView> | null>(null);
   const wrapRef = useRef<View | null>(null);
+  const composerInputRef = useRef<TextInput>(null);
 
   const handleAddCard = () => {
     hapticLight();
     onAddCard?.();
   };
+
+  useEffect(() => {
+    if (!addCardComposerOpen) return;
+    const t = setTimeout(() => {
+      composerInputRef.current?.focus();
+      listRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+    return () => clearTimeout(t);
+  }, [addCardComposerOpen]);
 
   const measureList = useCallback(() => {
     const node = listRef.current as
@@ -240,10 +270,68 @@ function BoardColumnInner({
         >
           {nodes}
         </GHScrollView>
-        <TouchableOpacity activeOpacity={0.8} onPress={handleAddCard} style={styles.addCard}>
-          <Feather name="plus" size={18} color="#666" />
-          <Text style={styles.addCardText}>Add card</Text>
-        </TouchableOpacity>
+        {addCardComposerOpen ? (
+          <View style={styles.composer}>
+            <View style={styles.composerCard}>
+              <TextInput
+                ref={composerInputRef}
+                value={addCardComposerValue}
+                onChangeText={onAddCardComposerChangeText}
+                placeholder="Enter a title for this card…"
+                placeholderTextColor="#888"
+                style={styles.composerInput}
+                multiline
+                scrollEnabled
+                maxLength={500}
+                returnKeyType="default"
+                blurOnSubmit={false}
+                autoCorrect
+                autoCapitalize="sentences"
+              />
+              <View style={styles.composerExpandHint} pointerEvents="none">
+                <Feather name="maximize-2" size={14} color="#999" />
+              </View>
+            </View>
+            <View style={styles.composerActions}>
+              <Pressable
+                onPress={() => {
+                  hapticLight();
+                  Keyboard.dismiss();
+                  onAddCardComposerCancel?.();
+                }}
+                hitSlop={8}
+                style={styles.composerActionHit}
+              >
+                <Text style={styles.composerActionCancel}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  if (!addCardComposerValue.trim()) return;
+                  hapticLight();
+                  Keyboard.dismiss();
+                  onAddCardComposerSubmit?.();
+                }}
+                hitSlop={8}
+                style={styles.composerActionHit}
+                disabled={!addCardComposerValue.trim()}
+              >
+                <Text
+                  style={[
+                    styles.composerActionAdd,
+                    !addCardComposerValue.trim() && styles.composerActionAddDisabled,
+                  ]}
+                >
+                  Add
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity activeOpacity={0.8} onPress={handleAddCard} style={styles.addCard}>
+            <Feather name="plus" size={18} color="#666" />
+            <Text style={styles.addCardText}>Add card</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </Animated.View>
   );
@@ -307,5 +395,58 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     fontWeight: '500',
+  },
+  composer: {
+    marginTop: 4,
+    gap: 10,
+  },
+  composerCard: {
+    position: 'relative',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#000',
+    minHeight: 88,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 28,
+    paddingRight: 28,
+  },
+  composerInput: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0a0a0a',
+    lineHeight: 18,
+    minHeight: 48,
+    textAlignVertical: 'top',
+  },
+  composerExpandHint: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    opacity: 0.85,
+  },
+  composerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  composerActionHit: {
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  composerActionCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0c66e4',
+  },
+  composerActionAdd: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0c66e4',
+  },
+  composerActionAddDisabled: {
+    color: '#a8c8f0',
   },
 });

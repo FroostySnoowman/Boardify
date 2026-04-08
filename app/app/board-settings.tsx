@@ -244,8 +244,7 @@ export default function BoardSettingsScreen() {
             <SettingsSection title="Board">
               <Text style={styles.metaLabel}>Board name</Text>
               <Text style={styles.sublabelTiny}>
-                Shown at the top of the board. Home still opens this board by “{boardName}” until that
-                list is synced.
+                Shown at the top of the board. The home list still identifies this board as “{boardName}”.
               </Text>
               <TextInput
                 value={nameDraft}

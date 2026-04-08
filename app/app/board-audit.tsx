@@ -110,7 +110,7 @@ export default function BoardAuditScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.helper}>
-          Local timeline of tasks and lists: added, edited, archived, restored, and new columns.
+          Timeline of tasks and lists on this board: added, edited, archived, restored, and new columns.
         </Text>
 
         {entries.length === 0 ? (

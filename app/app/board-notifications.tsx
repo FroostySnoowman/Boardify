@@ -201,13 +201,13 @@ export default function BoardNotificationsScreen() {
         >
           <View style={[styles.card, cardShadow]}>
             <Text style={styles.helper}>
-              Manage how you stay updated on “{boardName}”. Delivery options use your device’s notification
-              settings where system permissions allow.
+              Manage how you stay updated on “{boardName}”. Delivery respects system notification permissions
+              where they apply.
             </Text>
 
             <SettingsSection title="Delivery">
               <SettingsToggleRow
-                label="Push on this device"
+                label="Push notifications"
                 sublabel="Instant alerts when something important happens"
                 value={pushEnabled}
                 onValueChange={setPushEnabled}

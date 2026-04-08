@@ -17,6 +17,12 @@ function resolveBoardName(raw: string | string[] | undefined): string {
 
 function kindLabel(kind: BoardAuditEntry['kind']): string {
   switch (kind) {
+    case 'card_added':
+      return 'Task added';
+    case 'card_updated':
+      return 'Task updated';
+    case 'list_added':
+      return 'List added';
     case 'card_archived':
       return 'Task archived';
     case 'list_archived':
@@ -104,14 +110,14 @@ export default function BoardAuditScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.helper}>
-          Local history of archive and restore actions on this device (not synced).
+          Local timeline of tasks and lists: added, edited, archived, restored, and new columns.
         </Text>
 
         {entries.length === 0 ? (
           <View style={styles.emptyCard}>
             <Feather name="activity" size={36} color="#999" />
             <Text style={styles.emptyTitle}>No activity yet</Text>
-            <Text style={styles.emptyHint}>Archive or restore items to see entries here.</Text>
+            <Text style={styles.emptyHint}>Add or edit tasks, create lists, or archive to see entries here.</Text>
           </View>
         ) : (
           entries.map((e) => (

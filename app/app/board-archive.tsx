@@ -128,7 +128,7 @@ export default function BoardArchiveScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.helper}>
-          Archived tasks and lists for this board on this device. Restore sends them back to the board.
+          Archived tasks and lists for this board. Restore sends them back to the board.
         </Text>
 
         {empty ? (

@@ -54,6 +54,7 @@ import type { BoardCardData, BoardColumnData, BoardViewMode, TaskLabel } from '.
 import { loadBoardSettings, resolveBoardDisplayTitle } from '../storage/boardSettings';
 import {
   applyPendingRestoreOps,
+  appendBoardAuditEntry,
   archiveCard,
   archiveList,
   consumePendingRestores,
@@ -262,6 +263,8 @@ export default function BoardScreen({
   const [columns, setColumns] = useState<BoardColumnData[]>(INITIAL_COLUMNS);
   const columnsRef = useRef(columns);
   columnsRef.current = columns;
+  const expandedBaselineJsonRef = useRef<string | null>(null);
+  const prevExpandedCardIdRef = useRef<string | null>(null);
   const [viewMode, setViewMode] = useState<BoardViewMode>('board');
   const [boardFocusMode, setBoardFocusMode] = useState(false);
   const [displayBoardTitle, setDisplayBoardTitle] = useState(boardName);
@@ -529,6 +532,12 @@ export default function BoardScreen({
     const col = addCardComposerCol;
     if (!title || col == null) return;
     hapticLight();
+    const listTitle = columnsRef.current[col]?.title ?? '';
+    void appendBoardAuditEntry(
+      boardName,
+      'card_added',
+      `Added task “${title}” to ${listTitle || 'a list'}`
+    );
     setColumns((prev) =>
       prev.map((c, i) =>
         i === col
@@ -543,7 +552,7 @@ export default function BoardScreen({
       )
     );
     closeAddCardComposer();
-  }, [addCardComposerDraft, addCardComposerCol, closeAddCardComposer]);
+  }, [addCardComposerDraft, addCardComposerCol, boardName, closeAddCardComposer]);
 
   const openInlineAddList = useCallback(() => {
     setInlineAddListOpen(true);
@@ -563,13 +572,14 @@ export default function BoardScreen({
     if (!title) return;
     hapticLight();
     Keyboard.dismiss();
+    void appendBoardAuditEntry(boardName, 'list_added', `Added list “${title}”`);
     setColumns((prev) => [...prev, { id: uid('col'), title, cards: [] }]);
     setInlineAddListOpen(false);
     setInlineAddListDraft('');
     setTimeout(() => {
       horizontalScrollRef.current?.scrollToEnd({ animated: true });
     }, 300);
-  }, [inlineAddListDraft]);
+  }, [boardName, inlineAddListDraft]);
 
   useEffect(() => {
     if (viewMode !== 'board' || !pendingTableAddListRef.current) return;
@@ -771,6 +781,35 @@ export default function BoardScreen({
   }, [columns, expanded]);
 
   useEffect(() => {
+    if (!expanded) {
+      prevExpandedCardIdRef.current = null;
+      expandedBaselineJsonRef.current = null;
+      return;
+    }
+    if (prevExpandedCardIdRef.current !== expanded.cardId) {
+      prevExpandedCardIdRef.current = expanded.cardId;
+      const card = columns
+        .flatMap((col) => col.cards)
+        .find((c) => c.id === expanded.cardId);
+      expandedBaselineJsonRef.current = card ? JSON.stringify(card) : null;
+    }
+  }, [expanded, columns]);
+
+  const handleCloseExpandedCard = useCallback(() => {
+    const ex = expanded;
+    if (ex) {
+      const cur = columnsRef.current.flatMap((col) => col.cards).find((c) => c.id === ex.cardId);
+      const baseline = expandedBaselineJsonRef.current;
+      if (cur && baseline != null && JSON.stringify(cur) !== baseline) {
+        void appendBoardAuditEntry(boardName, 'card_updated', `Updated task “${cur.title}”`);
+      }
+    }
+    prevExpandedCardIdRef.current = null;
+    expandedBaselineJsonRef.current = null;
+    setExpanded(null);
+  }, [boardName, expanded]);
+
+  useEffect(() => {
     if (expanded && expandedCardResolved == null) {
       setExpanded(null);
     }
@@ -817,9 +856,15 @@ export default function BoardScreen({
 
   const handleAddCardSubmit = useCallback(
     (title: string) => {
+      const idx = promptAddCardCol;
+      if (idx == null) return;
+      const listTitle = columnsRef.current[idx]?.title ?? '';
+      void appendBoardAuditEntry(
+        boardName,
+        'card_added',
+        `Added task “${title}” to ${listTitle || 'a list'}`
+      );
       setColumns((prev) => {
-        const idx = promptAddCardCol;
-        if (idx == null) return prev;
         return prev.map((c, i) =>
           i === idx
             ? {
@@ -833,7 +878,7 @@ export default function BoardScreen({
         );
       });
     },
-    [promptAddCardCol]
+    [boardName, promptAddCardCol]
   );
 
   const handleTableToggleStopwatch = useCallback((cardId: string) => {
@@ -1955,7 +2000,7 @@ export default function BoardScreen({
           layoutInfo={expanded}
           card={expandedCardResolved.card}
           onUpdateCard={handleUpdateExpandedCard}
-          onClose={() => setExpanded(null)}
+          onClose={handleCloseExpandedCard}
         />
       ) : null}
     </View>

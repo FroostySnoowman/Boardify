@@ -26,10 +26,19 @@ export type ArchivedListItem = {
   column: BoardColumnData;
 };
 
+export type BoardAuditKind =
+  | 'card_archived'
+  | 'list_archived'
+  | 'card_restored'
+  | 'list_restored'
+  | 'card_added'
+  | 'list_added'
+  | 'card_updated';
+
 export type BoardAuditEntry = {
   id: string;
   atIso: string;
-  kind: 'card_archived' | 'list_archived' | 'card_restored' | 'list_restored';
+  kind: BoardAuditKind;
   summary: string;
 };
 
@@ -68,7 +77,7 @@ async function saveStored(boardName: string, s: Stored): Promise<void> {
   await AsyncStorage.setItem(ARCHIVE_PREFIX + slug(boardName), JSON.stringify(s));
 }
 
-function pushAudit(s: Stored, kind: BoardAuditEntry['kind'], summary: string) {
+function pushAudit(s: Stored, kind: BoardAuditKind, summary: string) {
   const entry: BoardAuditEntry = {
     id: uid('audit'),
     atIso: new Date().toISOString(),
@@ -203,4 +212,15 @@ export async function restoreArchivedList(boardName: string, archiveId: string):
 export async function loadBoardAuditLog(boardName: string): Promise<BoardAuditEntry[]> {
   const s = await loadStored(boardName);
   return s.auditLog;
+}
+
+/** Append a row to the on-device activity log (adds, edits, archives, etc.). */
+export async function appendBoardAuditEntry(
+  boardName: string,
+  kind: BoardAuditKind,
+  summary: string
+): Promise<void> {
+  const s = await loadStored(boardName);
+  pushAudit(s, kind, summary);
+  await saveStored(boardName, s);
 }

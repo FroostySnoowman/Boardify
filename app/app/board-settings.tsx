@@ -238,7 +238,7 @@ export default function BoardSettingsScreen() {
         >
           <View style={[styles.card, cardShadow]}>
             <Text style={styles.helper}>
-              Tune how this board behaves. Preferences are stored on this device for now.
+              Tune how this board behaves.
             </Text>
 
             <SettingsSection title="Board">
@@ -380,10 +380,6 @@ export default function BoardSettingsScreen() {
             </SettingsSection>
 
             <SettingsSection title="Archive & activity">
-              <Text style={styles.sublabel}>
-                Opened from the board’s settings (gear in the bottom bar). Stored on this device;
-                restore sends items back to the board.
-              </Text>
               <Pressable
                 onPress={() => {
                   hapticLight();
@@ -417,7 +413,9 @@ export default function BoardSettingsScreen() {
                     <Feather name="chevron-right" size={20} color="#666" />
                   </View>
                 </View>
-                <Text style={styles.navLinkSub}>Archive and restore history</Text>
+                <Text style={styles.navLinkSub}>
+                  Adds, edits, archives, restores, and new lists
+                </Text>
               </Pressable>
             </SettingsSection>
 

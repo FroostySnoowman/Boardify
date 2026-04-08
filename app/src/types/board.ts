@@ -67,3 +67,5 @@ export type BoardColumnData = {
   title: string;
   cards: BoardCardData[];
 };
+
+export type BoardViewMode = 'board' | 'table' | 'calendar' | 'dashboard' | 'timeline';

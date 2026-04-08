@@ -10,7 +10,16 @@ export default function BoardRoute() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <BoardScreen boardName={resolvedName} onBack={() => router.back()} />
+      <BoardScreen
+        boardName={resolvedName}
+        onBack={() => router.back()}
+        onOpenBoardSettings={() =>
+          router.push({
+            pathname: '/board-settings',
+            params: { boardName: resolvedName },
+          })
+        }
+      />
     </>
   );
 }

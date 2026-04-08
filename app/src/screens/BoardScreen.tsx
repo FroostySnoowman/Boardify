@@ -43,7 +43,8 @@ import {
   type ExpandedCardLayout,
 } from '../components/BoardCardExpandOverlay';
 import { BoardCard } from '../components/BoardCard';
-import type { BoardCardData, BoardColumnData, TaskLabel } from '../types/board';
+import type { BoardCardData, BoardColumnData, BoardViewMode, TaskLabel } from '../types/board';
+import { loadBoardSettings, resolveBoardDisplayTitle } from '../storage/boardSettings';
 import type {
   DashboardChartKind,
   DashboardDimension,
@@ -59,6 +60,8 @@ import {
 } from '../board/boardDragUtils';
 import { uid } from '../utils/id';
 import { toggleStopwatchOnTask } from '../utils/workTime';
+
+export type { BoardViewMode } from '../types/board';
 
 const SHIFT = 5;
 
@@ -201,8 +204,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-export type BoardViewMode = 'board' | 'table' | 'calendar' | 'dashboard' | 'timeline';
-
 const BOARD_VIEW_MENU_ITEMS: { label: string; value: BoardViewMode }[] = [
   { label: 'Board', value: 'board' },
   { label: 'Table', value: 'table' },
@@ -215,6 +216,7 @@ interface BoardScreenProps {
   boardName?: string;
   onBack?: () => void;
   onBoardViewSelect?: (mode: BoardViewMode) => void;
+  onOpenBoardSettings?: () => void;
   glassBottomBar?: BoardGlassBottomBarProps;
 }
 
@@ -222,6 +224,7 @@ export default function BoardScreen({
   boardName = 'My Board',
   onBack,
   onBoardViewSelect,
+  onOpenBoardSettings,
   glassBottomBar,
 }: BoardScreenProps) {
   const insets = useSafeAreaInsets();
@@ -231,6 +234,32 @@ export default function BoardScreen({
   const [columns, setColumns] = useState<BoardColumnData[]>(INITIAL_COLUMNS);
   const [viewMode, setViewMode] = useState<BoardViewMode>('board');
   const [boardFocusMode, setBoardFocusMode] = useState(false);
+  const [displayBoardTitle, setDisplayBoardTitle] = useState(boardName);
+
+  useEffect(() => {
+    let alive = true;
+    setDisplayBoardTitle(boardName);
+    loadBoardSettings(boardName).then((s) => {
+      if (!alive) return;
+      setDisplayBoardTitle(resolveBoardDisplayTitle(boardName, s));
+      if (s.defaultView) setViewMode(s.defaultView);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [boardName]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      loadBoardSettings(boardName).then((s) => {
+        if (!cancelled) setDisplayBoardTitle(resolveBoardDisplayTitle(boardName, s));
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [boardName])
+  );
   const [focusPageIndex, setFocusPageIndex] = useState(0);
   const prevBoardFocusRef = useRef(false);
   const boardFocusModeRef = useRef(false);
@@ -1131,6 +1160,7 @@ export default function BoardScreen({
         setViewMode(view);
         onBoardViewSelect?.(view);
       },
+      onSettingsPress: onOpenBoardSettings ?? glassBottomBar?.onSettingsPress,
       showExpandButton: viewMode === 'board',
       expandActive: boardFocusMode || focusExitAnimationBusy,
       expandDisabled: focusExitAnimationBusy,
@@ -1143,6 +1173,7 @@ export default function BoardScreen({
     glassBottomBar,
     handleBoardFocusExpandPress,
     onBoardViewSelect,
+    onOpenBoardSettings,
     viewMode,
   ]);
 
@@ -1165,7 +1196,7 @@ export default function BoardScreen({
           )}
         </View>
         <Text style={styles.title} numberOfLines={1}>
-          {boardName}
+          {displayBoardTitle}
         </Text>
         <View style={[styles.headerSide, styles.headerSideEnd]}>
           <ContextMenu

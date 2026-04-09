@@ -12,7 +12,6 @@ import {
   useWindowDimensions,
   Keyboard,
   DeviceEventEmitter,
-  ActivityIndicator,
 } from 'react-native';
 import { GlassRoundIconButton } from '../components/GlassRoundIconButton';
 import { ContextMenu } from '../components/ContextMenu';
@@ -93,6 +92,7 @@ import {
 } from '../board/boardDragUtils';
 import { uid } from '../utils/id';
 import { toggleStopwatchOnTask } from '../utils/workTime';
+import { BoardScreenSkeleton } from '../components/skeletons';
 
 export type { BoardViewMode } from '../types/board';
 
@@ -1540,11 +1540,7 @@ export default function BoardScreen({
   ]);
 
   if (boardLoading && columns.length === 0) {
-    return (
-      <View style={[styles.container, styles.boardGate, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color="#0a0a0a" />
-      </View>
-    );
+    return <BoardScreenSkeleton paddingTop={insets.top} titleBarWidth={Math.min(200, screenW * 0.42)} />;
   }
 
   if (boardError && columns.length === 0) {

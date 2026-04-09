@@ -7,7 +7,6 @@ import {
   RefreshControl,
   Platform,
   StyleSheet,
-  ActivityIndicator,
   Pressable,
   type View as RNView,
 } from 'react-native';
@@ -33,6 +32,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getUserMessages, type ApiInboxMessage } from '../api/user';
 import { formatRelativeTimeShort } from '../utils/formatRelativeTime';
 import { loadReadMessageIds, markMessageRead } from '../storage/messageReadIds';
+import { MessagesScreenSkeleton, SkeletonBlock } from '../components/skeletons';
 
 type InboxListItem = {
   id: string;
@@ -313,8 +313,18 @@ export default function MessagesScreen() {
       </Pressable>
     </View>
   ) : fetching && rawMessages.length === 0 ? (
-    <View style={styles.loadingWrap}>
-      <ActivityIndicator size="large" color="#0a0a0a" />
+    <View>
+      <SkeletonBlock height={28} width={200} borderRadius={8} />
+      <View style={{ marginTop: 10, maxWidth: 520, width: '100%' }}>
+        <SkeletonBlock height={15} width="100%" borderRadius={6} />
+      </View>
+      <View style={{ marginTop: 6, maxWidth: 480, width: '100%' }}>
+        <SkeletonBlock height={15} width="100%" borderRadius={6} />
+      </View>
+      <View style={styles.sectionLabelWrap}>
+        <SkeletonBlock height={13} width={72} borderRadius={4} />
+      </View>
+      <MessagesScreenSkeleton />
     </View>
   ) : visibleNotifications.length === 0 ? (
     <View style={styles.emptyFilter}>
@@ -441,10 +451,6 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 12,
-  },
-  loadingWrap: {
-    paddingVertical: 48,
-    alignItems: 'center',
   },
   signedOutWrap: {
     alignItems: 'center',

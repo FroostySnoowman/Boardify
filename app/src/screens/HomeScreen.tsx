@@ -4,7 +4,6 @@ import {
   View,
   Text,
   ScrollView,
-  ActivityIndicator,
   RefreshControl,
   Platform,
   StyleSheet,
@@ -18,6 +17,7 @@ import { hapticLight } from '../utils/haptics';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 import { ActivitiesHeader, MOBILE_NAV_HEIGHT } from '../components/ActivitiesHeader';
 import { TabScreenChrome } from '../components/TabScreenChrome';
+import { HomeScreenSkeleton } from '../components/skeletons';
 import { NeuListRowPressable } from '../components/NeuListRowPressable';
 import { sortBoards, useBoardSort } from '../contexts/BoardSortContext';
 import type { BoardListItem } from '../data/boards';
@@ -85,11 +85,25 @@ export default function HomeScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#f5f0e8', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0a0a0a" />
-      </View>
+    const ipadPad = Platform.OS === 'ios' && Platform.isPad ? IPAD_TAB_CONTENT_TOP_PADDING : 0;
+    const contentPaddingTop = (isWeb ? 24 : 12) + ipadPad;
+    const skeleton = (
+      <HomeScreenSkeleton
+        contentPaddingTop={contentPaddingTop}
+        contentPaddingBottom={insets.bottom + 24}
+        horizontalPadding={isWeb ? 24 : 16}
+        isWeb={isWeb}
+      />
     );
+    if (isWeb) {
+      return (
+        <View className="flex-1" style={{ backgroundColor: '#f5f0e8' }}>
+          <ActivitiesHeader user={null} />
+          {skeleton}
+        </View>
+      );
+    }
+    return <TabScreenChrome>{skeleton}</TabScreenChrome>;
   }
 
   if (!user) {

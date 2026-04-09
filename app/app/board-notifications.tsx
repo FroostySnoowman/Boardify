@@ -8,7 +8,6 @@ import {
   Switch,
   KeyboardAvoidingView,
   Pressable,
-  ActivityIndicator,
 } from 'react-native';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -24,6 +23,7 @@ import {
   type BoardNotificationSettings,
 } from '../src/storage/boardNotificationSettings';
 import { getNotificationSettings, patchNotificationSettings } from '../src/api/boards';
+import { BoardNotificationsSkeleton } from '../src/components/skeletons';
 
 const DateTimePickerNative =
   Platform.OS === 'web'
@@ -321,9 +321,7 @@ export default function BoardNotificationsScreen() {
           showsVerticalScrollIndicator={false}
         >
           {!hydrated ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator size="large" color="#0a0a0a" />
-            </View>
+            <BoardNotificationsSkeleton />
           ) : (
           <View style={[styles.card, cardShadow]}>
             <Text style={styles.helper}>
@@ -594,12 +592,6 @@ const styles = StyleSheet.create({
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
-  },
-  loadingWrap: {
-    minHeight: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 48,
   },
   card: {
     alignSelf: 'stretch',

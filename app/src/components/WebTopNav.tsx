@@ -17,6 +17,7 @@ import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { Avatar } from './Avatar';
+import { SkeletonBlock } from './skeletons/SkeletonBlock';
 import { getImageUrl } from '../utils/imageUrl';
 import { hapticLight } from '../utils/haptics';
 
@@ -157,7 +158,9 @@ export function WebTopNav({
 
     if (loading) {
       return (
-        <View className="h-10 w-10 rounded-full border border-white/10 bg-white/10" />
+        <View style={styles.avatarContainer}>
+          <SkeletonBlock width={36} height={36} borderRadius={18} variant="dark" />
+        </View>
       );
     }
 

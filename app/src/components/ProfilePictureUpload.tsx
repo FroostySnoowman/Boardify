@@ -4,7 +4,6 @@ import {
   TouchableOpacity,
   Text,
   Alert,
-  ActivityIndicator,
   StyleSheet,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
@@ -15,6 +14,7 @@ import { hapticLight } from '../utils/haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getImageUrl } from '../utils/imageUrl';
+import { SkeletonBlock } from './skeletons/SkeletonBlock';
 
 interface ProfilePictureUploadProps {
   currentImageUrl?: string | null;
@@ -128,11 +128,17 @@ export default function ProfilePictureUpload({
                 transition={200}
                 contentFit="cover"
               />
-              {uploading && (
-                <View style={styles.uploadOverlay}>
-                  <ActivityIndicator size="large" color={light ? '#0a0a0a' : '#ffffff'} />
+              {uploading ? (
+                <View style={styles.uploadOverlay} pointerEvents="none">
+                  <SkeletonBlock
+                    width="100%"
+                    height={128}
+                    borderRadius={64}
+                    variant="onWhite"
+                    style={StyleSheet.absoluteFillObject}
+                  />
                 </View>
-              )}
+              ) : null}
             </View>
             {!uploading && (
               <TouchableOpacity

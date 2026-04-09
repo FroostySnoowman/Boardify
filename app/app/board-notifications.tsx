@@ -17,11 +17,13 @@ import { Feather } from '@expo/vector-icons';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { hapticLight } from '../src/utils/haptics';
 import {
-  loadBoardNotificationSettings,
-  mergeBoardNotificationSettings,
+  BOARD_NOTIFICATION_DEFAULTS,
+  clampDayMinutes,
   notificationMinutesToDate,
   dateToNotificationMinutes,
+  type BoardNotificationSettings,
 } from '../src/storage/boardNotificationSettings';
+import { getNotificationSettings, patchNotificationSettings } from '../src/api/boards';
 
 const DateTimePickerNative =
   Platform.OS === 'web'
@@ -102,11 +104,31 @@ function SettingsToggleRow({
   );
 }
 
+function mergePrefsFromApi(prefs: Record<string, unknown> | null): BoardNotificationSettings {
+  if (!prefs) return { ...BOARD_NOTIFICATION_DEFAULTS };
+  const p = prefs as Partial<BoardNotificationSettings>;
+  return {
+    ...BOARD_NOTIFICATION_DEFAULTS,
+    ...p,
+    version: 1,
+    quietFromMinutes: clampDayMinutes(
+      typeof p.quietFromMinutes === 'number' ? p.quietFromMinutes : BOARD_NOTIFICATION_DEFAULTS.quietFromMinutes
+    ),
+    quietUntilMinutes: clampDayMinutes(
+      typeof p.quietUntilMinutes === 'number' ? p.quietUntilMinutes : BOARD_NOTIFICATION_DEFAULTS.quietUntilMinutes
+    ),
+  };
+}
+
 export default function BoardNotificationsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const { boardName: boardNameParam } = useLocalSearchParams<{ boardName?: string | string[] }>();
+  const { boardName: boardNameParam, boardId: boardIdParam } = useLocalSearchParams<{
+    boardName?: string | string[];
+    boardId?: string | string[];
+  }>();
   const boardName = resolveBoardName(boardNameParam);
+  const boardId = (Array.isArray(boardIdParam) ? boardIdParam[0] : boardIdParam)?.trim() ?? '';
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailDigest, setEmailDigest] = useState(false);
@@ -132,23 +154,31 @@ export default function BoardNotificationsScreen() {
       let cancel = false;
       setHydrated(false);
       void (async () => {
-        const s = await loadBoardNotificationSettings(boardName);
-        if (cancel) return;
-        setPushEnabled(s.pushEnabled);
-        setEmailDigest(s.emailDigest);
-        setMentionYou(s.mentionYou);
-        setAssignedCard(s.assignedCard);
-        setDueSoon(s.dueSoon);
-        setCommentsFollowed(s.commentsFollowed);
-        setQuietHours(s.quietHours);
-        setQuietFrom(notificationMinutesToDate(s.quietFromMinutes));
-        setQuietUntil(notificationMinutesToDate(s.quietUntilMinutes));
-        setHydrated(true);
+        if (!boardId) {
+          if (!cancel) setHydrated(true);
+          return;
+        }
+        try {
+          const { prefs } = await getNotificationSettings(boardId);
+          const s = mergePrefsFromApi(prefs);
+          if (cancel) return;
+          setPushEnabled(s.pushEnabled);
+          setEmailDigest(s.emailDigest);
+          setMentionYou(s.mentionYou);
+          setAssignedCard(s.assignedCard);
+          setDueSoon(s.dueSoon);
+          setCommentsFollowed(s.commentsFollowed);
+          setQuietHours(s.quietHours);
+          setQuietFrom(notificationMinutesToDate(s.quietFromMinutes));
+          setQuietUntil(notificationMinutesToDate(s.quietUntilMinutes));
+        } finally {
+          if (!cancel) setHydrated(true);
+        }
       })();
       return () => {
         cancel = true;
       };
-    }, [boardName])
+    }, [boardId])
   );
 
   useEffect(() => {
@@ -192,23 +222,27 @@ export default function BoardNotificationsScreen() {
       if (which === 'from') {
         setQuietFrom((prev) => {
           const next = mergeTimeOfDay(prev, date);
-          void mergeBoardNotificationSettings(boardName, {
-            quietFromMinutes: dateToNotificationMinutes(next),
-          });
+          if (boardId) {
+            void patchNotificationSettings(boardId, {
+              quietFromMinutes: dateToNotificationMinutes(next),
+            });
+          }
           return next;
         });
       } else {
         setQuietUntil((prev) => {
           const next = mergeTimeOfDay(prev, date);
-          void mergeBoardNotificationSettings(boardName, {
-            quietUntilMinutes: dateToNotificationMinutes(next),
-          });
+          if (boardId) {
+            void patchNotificationSettings(boardId, {
+              quietUntilMinutes: dateToNotificationMinutes(next),
+            });
+          }
           return next;
         });
       }
       setAndroidPicker(null);
     },
-    [boardName]
+    [boardId]
   );
 
   const scheduleIosQuietPersist = useCallback(() => {
@@ -217,23 +251,27 @@ export default function BoardNotificationsScreen() {
     }
     iosQuietDebounceRef.current = setTimeout(() => {
       iosQuietDebounceRef.current = null;
-      void mergeBoardNotificationSettings(boardName, {
-        quietFromMinutes: dateToNotificationMinutes(quietFromRef.current),
-        quietUntilMinutes: dateToNotificationMinutes(quietUntilRef.current),
-      });
+      if (boardId) {
+        void patchNotificationSettings(boardId, {
+          quietFromMinutes: dateToNotificationMinutes(quietFromRef.current),
+          quietUntilMinutes: dateToNotificationMinutes(quietUntilRef.current),
+        });
+      }
     }, 450);
-  }, [boardName]);
+  }, [boardId]);
 
   const flushIosQuietPersist = useCallback(() => {
     if (iosQuietDebounceRef.current) {
       clearTimeout(iosQuietDebounceRef.current);
       iosQuietDebounceRef.current = null;
     }
-    void mergeBoardNotificationSettings(boardName, {
-      quietFromMinutes: dateToNotificationMinutes(quietFromRef.current),
-      quietUntilMinutes: dateToNotificationMinutes(quietUntilRef.current),
-    });
-  }, [boardName]);
+    if (boardId) {
+      void patchNotificationSettings(boardId, {
+        quietFromMinutes: dateToNotificationMinutes(quietFromRef.current),
+        quietUntilMinutes: dateToNotificationMinutes(quietUntilRef.current),
+      });
+    }
+  }, [boardId]);
 
   const cardShadow =
     Platform.OS === 'ios'
@@ -300,7 +338,7 @@ export default function BoardNotificationsScreen() {
                 value={pushEnabled}
                 onValueChange={(v) => {
                   setPushEnabled(v);
-                  void mergeBoardNotificationSettings(boardName, { pushEnabled: v });
+                  if (boardId) void patchNotificationSettings(boardId, { pushEnabled: v });
                 }}
               />
               <View style={styles.divider} />
@@ -310,7 +348,7 @@ export default function BoardNotificationsScreen() {
                 value={emailDigest}
                 onValueChange={(v) => {
                   setEmailDigest(v);
-                  void mergeBoardNotificationSettings(boardName, { emailDigest: v });
+                  if (boardId) void patchNotificationSettings(boardId, { emailDigest: v });
                 }}
               />
             </SettingsSection>
@@ -321,7 +359,7 @@ export default function BoardNotificationsScreen() {
                 value={mentionYou}
                 onValueChange={(v) => {
                   setMentionYou(v);
-                  void mergeBoardNotificationSettings(boardName, { mentionYou: v });
+                  if (boardId) void patchNotificationSettings(boardId, { mentionYou: v });
                 }}
               />
               <View style={styles.divider} />
@@ -330,7 +368,7 @@ export default function BoardNotificationsScreen() {
                 value={assignedCard}
                 onValueChange={(v) => {
                   setAssignedCard(v);
-                  void mergeBoardNotificationSettings(boardName, { assignedCard: v });
+                  if (boardId) void patchNotificationSettings(boardId, { assignedCard: v });
                 }}
               />
               <View style={styles.divider} />
@@ -340,7 +378,7 @@ export default function BoardNotificationsScreen() {
                 value={dueSoon}
                 onValueChange={(v) => {
                   setDueSoon(v);
-                  void mergeBoardNotificationSettings(boardName, { dueSoon: v });
+                  if (boardId) void patchNotificationSettings(boardId, { dueSoon: v });
                 }}
               />
               <View style={styles.divider} />
@@ -349,7 +387,7 @@ export default function BoardNotificationsScreen() {
                 value={commentsFollowed}
                 onValueChange={(v) => {
                   setCommentsFollowed(v);
-                  void mergeBoardNotificationSettings(boardName, { commentsFollowed: v });
+                  if (boardId) void patchNotificationSettings(boardId, { commentsFollowed: v });
                 }}
               />
             </SettingsSection>
@@ -361,7 +399,7 @@ export default function BoardNotificationsScreen() {
                 value={quietHours}
                 onValueChange={(v) => {
                   setQuietHours(v);
-                  void mergeBoardNotificationSettings(boardName, { quietHours: v });
+                  if (boardId) void patchNotificationSettings(boardId, { quietHours: v });
                 }}
               />
               {quietHours ? (
@@ -377,7 +415,7 @@ export default function BoardNotificationsScreen() {
                           onChange: (e: { target: HTMLInputElement }) => {
                             setQuietFrom((prev) => {
                               const next = fromWebTimeValue(e.target.value, prev);
-                              void mergeBoardNotificationSettings(boardName, {
+                              if (boardId) void patchNotificationSettings(boardId, {
                                 quietFromMinutes: dateToNotificationMinutes(next),
                               });
                               return next;
@@ -395,7 +433,7 @@ export default function BoardNotificationsScreen() {
                           onChange: (e: { target: HTMLInputElement }) => {
                             setQuietUntil((prev) => {
                               const next = fromWebTimeValue(e.target.value, prev);
-                              void mergeBoardNotificationSettings(boardName, {
+                              if (boardId) void patchNotificationSettings(boardId, {
                                 quietUntilMinutes: dateToNotificationMinutes(next),
                               });
                               return next;

@@ -20,6 +20,7 @@ import { NetworkProvider, useNetwork } from '../src/contexts/NetworkContext';
 import { BoardSortProvider } from '../src/contexts/BoardSortContext';
 import { MessageFilterProvider } from '../src/contexts/MessageFilterContext';
 import { useRouter } from 'expo-router';
+import { registerPushNotificationDeepLinks } from '../src/notifications/notificationDeepLink';
 
 const BACKGROUND_COLOR = '#f5f0e8';
 const MODAL_BACKGROUND = '#020617';
@@ -110,6 +111,11 @@ function AppContent() {
       setSplashHidden(true);
     }
   }, [appReady, splashHidden]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return undefined;
+    return registerPushNotificationDeepLinks(router);
+  }, [router]);
 
   if (!appReady) {
     return null;

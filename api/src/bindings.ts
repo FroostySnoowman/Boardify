@@ -15,6 +15,8 @@ export interface Env {
   SMTP_PORT?: string;
   SMTP_USER?: string;
   SMTP_PASS?: string;
+  /** Optional Expo access token for higher push rate limits (https://expo.dev/accounts/[account]/settings/access-tokens). */
+  EXPO_ACCESS_TOKEN?: string;
 }
 
 export interface AuthenticatedUser {

@@ -14,6 +14,7 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticLight } from '../src/utils/haptics';
 import { BoardStyleActionButton } from '../src/components/BoardStyleActionButton';
+import { createBoard } from '../src/api/boards';
 
 const BELOW_HEADER_GAP = 10;
 
@@ -23,6 +24,7 @@ export default function CreateBoardScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const [name, setName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   useFocusEffect(
@@ -35,11 +37,20 @@ export default function CreateBoardScreen() {
   const trimmed = name.trim();
   const canSubmit = trimmed.length > 0;
 
-  const submit = () => {
-    if (!canSubmit) return;
+  const submit = async () => {
+    if (!canSubmit || submitting) return;
     hapticLight();
     Keyboard.dismiss();
-    router.replace({ pathname: '/board', params: { boardName: trimmed } });
+    setSubmitting(true);
+    try {
+      const { board } = await createBoard({ name: trimmed });
+      router.replace({
+        pathname: '/board',
+        params: { boardId: board.id, boardName: board.name },
+      });
+    } catch {
+      setSubmitting(false);
+    }
   };
 
   const close = () => {
@@ -112,11 +123,11 @@ export default function CreateBoardScreen() {
                 labelStyle={styles.labelCancel}
               />
               <BoardStyleActionButton
-                shadowColor={canSubmit ? '#a5d6a5' : '#d0d0d0'}
-                onPress={submit}
-                disabled={!canSubmit}
-                label="Create"
-                labelStyle={canSubmit ? styles.labelCreate : styles.labelCreateDisabled}
+                shadowColor={canSubmit && !submitting ? '#a5d6a5' : '#d0d0d0'}
+                onPress={() => void submit()}
+                disabled={!canSubmit || submitting}
+                label={submitting ? 'Creating…' : 'Create'}
+                labelStyle={canSubmit && !submitting ? styles.labelCreate : styles.labelCreateDisabled}
               />
             </View>
           </View>

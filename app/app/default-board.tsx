@@ -18,7 +18,9 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../src/utils/haptics';
-import { MOCK_BOARDS } from '../src/data/boards';
+import type { BoardListItem } from '../src/data/boards';
+import { listBoards } from '../src/api/boards';
+import { apiBoardToListItem } from '../src/api/boardMappers';
 import { getStoredDefaultBoardId, setStoredDefaultBoardId } from '../src/storage/accountPrefs';
 import { sortBoards, useBoardSort } from '../src/contexts/BoardSortContext';
 import { NeuListRowPressable } from '../src/components/NeuListRowPressable';
@@ -104,7 +106,7 @@ export default function DefaultBoardScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { sortMode } = useBoardSort();
-  const boards = sortBoards(MOCK_BOARDS, sortMode);
+  const [boards, setBoards] = useState<BoardListItem[]>([]);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -112,6 +114,12 @@ export default function DefaultBoardScreen() {
     const id = await getStoredDefaultBoardId();
     setSavedId(id);
     setSelectedId(id);
+    try {
+      const { boards: rows } = await listBoards();
+      setBoards((rows ?? []).map(apiBoardToListItem));
+    } catch {
+      setBoards([]);
+    }
   }, []);
 
   useFocusEffect(
@@ -119,6 +127,8 @@ export default function DefaultBoardScreen() {
       load();
     }, [load])
   );
+
+  const sortedBoards = sortBoards(boards, sortMode);
 
   const dirty = selectedId !== savedId;
   const canSave = dirty;
@@ -191,7 +201,7 @@ export default function DefaultBoardScreen() {
               )}
             </NeuListRowPressable>
 
-            {boards.map((b) => (
+            {sortedBoards.map((b) => (
               <NeuListRowPressable
                 key={b.id}
                 shadowStyle={{ backgroundColor: b.color }}

@@ -205,7 +205,26 @@ Using the **same** mailbox for dev and prod is fine; using **separate** credenti
 
 ---
 
-## 7. Optional: `ALLOWED_ORIGINS` (not a secret)
+## 7. Optional: `EXPO_ACCESS_TOKEN`
+
+**What it’s for:** Authenticated calls to the [Expo Push API](https://docs.expo.dev/push-notifications/sending-notifications/) from the Worker (`boardExpoPush.ts`). Pushes still work **without** this secret for typical volume; Expo recommends an access token for higher throughput and reliability.
+
+**How to obtain it**
+
+1. Sign in at [expo.dev](https://expo.dev).
+2. Open **Account settings → Access tokens** (or your org’s token page).
+3. Create a token with a descriptive name (e.g. `boardify-worker-push`).
+
+**Install**
+
+```bash
+npx wrangler secret put EXPO_ACCESS_TOKEN --env dev
+npx wrangler secret put EXPO_ACCESS_TOKEN --env production
+```
+
+---
+
+## 8. Optional: `ALLOWED_ORIGINS` (not a secret)
 
 **What it’s for:** Extra **CORS** origins beyond the defaults in [`src/http.ts`](src/http.ts).
 
@@ -228,6 +247,7 @@ ALLOWED_ORIGINS = "https://one.example,https://two.example"
 4. Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`  
 5. Apple: `APPLE_CLIENT_ID`, `APPLE_CLIENT_SECRET`, `APPLE_BUNDLE_ID`  
 6. SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`  
+7. Optional: `EXPO_ACCESS_TOKEN` (Expo push from the Worker)
 
 Then deploy and re-check OAuth redirect URIs match the live URLs.
 

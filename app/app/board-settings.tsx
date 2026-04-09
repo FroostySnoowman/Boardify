@@ -20,11 +20,11 @@ import { BoardStyleActionButton } from '../src/components/BoardStyleActionButton
 import type { BoardViewMode } from '../src/types/board';
 import {
   BOARD_SETTINGS_DEFAULTS,
-  loadBoardSettings,
-  mergeBoardSettings,
+  mergeBoardSettingsFromRemoteJson,
   resolveBoardDisplayTitle,
   type BoardSettings,
 } from '../src/storage/boardSettings';
+import { getBoard, patchBoard } from '../src/api/boards';
 
 const BELOW_HEADER_GAP = 10;
 const BG = '#f5f0e8';
@@ -154,8 +154,12 @@ function SettingsToggleRow({
 export default function BoardSettingsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const { boardName: boardNameParam } = useLocalSearchParams<{ boardName?: string | string[] }>();
+  const { boardName: boardNameParam, boardId: boardIdParam } = useLocalSearchParams<{
+    boardName?: string | string[];
+    boardId?: string | string[];
+  }>();
   const boardName = resolveBoardName(boardNameParam);
+  const boardId = (Array.isArray(boardIdParam) ? boardIdParam[0] : boardIdParam)?.trim() ?? '';
 
   const [settings, setSettings] = useState<BoardSettings>(BOARD_SETTINGS_DEFAULTS);
   const [nameDraft, setNameDraft] = useState('');
@@ -164,23 +168,41 @@ export default function BoardSettingsScreen() {
 
   useEffect(() => {
     let alive = true;
-    loadBoardSettings(boardName).then((s) => {
-      if (alive) {
+    if (!boardId) {
+      setReady(true);
+      return () => {
+        alive = false;
+      };
+    }
+    getBoard(boardId)
+      .then(({ board }) => {
+        if (!alive) return;
+        const s = mergeBoardSettingsFromRemoteJson(board.settings_json);
         setSettings(s);
         setNameDraft(resolveBoardDisplayTitle(boardName, s));
         setDescDraft(s.boardDescription);
         setReady(true);
-      }
-    });
+      })
+      .catch(() => {
+        if (alive) setReady(true);
+      });
     return () => {
       alive = false;
     };
-  }, [boardName]);
+  }, [boardId, boardName]);
 
-  const patch = useCallback(async (partial: Partial<BoardSettings>) => {
-    setSettings((s) => ({ ...s, ...partial, version: 1 }));
-    await mergeBoardSettings(boardName, partial);
-  }, [boardName]);
+  const patch = useCallback(
+    async (partial: Partial<BoardSettings>) => {
+      setSettings((s) => {
+        const next: BoardSettings = { ...s, ...partial, version: 1 };
+        if (boardId) {
+          void patchBoard(boardId, { settings_json: next });
+        }
+        return next;
+      });
+    },
+    [boardId]
+  );
 
   const close = () => {
     hapticLight();
@@ -382,7 +404,10 @@ export default function BoardSettingsScreen() {
               <Pressable
                 onPress={() => {
                   hapticLight();
-                  router.push({ pathname: '/board-archive', params: { boardName } });
+                  router.push({
+                    pathname: '/board-archive',
+                    params: { boardId, boardName },
+                  });
                 }}
                 style={({ pressed }) => [styles.navLinkCell, pressed && styles.navLinkRowPressed]}
               >
@@ -400,7 +425,10 @@ export default function BoardSettingsScreen() {
               <Pressable
                 onPress={() => {
                   hapticLight();
-                  router.push({ pathname: '/board-audit', params: { boardName } });
+                  router.push({
+                    pathname: '/board-audit',
+                    params: { boardId, boardName },
+                  });
                 }}
                 style={({ pressed }) => [styles.navLinkCell, pressed && styles.navLinkRowPressed]}
               >

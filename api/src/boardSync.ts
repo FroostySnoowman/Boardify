@@ -1,8 +1,19 @@
 import type { Env } from './bindings';
+import { notifyBoardMembersExpoPush } from './boardExpoPush';
 
 /** Worker → DO broadcast uses AUTH_SECRET as X-Board-Sync-Secret. */
 export function getBoardBroadcastAuthSecret(env: Env): string {
   return (env.AUTH_SECRET || '').trim();
+}
+
+function scheduleBoardExpoPush(
+  env: Env,
+  boardId: string,
+  event: { type: string; [key: string]: unknown }
+): void {
+  void notifyBoardMembersExpoPush(env, boardId, event).catch((err) =>
+    console.error('[boardSync] expo push notify failed', err)
+  );
 }
 
 export async function broadcastBoardEvent(
@@ -14,6 +25,7 @@ export async function broadcastBoardEvent(
   if (!secret) return;
   if (!env.BOARD_ROOM) {
     console.warn('[boardSync] BOARD_ROOM binding missing; skipping broadcast');
+    scheduleBoardExpoPush(env, boardId, event);
     return;
   }
 
@@ -38,8 +50,12 @@ export async function broadcastBoardEvent(
     if (!res.ok) {
       const t = await res.text();
       console.error('[boardSync] broadcast failed', res.status, t);
+      scheduleBoardExpoPush(env, boardId, event);
+      return;
     }
+    scheduleBoardExpoPush(env, boardId, event);
   } catch (e) {
     console.error('[boardSync] broadcast error', e);
+    scheduleBoardExpoPush(env, boardId, event);
   }
 }

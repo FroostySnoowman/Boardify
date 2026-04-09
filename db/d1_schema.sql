@@ -155,3 +155,10 @@ CREATE TABLE IF NOT EXISTS board_notification_settings (
   updated_at TEXT NOT NULL,
   PRIMARY KEY (board_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS user_expo_push_tokens (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  expo_push_token TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

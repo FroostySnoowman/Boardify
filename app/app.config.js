@@ -148,6 +148,12 @@ module.exports = {
     newArchEnabled: true,
     plugins: [
       'expo-router',
+      [
+        'expo-notifications',
+        {
+          enableBackgroundRemoteNotifications: true,
+        },
+      ],
       '@react-native-community/datetimepicker',
       [
         '@react-native-google-signin/google-signin',

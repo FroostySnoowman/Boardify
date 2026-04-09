@@ -208,7 +208,30 @@ export async function fetchCurrentUser(): Promise<User> {
     const res = await nativeFetch('/auth/me', {
         method: 'GET',
     });
-    return (res.data as any).user;
+    const raw = (res.data as { user?: Record<string, unknown> }).user;
+    if (!raw || typeof raw !== 'object') {
+        throw new Error('Invalid user response');
+    }
+    const id = raw.id != null ? String(raw.id) : '';
+    const email = raw.email != null ? String(raw.email) : '';
+    const username =
+        raw.username != null && String(raw.username).length > 0
+            ? String(raw.username)
+            : email.split('@')[0] || 'User';
+    return {
+        id,
+        email,
+        username,
+        mode: (raw.mode as User['mode']) ?? undefined,
+        statProfile: (raw.statProfile as User['statProfile']) ?? undefined,
+        profilePictureUrl: (raw.profilePictureUrl as string | null | undefined) ?? null,
+        displayName: (raw.displayName as string | undefined) ?? undefined,
+        emailVerified: Boolean(raw.emailVerified),
+        birthdate: (raw.birthdate as string | null | undefined) ?? null,
+        chatDisabled: Boolean(raw.chatDisabled),
+        parentalConsentAt: (raw.parentalConsentAt as string | null | undefined) ?? null,
+        subscriptionStatus: (raw.subscriptionStatus as User['subscriptionStatus']) ?? 'free',
+    };
 }
 
 export async function logout(): Promise<void> {

@@ -17,12 +17,13 @@ import { hapticLight } from '../utils/haptics';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 import { TabScreenChrome } from '../components/TabScreenChrome';
 import { ContextMenu } from '../components/ContextMenu';
-import { boardLabelForId } from '../data/boards';
+import { listBoards } from '../api/boards';
 import {
   getStoredDefaultBoardId,
   loadAccountUiPrefs,
   saveAccountUiPrefs,
 } from '../storage/accountPrefs';
+import { syncPushRegistrationFromAccountPrefs } from '../notifications/expoPush';
 
 const SHIFT = 5;
 
@@ -43,6 +44,7 @@ export default function AccountScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [config, setConfig] = useState<AccountConfig>(DEFAULT_CONFIG);
+  const [defaultBoardLabel, setDefaultBoardLabel] = useState('None');
   const isWeb = Platform.OS === 'web';
 
   useFocusEffect(
@@ -57,6 +59,18 @@ export default function AccountScreen() {
           notificationsEnabled: ui.notificationsEnabled,
           theme: ui.theme,
         }));
+        if (!id) {
+          setDefaultBoardLabel('None');
+          return;
+        }
+        try {
+          const { boards: rows } = await listBoards();
+          if (cancel) return;
+          const row = rows?.find((b) => b.id === id);
+          setDefaultBoardLabel(row?.name ?? id);
+        } catch {
+          if (!cancel) setDefaultBoardLabel(id);
+        }
       })();
       return () => {
         cancel = true;
@@ -64,11 +78,12 @@ export default function AccountScreen() {
     }, [])
   );
 
-  const persistUiPrefs = useCallback((next: Pick<AccountConfig, 'notificationsEnabled' | 'theme'>) => {
-    void saveAccountUiPrefs({
+  const persistUiPrefs = useCallback(async (next: Pick<AccountConfig, 'notificationsEnabled' | 'theme'>) => {
+    await saveAccountUiPrefs({
       notificationsEnabled: next.notificationsEnabled,
       theme: next.theme,
     });
+    await syncPushRegistrationFromAccountPrefs();
   }, []);
 
   const updateConfig = <K extends keyof AccountConfig>(key: K, value: AccountConfig[K]) => {
@@ -76,7 +91,7 @@ export default function AccountScreen() {
     setConfig((c) => {
       const next = { ...c, [key]: value };
       if (key === 'notificationsEnabled' || key === 'theme') {
-        persistUiPrefs({
+        void persistUiPrefs({
           notificationsEnabled: next.notificationsEnabled,
           theme: next.theme,
         });
@@ -99,7 +114,7 @@ export default function AccountScreen() {
             hapticLight();
             setConfig((c) => {
               const next = { ...c, theme: mode };
-              void saveAccountUiPrefs({
+              void persistUiPrefs({
                 notificationsEnabled: next.notificationsEnabled,
                 theme: next.theme,
               });
@@ -108,7 +123,7 @@ export default function AccountScreen() {
           },
         };
       }),
-    [config.theme],
+    [config.theme, persistUiPrefs],
   );
 
   const ipadPad = Platform.OS === 'ios' && Platform.isPad ? IPAD_TAB_CONTENT_TOP_PADDING : 0;
@@ -156,7 +171,7 @@ export default function AccountScreen() {
               <ConfigRowDivider />
               <ConfigRow
                 label="Default board"
-                sublabel={boardLabelForId(config.defaultBoardId)}
+                sublabel={defaultBoardLabel}
                 onPress={() => {
                   hapticLight();
                   router.push('/default-board');

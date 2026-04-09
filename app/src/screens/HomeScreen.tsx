@@ -1,4 +1,5 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
@@ -18,7 +19,9 @@ import { ActivitiesHeader, MOBILE_NAV_HEIGHT } from '../components/ActivitiesHea
 import { TabScreenChrome } from '../components/TabScreenChrome';
 import { NeuListRowPressable } from '../components/NeuListRowPressable';
 import { sortBoards, useBoardSort } from '../contexts/BoardSortContext';
-import { MOCK_BOARDS } from '../data/boards';
+import type { BoardListItem } from '../data/boards';
+import { listBoards } from '../api/boards';
+import { apiBoardToListItem } from '../api/boardMappers';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -27,23 +30,43 @@ export default function HomeScreen() {
   const { sortMode } = useBoardSort();
   const scrollViewRef = useRef<ScrollView>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [boards, setBoards] = useState<BoardListItem[]>([]);
+  const [boardsError, setBoardsError] = useState<string | null>(null);
   const isWeb = Platform.OS === 'web';
 
-  const sortedBoards = useMemo(
-    () => sortBoards(MOCK_BOARDS, sortMode),
-    [sortMode],
+  const loadBoards = useCallback(async () => {
+    try {
+      setBoardsError(null);
+      const { boards: rows } = await listBoards();
+      setBoards((rows ?? []).map(apiBoardToListItem));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Could not load boards';
+      setBoardsError(msg);
+      setBoards([]);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadBoards();
+    }, [loadBoards])
   );
+
+  const sortedBoards = useMemo(() => sortBoards(boards, sortMode), [boards, sortMode]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     hapticLight();
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await loadBoards();
     setRefreshing(false);
   };
 
-  const onBoardPress = (id: string) => {
+  const onBoardPress = (id: string, name: string) => {
     hapticLight();
-    router.push('/board');
+    router.push({
+      pathname: '/board',
+      params: { boardId: id, boardName: name },
+    });
   };
 
   const onCreateBoard = () => {
@@ -96,13 +119,16 @@ export default function HomeScreen() {
 
       <View style={homeStyles.section}>
         <Text style={homeStyles.sectionTitle}>My Boards</Text>
+        {boardsError ? (
+          <Text style={{ color: '#b45309', marginBottom: 12, fontSize: 14 }}>{boardsError}</Text>
+        ) : null}
         <View style={homeStyles.boardGrid}>
           {sortedBoards.map((board) => (
             <NeuListRowPressable
               key={board.id}
               shadowStyle={{ backgroundColor: board.color }}
               topStyle={homeStyles.boardCard}
-              onPress={() => onBoardPress(board.id)}
+              onPress={() => onBoardPress(board.id, board.name)}
             >
               <Text style={homeStyles.boardCardName} numberOfLines={1}>{board.name}</Text>
               <Feather name="chevron-right" size={18} color="#666" />

@@ -3,6 +3,7 @@ import { jsonResponse } from './http';
 import { getCurrentUserFromSession } from './auth';
 import { getBoardMembership } from './boardAccess';
 import { broadcastBoardEvent } from './boardSync';
+import { notifyBoardDeletedExpoPush } from './boardExpoPush';
 
 type BoardRow = {
   id: string;
@@ -173,7 +174,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       ).bind(id, uid, t),
     ]);
     await appendAudit(env, id, 'board_created', `Board “${name}” created`, uid, { boardId: id });
-    await broadcastBoardEvent(env, id, { type: 'board_created', boardId: id });
+    await broadcastBoardEvent(env, id, { type: 'board_created', boardId: id, actorUserId: uid });
     const row = await env.DB.prepare('SELECT * FROM boards WHERE id = ?').bind(id).first<BoardRow>();
     return jsonResponse(request, { board: row }, { status: 201 });
   }
@@ -237,7 +238,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     vals.push(nowIso());
     vals.push(boardId);
     await env.DB.prepare(`UPDATE boards SET ${updates.join(', ')} WHERE id = ?`).bind(...vals).run();
-    await broadcastBoardEvent(env, boardId, { type: 'board_updated', boardId });
+    await broadcastBoardEvent(env, boardId, { type: 'board_updated', boardId, actorUserId: r.userId });
     const row = await env.DB.prepare('SELECT * FROM boards WHERE id = ?').bind(boardId).first<BoardRow>();
     return jsonResponse(request, { board: row });
   }
@@ -248,8 +249,9 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     if (!roleAtLeast(r.role, 'owner')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
     }
+    await notifyBoardDeletedExpoPush(env, boardId, r.userId);
     await env.DB.prepare('DELETE FROM boards WHERE id = ?').bind(boardId).run();
-    await broadcastBoardEvent(env, boardId, { type: 'board_deleted', boardId });
+    await broadcastBoardEvent(env, boardId, { type: 'board_deleted', boardId, actorUserId: r.userId });
     return jsonResponse(request, { ok: true });
   }
 
@@ -336,7 +338,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       .bind(id, boardId, title, position, t, t)
       .run();
     await appendAudit(env, boardId, 'list_added', `List “${title}” added`, r.userId, { listId: id });
-    await broadcastBoardEvent(env, boardId, { type: 'list_created', boardId, listId: id });
+    await broadcastBoardEvent(env, boardId, { type: 'list_created', boardId, listId: id, actorUserId: r.userId });
     const list = await env.DB.prepare('SELECT * FROM lists WHERE id = ?').bind(id).first();
     return jsonResponse(request, { list }, { status: 201 });
   }
@@ -366,7 +368,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       );
     });
     await env.DB.batch(stmts);
-    await broadcastBoardEvent(env, boardId, { type: 'lists_reordered', boardId, orderedIds: ids });
+    await broadcastBoardEvent(env, boardId, { type: 'lists_reordered', boardId, orderedIds: ids, actorUserId: r.userId });
     return jsonResponse(request, { ok: true });
   }
 
@@ -421,7 +423,13 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       .run();
     await env.DB.prepare('DELETE FROM cards WHERE id = ?').bind(cardId).run();
     await appendAudit(env, boardId, 'card_archived', `Card archived`, r.userId, { cardId, archiveId });
-    await broadcastBoardEvent(env, boardId, { type: 'card_archived', boardId, cardId, archiveId });
+    await broadcastBoardEvent(env, boardId, {
+      type: 'card_archived',
+      boardId,
+      cardId,
+      archiveId,
+      actorUserId: r.userId,
+    });
     return jsonResponse(request, { archiveId }, { status: 201 });
   }
 
@@ -465,7 +473,13 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       listId,
       archiveId,
     });
-    await broadcastBoardEvent(env, boardId, { type: 'list_archived', boardId, listId, archiveId });
+    await broadcastBoardEvent(env, boardId, {
+      type: 'list_archived',
+      boardId,
+      listId,
+      archiveId,
+      actorUserId: r.userId,
+    });
     return jsonResponse(request, { archiveId }, { status: 201 });
   }
 
@@ -541,7 +555,13 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
         .run();
       await env.DB.prepare('DELETE FROM archived_cards WHERE id = ?').bind(body.archiveId).run();
       await appendAudit(env, boardId, 'card_restored', `Card restored`, r.userId, { cardId });
-      await broadcastBoardEvent(env, boardId, { type: 'card_restored', boardId, cardId, listId: targetListId });
+      await broadcastBoardEvent(env, boardId, {
+        type: 'card_restored',
+        boardId,
+        cardId,
+        listId: targetListId,
+        actorUserId: r.userId,
+      });
       return jsonResponse(request, { cardId });
     }
     if (body.type === 'list' && body.archiveId) {
@@ -602,7 +622,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       }
       await env.DB.prepare('DELETE FROM archived_lists WHERE id = ?').bind(body.archiveId).run();
       await appendAudit(env, boardId, 'list_restored', `List “${listTitle}” restored`, r.userId, { listId });
-      await broadcastBoardEvent(env, boardId, { type: 'list_restored', boardId, listId });
+      await broadcastBoardEvent(env, boardId, { type: 'list_restored', boardId, listId, actorUserId: r.userId });
       return jsonResponse(request, { listId });
     }
     return jsonResponse(request, { error: 'Invalid restore body' }, { status: 400 });
@@ -662,7 +682,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       );
     });
     if (stmts.length) await env.DB.batch(stmts);
-    await broadcastBoardEvent(env, boardId, { type: 'dashboard_updated', boardId });
+    await broadcastBoardEvent(env, boardId, { type: 'dashboard_updated', boardId, actorUserId: r.userId });
     return jsonResponse(request, { ok: true });
   }
 
@@ -704,6 +724,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       type: 'notification_settings_updated',
       boardId,
       userId: r.userId,
+      actorUserId: r.userId,
     });
     return jsonResponse(request, { prefs: merged });
   }
@@ -740,7 +761,12 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     vals.push(nowIso());
     vals.push(listId);
     await env.DB.prepare(`UPDATE lists SET ${updates.join(', ')} WHERE id = ?`).bind(...vals).run();
-    await broadcastBoardEvent(env, list.board_id, { type: 'list_updated', boardId: list.board_id, listId });
+    await broadcastBoardEvent(env, list.board_id, {
+      type: 'list_updated',
+      boardId: list.board_id,
+      listId,
+      actorUserId: r.userId,
+    });
     const row = await env.DB.prepare('SELECT * FROM lists WHERE id = ?').bind(listId).first();
     return jsonResponse(request, { list: row });
   }
@@ -760,7 +786,12 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     await env.DB.prepare('DELETE FROM cards WHERE list_id = ?').bind(listId).run();
     await env.DB.prepare('DELETE FROM lists WHERE id = ?').bind(listId).run();
     await appendAudit(env, list.board_id, 'list_archived', `List “${list.title}” deleted`, r.userId, { listId });
-    await broadcastBoardEvent(env, list.board_id, { type: 'list_deleted', boardId: list.board_id, listId });
+    await broadcastBoardEvent(env, list.board_id, {
+      type: 'list_deleted',
+      boardId: list.board_id,
+      listId,
+      actorUserId: r.userId,
+    });
     return jsonResponse(request, { ok: true });
   }
 
@@ -831,7 +862,13 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       )
       .run();
     await appendAudit(env, list.board_id, 'card_added', `Card “${title}” added`, r.userId, { cardId: id, listId });
-    await broadcastBoardEvent(env, list.board_id, { type: 'card_created', boardId: list.board_id, listId, cardId: id });
+    await broadcastBoardEvent(env, list.board_id, {
+      type: 'card_created',
+      boardId: list.board_id,
+      listId,
+      cardId: id,
+      actorUserId: r.userId,
+    });
     const card = await env.DB.prepare('SELECT * FROM cards WHERE id = ?').bind(id).first<Parameters<typeof cardRowToApi>[0]>();
     return jsonResponse(request, { card: card ? cardRowToApi(card) : null }, { status: 201 });
   }
@@ -910,7 +947,12 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       )
       .run();
     await appendAudit(env, card.board_id, 'card_updated', `Card updated`, r.userId, { cardId });
-    await broadcastBoardEvent(env, card.board_id, { type: 'card_updated', boardId: card.board_id, cardId });
+    await broadcastBoardEvent(env, card.board_id, {
+      type: 'card_updated',
+      boardId: card.board_id,
+      cardId,
+      actorUserId: r.userId,
+    });
     const updated = await env.DB.prepare('SELECT * FROM cards WHERE id = ?').bind(cardId).first<Parameters<typeof cardRowToApi>[0]>();
     return jsonResponse(request, { card: updated ? cardRowToApi(updated) : null });
   }
@@ -930,7 +972,12 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     }
     await env.DB.prepare('DELETE FROM cards WHERE id = ?').bind(cardId).run();
     await appendAudit(env, card.board_id, 'card_archived', `Card removed`, r.userId, { cardId });
-    await broadcastBoardEvent(env, card.board_id, { type: 'card_deleted', boardId: card.board_id, cardId });
+    await broadcastBoardEvent(env, card.board_id, {
+      type: 'card_deleted',
+      boardId: card.board_id,
+      cardId,
+      actorUserId: r.userId,
+    });
     return jsonResponse(request, { ok: true });
   }
 
@@ -979,6 +1026,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       cardId,
       listId: newListId,
       position,
+      actorUserId: r.userId,
     });
     const updated = await env.DB.prepare('SELECT * FROM cards WHERE id = ?').bind(cardId).first<Parameters<typeof cardRowToApi>[0]>();
     return jsonResponse(request, { card: updated ? cardRowToApi(updated) : null });

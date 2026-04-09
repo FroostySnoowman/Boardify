@@ -68,3 +68,21 @@ export function resolveBoardDisplayTitle(routeBoardName: string, settings: Board
   const route = routeBoardName.trim();
   return route || 'My Board';
 }
+
+/** Merge Worker `boards.settings_json` into defaults (API-backed boards). */
+export function mergeBoardSettingsFromRemoteJson(settingsJson: string | null | undefined): BoardSettings {
+  if (settingsJson == null || settingsJson === '') {
+    return { ...BOARD_SETTINGS_DEFAULTS };
+  }
+  try {
+    const parsed =
+      typeof settingsJson === 'string' ? (JSON.parse(settingsJson) as Partial<BoardSettings>) : settingsJson;
+    return {
+      ...BOARD_SETTINGS_DEFAULTS,
+      ...parsed,
+      version: 1,
+    };
+  } catch {
+    return { ...BOARD_SETTINGS_DEFAULTS };
+  }
+}

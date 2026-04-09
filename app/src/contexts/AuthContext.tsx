@@ -4,6 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchCurrentUser, logout as apiLogout, User } from '../api/auth';
 import { getSession } from '../api/auth';
 import { getStoredSessionToken } from '../api/session';
+import {
+  syncPushRegistrationFromAccountPrefs,
+  unregisterExpoPushFromApi,
+} from '../notifications/expoPush';
 
 type AuthContextType = {
   user: User | null;
@@ -51,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
+      await unregisterExpoPushFromApi();
       setUser(null);
       await AsyncStorage.removeItem(AUTH_USER_KEY);
       setLoading(false);
@@ -111,6 +116,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!user || Platform.OS === 'web') return;
+    void syncPushRegistrationFromAccountPrefs();
+  }, [user?.id]);
 
   return (
     <AuthContext.Provider value={{ user, loading, refreshUser, logout, setUserContext }}>

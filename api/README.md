@@ -56,6 +56,19 @@ Sanity check (dev):
 npx wrangler d1 execute boardify-db-dev --remote --command="SELECT name FROM sqlite_master WHERE type='table' ORDER BY 1"
 ```
 
+**Existing database:** if you applied the schema before `user_expo_push_tokens` existed, add it with:
+
+```sql
+CREATE TABLE IF NOT EXISTS user_expo_push_tokens (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  expo_push_token TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+```
+
+The mobile app registers an Expo token via `POST /user/expo-push-token` when the user enables Account → Notifications. After a successful board Durable Object broadcast (or if the DO is unavailable), the Worker sends pushes via the [Expo Push API](https://docs.expo.dev/push-notifications/sending-notifications/) using tokens from this table and per-board `pushEnabled` in `board_notification_settings`. Optional secret `EXPO_ACCESS_TOKEN` improves rate limits; see [`SECRETS.md`](SECRETS.md).
+
 ### Step 4 — Register the Durable Object (first time)
 
 The `[[migrations]]` block defines `BoardRoom`. Apply it by deploying **once** to dev or production:

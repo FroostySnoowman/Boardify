@@ -189,5 +189,42 @@ export async function handleUser(
     return jsonResponse(request, { message: 'Profile picture removed' }, { status: 200 });
   }
 
+  if (pathname === '/user/expo-push-token' && request.method === 'POST') {
+    let body: { token?: string; platform?: string } = {};
+    try {
+      body = (await request.json()) as { token?: string; platform?: string };
+    } catch {
+      body = {};
+    }
+    const token = typeof body.token === 'string' ? body.token.trim() : '';
+    if (token.length < 20 || token.length > 512) {
+      return jsonResponse(request, { error: 'Invalid push token' }, { status: 400 });
+    }
+    const platform =
+      body.platform === 'ios' || body.platform === 'android' || body.platform === 'web'
+        ? body.platform
+        : 'unknown';
+    const userId = Number(currentUser.id);
+    const t = new Date().toISOString();
+    await env.DB.prepare(
+      `INSERT INTO user_expo_push_tokens (user_id, expo_push_token, platform, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET
+         expo_push_token = excluded.expo_push_token,
+         platform = excluded.platform,
+         updated_at = excluded.updated_at`
+    )
+      .bind(userId, token, platform, t)
+      .run();
+    return jsonResponse(request, { ok: true });
+  }
+
+  if (pathname === '/user/expo-push-token' && request.method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM user_expo_push_tokens WHERE user_id = ?')
+      .bind(Number(currentUser.id))
+      .run();
+    return jsonResponse(request, { ok: true });
+  }
+
   return null;
 }

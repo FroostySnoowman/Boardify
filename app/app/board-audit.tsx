@@ -5,17 +5,17 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../src/utils/haptics';
-import { loadBoardAuditLog, type BoardAuditEntry } from '../src/storage/boardArchiveStorage';
+import { getBoardAudit } from '../src/api/boards';
 
 const BELOW_HEADER_GAP = 10;
 const BG = '#f5f0e8';
 
-function resolveBoardName(raw: string | string[] | undefined): string {
+function resolveBoardId(raw: string | string[] | undefined): string {
   const s = Array.isArray(raw) ? raw[0] : raw;
-  return s?.trim() ? s.trim() : 'My Board';
+  return s?.trim() ? s.trim() : '';
 }
 
-function kindLabel(kind: BoardAuditEntry['kind']): string {
+function kindLabel(kind: string): string {
   switch (kind) {
     case 'card_added':
       return 'Task added';
@@ -31,8 +31,14 @@ function kindLabel(kind: BoardAuditEntry['kind']): string {
       return 'Task restored';
     case 'list_restored':
       return 'List restored';
+    case 'board_created':
+      return 'Board created';
+    case 'board_updated':
+      return 'Board updated';
+    case 'list_deleted':
+      return 'List deleted';
     default:
-      return kind;
+      return kind.replace(/_/g, ' ');
   }
 }
 
@@ -50,24 +56,34 @@ function formatWhen(iso: string): string {
   }
 }
 
+type AuditRow = { id: string; atIso: string; kind: string; summary: string };
+
 export default function BoardAuditScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const { boardName: boardNameParam } = useLocalSearchParams<{ boardName?: string | string[] }>();
-  const boardName = resolveBoardName(boardNameParam);
+  const { boardId: boardIdParam } = useLocalSearchParams<{ boardId?: string | string[] }>();
+  const boardId = resolveBoardId(boardIdParam);
 
-  const [entries, setEntries] = useState<BoardAuditEntry[]>([]);
+  const [entries, setEntries] = useState<AuditRow[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const log = await loadBoardAuditLog(boardName);
-    setEntries(log);
-  }, [boardName]);
+    if (!boardId) return;
+    const { entries: rows } = await getBoardAudit(boardId, { limit: 100 });
+    setEntries(
+      (rows ?? []).map((e) => ({
+        id: e.id,
+        atIso: e.at_iso,
+        kind: e.kind,
+        summary: e.summary,
+      }))
+    );
+  }, [boardId]);
 
   useFocusEffect(
     useCallback(() => {
-      void load();
-    }, [load])
+      if (boardId) void load();
+    }, [load, boardId])
   );
 
   const onRefresh = useCallback(async () => {
@@ -80,6 +96,10 @@ export default function BoardAuditScreen() {
     hapticLight();
     router.back();
   };
+
+  if (!boardId) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>

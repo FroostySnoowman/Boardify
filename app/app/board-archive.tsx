@@ -15,21 +15,30 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../src/utils/haptics';
 import { BOARD_PENDING_RESTORE_EVENT } from '../src/board/boardRestoreEvents';
-import {
-  loadBoardArchiveState,
-  restoreArchivedCard,
-  restoreArchivedList,
-  type ArchivedCardItem,
-  type ArchivedListItem,
-} from '../src/storage/boardArchiveStorage';
+import type { BoardCardData, BoardColumnData } from '../src/types/board';
+import { getBoardArchive, restoreBoard } from '../src/api/boards';
+import type { ArchivedCardRow, ArchivedListRow } from '../src/api/boards';
 
 const BELOW_HEADER_GAP = 10;
 const BG = '#f5f0e8';
 const SHIFT = 5;
 
-function resolveBoardName(raw: string | string[] | undefined): string {
+type ArchivedCardItem = {
+  archiveId: string;
+  archivedAtIso: string;
+  sourceListTitle: string;
+  card: BoardCardData;
+};
+
+type ArchivedListItem = {
+  archiveId: string;
+  archivedAtIso: string;
+  column: BoardColumnData;
+};
+
+function resolveBoardId(raw: string | string[] | undefined): string {
   const s = Array.isArray(raw) ? raw[0] : raw;
-  return s?.trim() ? s.trim() : 'My Board';
+  return s?.trim() ? s.trim() : '';
 }
 
 function formatWhen(iso: string): string {
@@ -45,26 +54,62 @@ function formatWhen(iso: string): string {
   }
 }
 
+function mapCardRow(row: ArchivedCardRow): ArchivedCardItem | null {
+  try {
+    const card = JSON.parse(row.card_snapshot_json) as BoardCardData;
+    return {
+      archiveId: row.id,
+      archivedAtIso: row.archived_at,
+      sourceListTitle: row.source_list_title ?? '',
+      card,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function mapListRow(row: ArchivedListRow): ArchivedListItem | null {
+  try {
+    const column = JSON.parse(row.column_snapshot_json) as BoardColumnData;
+    return {
+      archiveId: row.id,
+      archivedAtIso: row.archived_at,
+      column,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function BoardArchiveScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const { boardName: boardNameParam } = useLocalSearchParams<{ boardName?: string | string[] }>();
-  const boardName = resolveBoardName(boardNameParam);
+  const { boardId: boardIdParam } = useLocalSearchParams<{ boardId?: string | string[] }>();
+  const boardId = resolveBoardId(boardIdParam);
 
   const [cards, setCards] = useState<ArchivedCardItem[]>([]);
   const [lists, setLists] = useState<ArchivedListItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const s = await loadBoardArchiveState(boardName);
-    setCards(s.archivedCards);
-    setLists(s.archivedLists);
-  }, [boardName]);
+    if (!boardId) return;
+    const { archivedCards, archivedLists } = await getBoardArchive(boardId);
+    setCards(
+      (archivedCards ?? [])
+        .map((r) => mapCardRow(r as ArchivedCardRow))
+        .filter((x): x is ArchivedCardItem => x != null)
+    );
+    setLists(
+      (archivedLists ?? [])
+        .map((r) => mapListRow(r as ArchivedListRow))
+        .filter((x): x is ArchivedListItem => x != null)
+    );
+  }, [boardId]);
 
   useFocusEffect(
     useCallback(() => {
-      void load();
-    }, [load])
+      if (boardId) void load();
+    }, [load, boardId])
   );
 
   const onRefresh = useCallback(async () => {
@@ -79,24 +124,34 @@ export default function BoardArchiveScreen() {
   };
 
   const onRestoreCard = async (id: string) => {
+    if (!boardId) return;
     hapticLight();
-    const ok = await restoreArchivedCard(boardName, id);
-    if (ok) {
-      DeviceEventEmitter.emit(BOARD_PENDING_RESTORE_EVENT, boardName);
+    try {
+      await restoreBoard(boardId, { type: 'card', archiveId: id });
+      DeviceEventEmitter.emit(BOARD_PENDING_RESTORE_EVENT, { boardId });
       await load();
+    } catch {
+      // ignore
     }
   };
 
   const onRestoreList = async (id: string) => {
+    if (!boardId) return;
     hapticLight();
-    const ok = await restoreArchivedList(boardName, id);
-    if (ok) {
-      DeviceEventEmitter.emit(BOARD_PENDING_RESTORE_EVENT, boardName);
+    try {
+      await restoreBoard(boardId, { type: 'list', archiveId: id });
+      DeviceEventEmitter.emit(BOARD_PENDING_RESTORE_EVENT, { boardId });
       await load();
+    } catch {
+      // ignore
     }
   };
 
   const empty = lists.length === 0 && cards.length === 0;
+
+  if (!boardId) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>

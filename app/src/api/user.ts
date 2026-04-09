@@ -58,3 +58,18 @@ export async function removeProfilePicture(): Promise<void> {
     params: {},
   });
 }
+
+export async function registerExpoPushToken(body: { token: string; platform: string }): Promise<void> {
+  await nativeFetch('/user/expo-push-token', {
+    method: 'POST',
+    data: body,
+    params: {},
+  });
+}
+
+export async function unregisterExpoPushToken(): Promise<void> {
+  await nativeFetch('/user/expo-push-token', {
+    method: 'DELETE',
+    params: {},
+  });
+}

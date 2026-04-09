@@ -33,7 +33,7 @@ function storageKey(boardName: string): string {
   return `${STORAGE_PREFIX}${slug}`;
 }
 
-function clampDayMinutes(m: number): number {
+export function clampDayMinutes(m: number): number {
   const x = Math.round(m);
   if (!Number.isFinite(x)) return 0;
   return ((x % 1440) + 1440) % 1440;

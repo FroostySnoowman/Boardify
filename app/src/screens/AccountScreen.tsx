@@ -161,17 +161,29 @@ export default function AccountScreen() {
         </View>
 
         {!user ? (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.signInCard}
-            onPress={() => {
-              hapticLight();
-              router.push('/login');
-            }}
-          >
-            <Text style={styles.signInCardTitle}>Sign in</Text>
-            <Text style={styles.signInCardSub}>Use your email, Google, or Apple to sync boards.</Text>
-          </TouchableOpacity>
+          <View style={styles.signInBlock}>
+            <View style={styles.cardWrap}>
+              <View style={styles.cardShadow} />
+              <View style={styles.card}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.configRow}
+                  onPress={() => {
+                    hapticLight();
+                    router.push('/login');
+                  }}
+                >
+                  <View style={styles.configLabelBlock}>
+                    <Text style={styles.configLabel}>Sign in</Text>
+                    <Text style={styles.configSublabel}>
+                      Use your email, Google, or Apple to sync boards.
+                    </Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color="#666" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         ) : null}
 
         <View style={styles.section}>
@@ -334,25 +346,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontWeight: '500',
   },
-  signInCard: {
-    backgroundColor: '#0a0a0a',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
+  signInBlock: {
     marginBottom: 24,
-  },
-  signInCardTitle: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-  signInCardSub: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 14,
-    fontWeight: '500',
   },
   section: {
     marginBottom: 24,

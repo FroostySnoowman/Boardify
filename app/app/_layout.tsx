@@ -146,11 +146,15 @@ function AppContent() {
     };
   }, [resolvedScheme, colors.canvas, colors.surfaceElevated]);
 
-  if (!appReady) {
-    return null;
-  }
-
   const statusBarStyle = resolvedScheme === 'dark' ? 'light' : 'dark';
+
+  if (!appReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+        <StatusBar style={statusBarStyle} backgroundColor={colors.canvas} />
+      </View>
+    );
+  }
 
   return (
     <NavigationThemeProvider value={navigationTheme}>
@@ -200,7 +204,6 @@ function AppContent() {
             name="(tabs)"
             options={{
               headerShown: false,
-              animation: 'fade',
             }}
           />
           <Stack.Screen name="profile" options={createBoardModalOptions} />

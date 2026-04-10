@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Platform, View, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { AppTopNav, WebTopNav } from '../../src/components';
@@ -26,8 +26,9 @@ export default function TabsLayout() {
 
   const tabBarTintColor = colors.bottomBarIcon;
   const tabBarLabelColor = colors.bottomBarIconMuted;
+  const tabBarBlurEffect = colors.headerBlurMaterial;
+  const tabBarBackgroundColor = colors.glassFallbackBg;
   const tabScreenBg = useMemo(() => ({ backgroundColor: colors.canvas }), [colors.canvas]);
-  const tabNativeContainer = useMemo(() => ({ backgroundColor: colors.canvas }), [colors.canvas]);
 
   const layoutStyles = useMemo(
     () =>
@@ -83,19 +84,18 @@ export default function TabsLayout() {
           }}
           tintColor={tabBarTintColor}
           disableTransparentOnScrollEdge
-          blurEffect="none"
-          backgroundColor="transparent"
+          blurEffect={tabBarBlurEffect}
+          backgroundColor={tabBarBackgroundColor}
           shadowColor="transparent"
-          // @ts-expect-error nativeContainerStyle → RN Screens Tabs.Host (expo-router patch in patches/)
-          nativeContainerStyle={tabNativeContainer}
         >
           {TAB_ITEMS.map((item) => (
-            <NativeTabs.Trigger key={item.name} name={item.name} contentStyle={tabScreenBg}>
+            <NativeTabs.Trigger
+              key={item.name}
+              name={item.name}
+              contentStyle={tabScreenBg}
+            >
               <TabLabel>{item.label}</TabLabel>
-              <TabIcon
-                src={item.iconSrc}
-                selectedColor={tabBarTintColor}
-              />
+              <TabIcon src={item.iconSrc} selectedColor={tabBarTintColor} />
             </NativeTabs.Trigger>
           ))}
         </NativeTabs>

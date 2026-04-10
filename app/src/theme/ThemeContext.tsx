@@ -7,7 +7,6 @@ import React, {
   useState,
 } from 'react';
 import { Appearance, Platform, useColorScheme as useRNColorScheme } from 'react-native';
-import * as SystemUI from 'expo-system-ui';
 import {
   loadAccountUiPrefs,
   saveAccountUiPrefs,
@@ -81,9 +80,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    if (Platform.OS === 'web' || typeof document === 'undefined') return;
-    void SystemUI.setBackgroundColorAsync(colors.canvas);
-  }, [colors.canvas]);
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
+    // Native tabs host (react-native-screens) uses UIColor.systemBackgroundColor for its
+    // container until nativeContainerStyle is wired through expo-router. Align the window
+    // trait collection with the user's theme preference so system surfaces match the app.
+    if (preference === 'system') {
+      Appearance.setColorScheme('unspecified');
+    } else if (preference === 'dark') {
+      Appearance.setColorScheme('dark');
+    } else {
+      Appearance.setColorScheme('light');
+    }
+  }, [preference]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;

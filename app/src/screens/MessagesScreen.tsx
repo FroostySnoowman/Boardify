@@ -482,6 +482,11 @@ export default function MessagesScreen() {
 
   const androidRefreshOffset = MOBILE_NAV_HEIGHT + insets.top;
 
+  const showRecentLabel =
+    Boolean(user) &&
+    !loadError &&
+    (visibleNotifications.length > 0 || (fetching && rawMessages.length === 0));
+
   const listBody = !user ? (
     <View style={styles.signedOutWrap}>
       <Feather name="message-circle" size={40} color={colors.placeholder} />
@@ -567,9 +572,11 @@ export default function MessagesScreen() {
         </Text>
       </View>
 
-      <View style={styles.sectionLabelWrap}>
-        <Text style={styles.sectionLabel}>Recent</Text>
-      </View>
+      {showRecentLabel ? (
+        <View style={styles.sectionLabelWrap}>
+          <Text style={styles.sectionLabel}>Recent</Text>
+        </View>
+      ) : null}
 
       <View style={styles.list}>{listBody}</View>
     </ScrollView>

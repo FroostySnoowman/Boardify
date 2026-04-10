@@ -13,7 +13,6 @@
     "build:android:debug": "npx expo prebuild --platform android && cd android && ./gradlew assembleDebug",
     "build:ios:prod": "EXPO_PUBLIC_BUILD_ENV=production NODE_ENV=production npx expo prebuild --clean --platform ios",
     "build:ios:dev": "npx expo prebuild --clean --platform ios",
-    "postinstall": "npm config set legacy-peer-deps true",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

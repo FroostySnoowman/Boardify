@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -23,12 +23,38 @@ import type {
   DashboardDimension,
   DashboardLineTimeframe,
 } from '../src/types/dashboard';
+import { useTheme } from '../src/theme';
+import type { ThemeColors } from '../src/theme/colors';
 
 const BELOW_HEADER_GAP = 10;
 
-const BG = '#f5f0e8';
+function createAddDashboardTileStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    flex: {
+      flex: 1,
+    },
+    sheetFill: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'flex-start',
+      paddingHorizontal: 20,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+  });
+}
 
 export default function AddDashboardTileScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createAddDashboardTileStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { tiles: tilesParam } = useLocalSearchParams<{ tiles?: string | string[] }>();
@@ -85,14 +111,14 @@ export default function AddDashboardTileScreen() {
           style={
             Platform.OS === 'ios'
               ? { backgroundColor: 'transparent' }
-              : { backgroundColor: BG }
+              : { backgroundColor: colors.modalCreamCanvas }
           }
         />
-        <Stack.Screen.Title style={{ fontWeight: '800', color: '#0a0a0a' }}>
+        <Stack.Screen.Title style={{ fontWeight: '800', color: colors.modalCreamHeaderTint }}>
           {kind === 'bar' ? 'Add bar chart' : kind === 'pie' ? 'Add pie chart' : 'Add line chart'}
         </Stack.Screen.Title>
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor="#0a0a0a" />
+          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor={colors.modalCreamHeaderTint} />
         </Stack.Toolbar>
       </Stack.Screen>
 
@@ -130,25 +156,3 @@ export default function AddDashboardTileScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  flex: {
-    flex: 1,
-  },
-  sheetFill: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-});

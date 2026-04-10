@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -24,20 +24,173 @@ import { hapticLight } from '../src/utils/haptics';
 import { useAuth } from '../src/contexts/AuthContext';
 import ProfilePictureUpload from '../src/components/ProfilePictureUpload';
 import { updateUserProfile } from '../src/api/user';
+import { useTheme } from '../src/theme';
+import type { ThemeColors } from '../src/theme/colors';
 
 const BELOW_HEADER_GAP = 10;
-const BG = '#f5f0e8';
 const SHIFT = 5;
 const PRESS_IN = 60;
-const PRESS_OUT = 100;
+
+function createProfileStyles(colors: ThemeColors) {
+  const cardShadow =
+    Platform.OS === 'ios'
+      ? {
+          shadowColor: '#000',
+          shadowOffset: { width: 5, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 0,
+        }
+      : { elevation: 5 };
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    flex: {
+      flex: 1,
+    },
+    sheetFill: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'flex-start',
+      paddingHorizontal: 20,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    card: {
+      alignSelf: 'stretch',
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      padding: 24,
+      ...cardShadow,
+    },
+    helper: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 22,
+      fontWeight: '500',
+    },
+    photoBlock: {
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    label: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 10,
+    },
+    input: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      backgroundColor: colors.modalCreamCanvas,
+      marginBottom: 18,
+    },
+    emailBox: {
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      backgroundColor: colors.surfaceMuted,
+      marginBottom: 8,
+    },
+    emailText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginTop: 28,
+      gap: 12,
+      width: '100%',
+      overflow: 'hidden',
+      paddingBottom: SHIFT + 6,
+    },
+    boardBtnWrap: {
+      position: 'relative',
+      flex: 1,
+      minWidth: 0,
+      marginRight: SHIFT,
+      marginBottom: SHIFT,
+      zIndex: 0,
+    },
+    boardBtnShadow: {
+      position: 'absolute',
+      left: SHIFT,
+      top: SHIFT,
+      right: -SHIFT,
+      bottom: -SHIFT,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      zIndex: 0,
+    },
+    boardBtnFace: {
+      position: 'relative',
+      zIndex: 1,
+      elevation: 4,
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 52,
+    },
+    boardBtnFaceDisabled: {
+      backgroundColor: colors.surfaceMuted,
+    },
+    boardBtnLabel: {
+      fontSize: 17,
+      fontWeight: '700',
+      textAlign: 'center',
+      width: '100%',
+      color: colors.textPrimary,
+    },
+    labelCancel: {
+      color: colors.textPrimary,
+    },
+    labelCreate: {
+      color: colors.textPrimary,
+    },
+    labelCreateDisabled: {
+      color: colors.textTertiary,
+    },
+  });
+}
+
+type ProfileSheet = ReturnType<typeof createProfileStyles>;
 
 function BoardStyleButton({
+  sheet,
   shadowColor,
   onPress,
   disabled,
   label,
   labelStyle,
 }: {
+  sheet: ProfileSheet;
   shadowColor: string;
   onPress: () => void;
   disabled?: boolean;
@@ -62,26 +215,21 @@ function BoardStyleButton({
         cancelAnimation(offset);
         offset.value = 0;
       }}
-      style={styles.boardBtnWrap}
+      style={sheet.boardBtnWrap}
     >
-      <View
-        style={[styles.boardBtnShadow, { backgroundColor: shadowColor }]}
-        pointerEvents="none"
-      />
+      <View style={[sheet.boardBtnShadow, { backgroundColor: shadowColor }]} pointerEvents="none" />
       <Animated.View
-        style={[
-          styles.boardBtnFace,
-          disabled && styles.boardBtnFaceDisabled,
-          animatedStyle,
-        ]}
+        style={[sheet.boardBtnFace, disabled && sheet.boardBtnFaceDisabled, animatedStyle]}
       >
-        <Text style={[styles.boardBtnLabel, labelStyle]}>{label}</Text>
+        <Text style={[sheet.boardBtnLabel, labelStyle]}>{label}</Text>
       </Animated.View>
     </Pressable>
   );
 }
 
 export default function ProfileScreen() {
+  const { colors, resolvedScheme } = useTheme();
+  const styles = useMemo(() => createProfileStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { user, refreshUser } = useAuth();
@@ -124,6 +272,8 @@ export default function ProfileScreen() {
     }
   };
 
+  const uploadTone = resolvedScheme === 'dark' ? 'dark' : 'light';
+
   return (
     <View style={styles.container}>
       <Stack.Screen>
@@ -131,14 +281,14 @@ export default function ProfileScreen() {
           style={
             Platform.OS === 'ios'
               ? { backgroundColor: 'transparent' }
-              : { backgroundColor: BG }
+              : { backgroundColor: colors.modalCreamCanvas }
           }
         />
-        <Stack.Screen.Title style={{ fontWeight: '800', color: '#0a0a0a' }}>
+        <Stack.Screen.Title style={{ fontWeight: '800', color: colors.modalCreamHeaderTint }}>
           Profile
         </Stack.Screen.Title>
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor="#0a0a0a" />
+          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor={colors.modalCreamHeaderTint} />
         </Stack.Toolbar>
       </Stack.Screen>
 
@@ -167,13 +317,15 @@ export default function ProfileScreen() {
               </Text>
               <View style={styles.actions}>
                 <BoardStyleButton
-                  shadowColor="#e0e0e0"
+                  sheet={styles}
+                  shadowColor={colors.shadowFill}
                   onPress={close}
                   label="Close"
                   labelStyle={styles.labelCancel}
                 />
                 <BoardStyleButton
-                  shadowColor="#a5d6a5"
+                  sheet={styles}
+                  shadowColor={colors.success}
                   onPress={() => {
                     hapticLight();
                     router.push('/login');
@@ -192,7 +344,7 @@ export default function ProfileScreen() {
 
               <View style={styles.photoBlock}>
                 <ProfilePictureUpload
-                  tone="light"
+                  tone={uploadTone}
                   currentImageUrl={user.profilePictureUrl ?? undefined}
                   onUploadSuccess={() => {}}
                   onRemoveSuccess={() => {}}
@@ -204,7 +356,7 @@ export default function ProfileScreen() {
                 value={username}
                 onChangeText={setUsername}
                 placeholder="Your name"
-                placeholderTextColor="#888"
+                placeholderTextColor={colors.placeholder}
                 style={styles.input}
                 returnKeyType="done"
                 onSubmitEditing={() => (canSave ? save() : undefined)}
@@ -220,13 +372,15 @@ export default function ProfileScreen() {
 
               <View style={styles.actions}>
                 <BoardStyleButton
-                  shadowColor="#e0e0e0"
+                  sheet={styles}
+                  shadowColor={colors.shadowFill}
                   onPress={close}
                   label="Cancel"
                   labelStyle={styles.labelCancel}
                 />
                 <BoardStyleButton
-                  shadowColor={canSave ? '#a5d6a5' : '#d0d0d0'}
+                  sheet={styles}
+                  shadowColor={canSave ? colors.success : colors.shadowFill}
                   onPress={save}
                   disabled={!canSave}
                   label={saving ? 'Saving…' : 'Save'}
@@ -240,150 +394,3 @@ export default function ProfileScreen() {
     </View>
   );
 }
-
-const cardShadow =
-  Platform.OS === 'ios'
-    ? {
-        shadowColor: '#000',
-        shadowOffset: { width: 5, height: 5 },
-        shadowOpacity: 0.2,
-        shadowRadius: 0,
-      }
-    : { elevation: 5 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  flex: {
-    flex: 1,
-  },
-  sheetFill: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  card: {
-    alignSelf: 'stretch',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    padding: 24,
-    ...cardShadow,
-  },
-  helper: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#444',
-    marginBottom: 22,
-    fontWeight: '500',
-  },
-  photoBlock: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  input: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#0a0a0a',
-    borderWidth: 2,
-    borderColor: '#000',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: BG,
-    marginBottom: 18,
-  },
-  emailBox: {
-    borderWidth: 2,
-    borderColor: '#000',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: '#eee',
-    marginBottom: 8,
-  },
-  emailText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#555',
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 28,
-    gap: 12,
-    width: '100%',
-    overflow: 'hidden',
-    paddingBottom: SHIFT + 6,
-  },
-  boardBtnWrap: {
-    position: 'relative',
-    flex: 1,
-    minWidth: 0,
-    marginRight: SHIFT,
-    marginBottom: SHIFT,
-    zIndex: 0,
-  },
-  boardBtnShadow: {
-    position: 'absolute',
-    left: SHIFT,
-    top: SHIFT,
-    right: -SHIFT,
-    bottom: -SHIFT,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    zIndex: 0,
-  },
-  boardBtnFace: {
-    position: 'relative',
-    zIndex: 1,
-    elevation: 4,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-  },
-  boardBtnFaceDisabled: {
-    backgroundColor: '#eee',
-  },
-  boardBtnLabel: {
-    fontSize: 17,
-    fontWeight: '700',
-    textAlign: 'center',
-    width: '100%',
-    color: '#0a0a0a',
-  },
-  labelCancel: {
-    color: '#0a0a0a',
-  },
-  labelCreate: {
-    color: '#0a0a0a',
-  },
-  labelCreateDisabled: {
-    color: '#888',
-  },
-});

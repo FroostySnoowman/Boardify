@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -15,12 +15,101 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticLight } from '../src/utils/haptics';
 import { BoardStyleActionButton } from '../src/components/BoardStyleActionButton';
 import { createBoard } from '../src/api/boards';
+import { useTheme } from '../src/theme';
+import type { ThemeColors } from '../src/theme/colors';
 
 const BELOW_HEADER_GAP = 10;
 
-const BG = '#f5f0e8';
+function createCreateBoardStyles(colors: ThemeColors) {
+  const cardShadow =
+    Platform.OS === 'ios'
+      ? {
+          shadowColor: '#000',
+          shadowOffset: { width: 5, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 0,
+        }
+      : { elevation: 5 };
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    flex: {
+      flex: 1,
+    },
+    sheetFill: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'flex-start',
+      paddingHorizontal: 20,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    card: {
+      alignSelf: 'stretch',
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      padding: 24,
+      ...cardShadow,
+    },
+    helper: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 22,
+      fontWeight: '500',
+    },
+    label: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 10,
+    },
+    input: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginTop: 28,
+      gap: 12,
+      width: '100%',
+      overflow: 'hidden',
+      paddingBottom: 11,
+    },
+    labelCancel: {
+      color: colors.textPrimary,
+    },
+    labelCreate: {
+      color: colors.textPrimary,
+    },
+    labelCreateDisabled: {
+      color: colors.textTertiary,
+    },
+  });
+}
 
 export default function CreateBoardScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createCreateBoardStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const [name, setName] = useState('');
@@ -66,14 +155,14 @@ export default function CreateBoardScreen() {
           style={
             Platform.OS === 'ios'
               ? { backgroundColor: 'transparent' }
-              : { backgroundColor: BG }
+              : { backgroundColor: colors.modalCreamCanvas }
           }
         />
-        <Stack.Screen.Title style={{ fontWeight: '800', color: '#0a0a0a' }}>
+        <Stack.Screen.Title style={{ fontWeight: '800', color: colors.modalCreamHeaderTint }}>
           New board
         </Stack.Screen.Title>
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor="#0a0a0a" />
+          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor={colors.modalCreamHeaderTint} />
         </Stack.Toolbar>
       </Stack.Screen>
 
@@ -106,7 +195,7 @@ export default function CreateBoardScreen() {
               value={name}
               onChangeText={setName}
               placeholder="My project board"
-              placeholderTextColor="#888"
+              placeholderTextColor={colors.placeholder}
               style={styles.input}
               returnKeyType="done"
               onSubmitEditing={submit}
@@ -117,13 +206,13 @@ export default function CreateBoardScreen() {
 
             <View style={styles.actions}>
               <BoardStyleActionButton
-                shadowColor="#e0e0e0"
+                shadowColor={colors.shadowFill}
                 onPress={close}
                 label="Cancel"
                 labelStyle={styles.labelCancel}
               />
               <BoardStyleActionButton
-                shadowColor={canSubmit && !submitting ? '#a5d6a5' : '#d0d0d0'}
+                shadowColor={canSubmit && !submitting ? colors.success : colors.shadowFill}
                 onPress={() => void submit()}
                 disabled={!canSubmit || submitting}
                 label={submitting ? 'Creating…' : 'Create'}
@@ -136,88 +225,3 @@ export default function CreateBoardScreen() {
     </View>
   );
 }
-
-const cardShadow =
-  Platform.OS === 'ios'
-    ? {
-        shadowColor: '#000',
-        shadowOffset: { width: 5, height: 5 },
-        shadowOpacity: 0.2,
-        shadowRadius: 0,
-      }
-    : { elevation: 5 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  flex: {
-    flex: 1,
-  },
-  sheetFill: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  card: {
-    alignSelf: 'stretch',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    padding: 24,
-    ...cardShadow,
-  },
-  helper: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#444',
-    marginBottom: 22,
-    fontWeight: '500',
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  input: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#0a0a0a',
-    borderWidth: 2,
-    borderColor: '#000',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: BG,
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 28,
-    gap: 12,
-    width: '100%',
-    overflow: 'hidden',
-    paddingBottom: 11,
-  },
-  labelCancel: {
-    color: '#0a0a0a',
-  },
-  labelCreate: {
-    color: '#0a0a0a',
-  },
-  labelCreateDisabled: {
-    color: '#888',
-  },
-});

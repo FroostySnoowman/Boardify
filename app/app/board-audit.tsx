@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Platform, RefreshControl } from 'react-native';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -6,9 +6,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../src/utils/haptics';
 import { getBoardAudit } from '../src/api/boards';
+import { useTheme } from '../src/theme';
+import type { ThemeColors } from '../src/theme/colors';
 
 const BELOW_HEADER_GAP = 10;
-const BG = '#f5f0e8';
 
 function resolveBoardId(raw: string | string[] | undefined): string {
   const s = Array.isArray(raw) ? raw[0] : raw;
@@ -58,7 +59,60 @@ function formatWhen(iso: string): string {
 
 type AuditRow = { id: string; atIso: string; kind: string; summary: string };
 
+function createBoardAuditStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.modalCreamCanvas },
+    flex: { flex: 1 },
+    scrollContent: {
+      paddingHorizontal: 20,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    helper: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 20,
+      fontWeight: '500',
+    },
+    emptyCard: {
+      alignItems: 'center',
+      paddingVertical: 36,
+      paddingHorizontal: 20,
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      gap: 10,
+    },
+    emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+    emptyHint: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+    entryRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.divider,
+    },
+    entryDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: colors.textPrimary,
+      marginTop: 5,
+    },
+    entryBody: { flex: 1, minWidth: 0 },
+    entryKind: { fontSize: 12, fontWeight: '800', color: colors.boardLink, textTransform: 'uppercase' },
+    entrySummary: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, marginTop: 4, lineHeight: 20 },
+    entryTime: { fontSize: 12, color: colors.textTertiary, marginTop: 6 },
+  });
+}
+
 export default function BoardAuditScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createBoardAuditStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { boardId: boardIdParam } = useLocalSearchParams<{ boardId?: string | string[] }>();
@@ -108,12 +162,12 @@ export default function BoardAuditScreen() {
           style={
             Platform.OS === 'ios'
               ? { backgroundColor: 'transparent' }
-              : { backgroundColor: BG }
+              : { backgroundColor: colors.modalCreamCanvas }
           }
         />
-        <Stack.Screen.Title style={{ fontWeight: '800', color: '#0a0a0a' }}>Activity</Stack.Screen.Title>
+        <Stack.Screen.Title style={{ fontWeight: '800', color: colors.modalCreamHeaderTint }}>Activity</Stack.Screen.Title>
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor="#0a0a0a" />
+          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor={colors.modalCreamHeaderTint} />
         </Stack.Toolbar>
       </Stack.Screen>
 
@@ -126,7 +180,9 @@ export default function BoardAuditScreen() {
             paddingBottom: insets.bottom + 28,
           },
         ]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a0a0a" />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.modalCreamHeaderTint} />
+        }
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.helper}>
@@ -135,7 +191,7 @@ export default function BoardAuditScreen() {
 
         {entries.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Feather name="activity" size={36} color="#999" />
+            <Feather name="activity" size={36} color={colors.iconMuted} />
             <Text style={styles.emptyTitle}>No activity yet</Text>
             <Text style={styles.emptyHint}>Add or edit tasks, create lists, or archive to see entries here.</Text>
           </View>
@@ -155,52 +211,3 @@ export default function BoardAuditScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  flex: { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: 20,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  helper: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#444',
-    marginBottom: 20,
-    fontWeight: '500',
-  },
-  emptyCard: {
-    alignItems: 'center',
-    paddingVertical: 36,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    gap: 10,
-  },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: '#0a0a0a' },
-  emptyHint: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20 },
-  entryRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.12)',
-  },
-  entryDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#0a0a0a',
-    marginTop: 5,
-  },
-  entryBody: { flex: 1, minWidth: 0 },
-  entryKind: { fontSize: 12, fontWeight: '800', color: '#0c66e4', textTransform: 'uppercase' },
-  entrySummary: { fontSize: 15, fontWeight: '600', color: '#0a0a0a', marginTop: 4, lineHeight: 20 },
-  entryTime: { fontSize: 12, color: '#888', marginTop: 6 },
-});

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { SkeletonBlock } from './SkeletonBlock';
-import { neuListRowCardBase } from '../NeuListRowPressable';
+import { getNeuListRowCardBase } from '../NeuListRowPressable';
+import { useTheme } from '../../theme';
 
 type Props = {
   contentPaddingTop: number;
@@ -10,11 +11,40 @@ type Props = {
   isWeb?: boolean;
 };
 
-function BoardRowSkeleton({ shadowTint }: { shadowTint: string }) {
+function BoardRowSkeleton({
+  shadowTint,
+}: {
+  shadowTint: string;
+}) {
+  const { colors } = useTheme();
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        rowWrap: {
+          position: 'relative',
+        },
+        neuShadow: {
+          position: 'absolute',
+          left: 5,
+          top: 5,
+          right: -5,
+          bottom: -5,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        boardFace: {
+          flexDirection: 'row',
+          alignItems: 'center',
+        },
+      }),
+    [colors.border]
+  );
+
   return (
     <View style={s.rowWrap}>
       <View style={[s.neuShadow, { backgroundColor: shadowTint }]} />
-      <View style={[neuListRowCardBase, s.boardFace]}>
+      <View style={[getNeuListRowCardBase(colors), s.boardFace]}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <SkeletonBlock height={20} width="85%" borderRadius={6} />
         </View>
@@ -30,7 +60,50 @@ export function HomeScreenSkeleton({
   horizontalPadding,
   isWeb = false,
 }: Props) {
+  const { colors } = useTheme();
   const shadows = ['#c5e1c5', '#e8d4b8', '#c9b8e0', '#d4d4d4', '#b8d4e8'];
+
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        hero: {
+          marginBottom: 28,
+        },
+        section: {
+          marginBottom: 24,
+        },
+        grid: {
+          gap: 12,
+        },
+        rowWrap: {
+          position: 'relative',
+        },
+        neuShadow: {
+          position: 'absolute',
+          left: 5,
+          top: 5,
+          right: -5,
+          bottom: -5,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        createFace: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          backgroundColor: colors.columnSurface,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingVertical: 20,
+          paddingHorizontal: 24,
+        },
+      }),
+    [colors]
+  );
+
   return (
     <ScrollView
       contentContainerStyle={{
@@ -56,8 +129,8 @@ export function HomeScreenSkeleton({
             <BoardRowSkeleton key={i} shadowTint={c} />
           ))}
           <View style={s.rowWrap}>
-            <View style={[s.neuShadow, { backgroundColor: '#000', opacity: 0.08 }]} />
-            <View style={[neuListRowCardBase, s.createFace]}>
+            <View style={[s.neuShadow, { backgroundColor: colors.shadowFill, opacity: 0.35 }]} />
+            <View style={[getNeuListRowCardBase(colors), s.createFace]}>
               <SkeletonBlock height={22} width={22} borderRadius={6} />
               <SkeletonBlock height={16} width={100} borderRadius={6} style={{ marginLeft: 10 }} />
             </View>
@@ -67,51 +140,3 @@ export function HomeScreenSkeleton({
     </ScrollView>
   );
 }
-
-const s = StyleSheet.create({
-  hero: {
-    marginBottom: 28,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  grid: {
-    gap: 12,
-  },
-  rowWrap: {
-    position: 'relative',
-  },
-  neuShadow: {
-    position: 'absolute',
-    left: 5,
-    top: 5,
-    right: -5,
-    bottom: -5,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  boardFace: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    paddingLeft: 14,
-  },
-  createFace: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: '#e8e8e8',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-  },
-});

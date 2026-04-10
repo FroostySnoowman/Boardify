@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, View, StyleSheet, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { GlassView, isLiquidGlassAvailable, isGlassEffectAPIAvailable } from 'expo-glass-effect';
-
-const ICON_COLOR = '#0a0a0a';
+import { useTheme } from '../theme';
 
 export type GlassRoundIconButtonProps = {
   icon: keyof typeof Feather.glyphMap;
@@ -26,11 +25,28 @@ export function GlassRoundIconButton({
   embedInSwiftMenu,
   iconOpticalNudge,
 }: GlassRoundIconButtonProps) {
+  const { colors, resolvedScheme } = useTheme();
   const isGlass =
     isLiquidGlassAvailable() &&
     isGlassEffectAPIAvailable() &&
     !(embedInSwiftMenu && Platform.OS === 'ios');
-  const feather = <Feather name={icon} size={size} color={ICON_COLOR} />;
+  const glassScheme = resolvedScheme === 'dark' ? ('dark' as const) : ('light' as const);
+  const glassTint =
+    resolvedScheme === 'dark' ? 'rgba(40, 38, 36, 0.72)' : 'rgba(255, 255, 255, 0.42)';
+
+  const dynamicStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        fallback: {
+          borderWidth: 1,
+          borderColor: colors.glassFallbackBorder,
+          backgroundColor: colors.glassFallbackBg,
+        },
+      }),
+    [colors.glassFallbackBg, colors.glassFallbackBorder]
+  );
+
+  const feather = <Feather name={icon} size={size} color={colors.iconPrimary} />;
   const hasNudge =
     iconOpticalNudge != null &&
     (iconOpticalNudge.x != null || iconOpticalNudge.y != null);
@@ -61,8 +77,8 @@ export function GlassRoundIconButton({
   const face = isGlass ? (
     <GlassView
       isInteractive
-      colorScheme="light"
-      tintColor="rgba(255, 255, 255, 0.42)"
+      colorScheme={glassScheme}
+      tintColor={glassTint}
       style={styles.circle}
     >
       {glyph}
@@ -71,7 +87,7 @@ export function GlassRoundIconButton({
     <View
       style={[
         styles.circle,
-        embedInSwiftMenu && Platform.OS === 'ios' ? styles.swiftMenuLabel : styles.fallback,
+        embedInSwiftMenu && Platform.OS === 'ios' ? styles.swiftMenuLabel : dynamicStyles.fallback,
       ]}
     >
       {glyph}
@@ -105,11 +121,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'visible',
     zIndex: 2,
-  },
-  fallback: {
-    borderWidth: 1,
-    borderColor: '#000',
-    backgroundColor: 'rgba(255,255,255,0.85)',
   },
   swiftMenuLabel: {
     backgroundColor: 'transparent',

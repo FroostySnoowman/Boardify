@@ -16,7 +16,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 import { TabScreenChrome } from '../components/TabScreenChrome';
 import { ActivitiesHeader, MOBILE_NAV_HEIGHT } from '../components/ActivitiesHeader';
-import { NeuListRowPressable, neuListRowCardBase } from '../components/NeuListRowPressable';
+import { NeuListRowPressable, getNeuListRowCardBase } from '../components/NeuListRowPressable';
 import {
   NotificationExpandOverlay,
   type ExpandedNotificationData,
@@ -33,6 +33,7 @@ import { getUserMessages, type ApiInboxMessage } from '../api/user';
 import { formatRelativeTimeShort } from '../utils/formatRelativeTime';
 import { loadReadMessageIds, markMessageRead } from '../storage/messageReadIds';
 import { MessagesScreenSkeleton } from '../components/skeletons';
+import { useTheme } from '../theme';
 
 type InboxListItem = {
   id: string;
@@ -91,6 +92,77 @@ function NotificationRow({
   onExpand: (data: ExpandedNotificationData) => void;
   registerRowView: (id: string, el: RNView | null) => void;
 }) {
+  const { colors } = useTheme();
+  const rowStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        rowOuter: { opacity: 1 },
+        rowHidden: { opacity: 0 },
+        notificationCardFace: {
+          alignItems: 'flex-start',
+          paddingVertical: 14,
+          paddingHorizontal: 14,
+          overflow: 'hidden',
+        },
+        avatar: {
+          width: 44,
+          height: 44,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.avatarBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+        },
+        rowText: {
+          flex: 1,
+          minWidth: 0,
+          paddingRight: 8,
+        },
+        rowHeadline: {
+          fontSize: 15,
+          fontWeight: '500',
+          color: colors.textPrimary,
+          lineHeight: 21,
+        },
+        actorName: {
+          fontWeight: '700',
+        },
+        rowDetail: {
+          fontSize: 13,
+          color: colors.textSecondary,
+          marginTop: 4,
+          lineHeight: 18,
+          fontWeight: '500',
+        },
+        rowRight: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          alignSelf: 'center',
+        },
+        timeStack: {
+          alignItems: 'flex-end',
+          gap: 4,
+        },
+        time: {
+          fontSize: 12,
+          fontWeight: '600',
+          color: colors.textTertiary,
+        },
+        unreadDot: {
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: colors.textPrimary,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+      }),
+    [colors]
+  );
+
   const rowRef = useRef<RNView | null>(null);
   const assignRowRef = useCallback(
     (el: RNView | null) => {
@@ -137,34 +209,34 @@ function NotificationRow({
   const hidden = expandedSourceId === item.id;
 
   return (
-    <View style={[styles.rowOuter, hidden && styles.rowHidden]}>
+    <View style={[rowStyles.rowOuter, hidden && rowStyles.rowHidden]}>
       <NeuListRowPressable
         ref={assignRowRef}
-        shadowStyle={{ backgroundColor: item.accentColor ?? '#e0e0e0' }}
-        topStyle={[neuListRowCardBase, styles.notificationCardFace, leftBar]}
+        shadowStyle={{ backgroundColor: item.accentColor ?? colors.shadowFill }}
+        topStyle={[getNeuListRowCardBase(colors), rowStyles.notificationCardFace, leftBar]}
         onPress={handlePress}
       >
-        <View style={styles.avatar}>
-          <Feather name={icon} size={20} color="#0a0a0a" />
+        <View style={rowStyles.avatar}>
+          <Feather name={icon} size={20} color={colors.iconPrimary} />
         </View>
-        <View style={styles.rowText}>
-          <Text style={styles.rowHeadline} numberOfLines={2}>
-            <Text style={styles.actorName}>{item.actor}</Text>
+        <View style={rowStyles.rowText}>
+          <Text style={rowStyles.rowHeadline} numberOfLines={2}>
+            <Text style={rowStyles.actorName}>{item.actor}</Text>
             {' '}
             {item.headline}
           </Text>
           {item.detail ? (
-            <Text style={styles.rowDetail} numberOfLines={2}>
+            <Text style={rowStyles.rowDetail} numberOfLines={2}>
               {item.detail}
             </Text>
           ) : null}
         </View>
-        <View style={styles.rowRight}>
-          <View style={styles.timeStack}>
-            <Text style={styles.time}>{timeLabel}</Text>
-            {item.unread ? <View style={styles.unreadDot} /> : null}
+        <View style={rowStyles.rowRight}>
+          <View style={rowStyles.timeStack}>
+            <Text style={rowStyles.time}>{timeLabel}</Text>
+            {item.unread ? <View style={rowStyles.unreadDot} /> : null}
           </View>
-          <Feather name="chevron-right" size={18} color="#666" />
+          <Feather name="chevron-right" size={18} color={colors.iconChevron} />
         </View>
       </NeuListRowPressable>
     </View>
@@ -172,6 +244,123 @@ function NotificationRow({
 }
 
 export default function MessagesScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
+          flex: 1,
+          backgroundColor: colors.canvas,
+        },
+        title: {
+          fontSize: 28,
+          fontWeight: '800',
+          color: colors.textPrimary,
+        },
+        subtitle: {
+          fontSize: 15,
+          color: colors.subtitle,
+          marginTop: 8,
+          fontWeight: '500',
+          lineHeight: 22,
+          maxWidth: 520,
+        },
+        sectionLabelWrap: {
+          marginTop: 28,
+          marginBottom: 12,
+        },
+        sectionLabel: {
+          fontSize: 13,
+          fontWeight: '700',
+          color: colors.textPrimary,
+          letterSpacing: 0.4,
+          textTransform: 'uppercase',
+        },
+        list: {
+          gap: 12,
+        },
+        signedOutWrap: {
+          alignItems: 'center',
+          paddingVertical: 32,
+          paddingHorizontal: 20,
+          gap: 12,
+        },
+        signedOutTitle: {
+          fontSize: 18,
+          fontWeight: '700',
+          color: colors.textPrimary,
+          textAlign: 'center',
+        },
+        signedOutHint: {
+          fontSize: 14,
+          color: colors.textSecondary,
+          textAlign: 'center',
+          lineHeight: 20,
+          maxWidth: 300,
+          fontWeight: '500',
+        },
+        signedOutBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          marginTop: 8,
+          paddingVertical: 12,
+          paddingHorizontal: 18,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+        },
+        signedOutBtnText: {
+          fontSize: 15,
+          fontWeight: '700',
+          color: colors.textPrimary,
+        },
+        errorWrap: {
+          alignItems: 'center',
+          paddingVertical: 28,
+          gap: 12,
+        },
+        errorText: {
+          fontSize: 14,
+          color: colors.dangerText,
+          textAlign: 'center',
+          fontWeight: '600',
+        },
+        retryBtn: {
+          paddingVertical: 10,
+          paddingHorizontal: 16,
+          borderRadius: 10,
+          backgroundColor: colors.primaryButtonBg,
+        },
+        retryBtnText: {
+          color: colors.primaryButtonText,
+          fontWeight: '700',
+          fontSize: 14,
+        },
+        emptyFilter: {
+          alignItems: 'center',
+          paddingVertical: 36,
+          paddingHorizontal: 24,
+          gap: 10,
+        },
+        emptyFilterTitle: {
+          fontSize: 17,
+          fontWeight: '700',
+          color: colors.textPrimary,
+        },
+        emptyFilterHint: {
+          fontSize: 14,
+          color: colors.textSecondary,
+          textAlign: 'center',
+          lineHeight: 20,
+          maxWidth: 300,
+          fontWeight: '500',
+        },
+      }),
+    [colors]
+  );
+
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
   const ipadPad = Platform.OS === 'ios' && Platform.isPad ? IPAD_TAB_CONTENT_TOP_PADDING : 0;
@@ -289,7 +478,7 @@ export default function MessagesScreen() {
 
   const listBody = !user ? (
     <View style={styles.signedOutWrap}>
-      <Feather name="message-circle" size={40} color="#999" />
+      <Feather name="message-circle" size={40} color={colors.placeholder} />
       <Text style={styles.signedOutTitle}>Sign in to see messages</Text>
       <Text style={styles.signedOutHint}>
         Activity from boards you belong to shows up here — mentions, assignments, comments, and
@@ -302,7 +491,7 @@ export default function MessagesScreen() {
         accessibilityLabel="Open account tab"
       >
         <Text style={styles.signedOutBtnText}>Account</Text>
-        <Feather name="chevron-right" size={18} color="#0a0a0a" />
+        <Feather name="chevron-right" size={18} color={colors.iconPrimary} />
       </Pressable>
     </View>
   ) : loadError ? (
@@ -316,7 +505,7 @@ export default function MessagesScreen() {
     <MessagesScreenSkeleton />
   ) : visibleNotifications.length === 0 ? (
     <View style={styles.emptyFilter}>
-      <Feather name={messageFilter === 'all' ? 'inbox' : 'filter'} size={28} color="#999" />
+      <Feather name={messageFilter === 'all' ? 'inbox' : 'filter'} size={28} color={colors.placeholder} />
       <Text style={styles.emptyFilterTitle}>
         {messageFilter === 'all' ? 'No activity yet' : 'Nothing to show'}
       </Text>
@@ -357,8 +546,8 @@ export default function MessagesScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#0a0a0a"
-            colors={['#0a0a0a']}
+            tintColor={colors.iconPrimary}
+            colors={[colors.iconPrimary]}
             progressViewOffset={Platform.OS === 'android' ? androidRefreshOffset : undefined}
           />
         ) : undefined
@@ -407,182 +596,3 @@ export default function MessagesScreen() {
     </TabScreenChrome>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#f5f0e8',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0a0a0a',
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#666',
-    marginTop: 8,
-    fontWeight: '500',
-    lineHeight: 22,
-    maxWidth: 520,
-  },
-  sectionLabelWrap: {
-    marginTop: 28,
-    marginBottom: 12,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0a0a0a',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  list: {
-    gap: 12,
-  },
-  signedOutWrap: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  signedOutTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0a0a0a',
-    textAlign: 'center',
-  },
-  signedOutHint: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 300,
-    fontWeight: '500',
-  },
-  signedOutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#0a0a0a',
-    backgroundColor: '#fff',
-  },
-  signedOutBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0a0a0a',
-  },
-  errorWrap: {
-    alignItems: 'center',
-    paddingVertical: 28,
-    gap: 12,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#b91c1c',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  retryBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#0a0a0a',
-  },
-  retryBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  emptyFilter: {
-    alignItems: 'center',
-    paddingVertical: 36,
-    paddingHorizontal: 24,
-    gap: 10,
-  },
-  emptyFilterTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0a0a0a',
-  },
-  emptyFilterHint: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 300,
-    fontWeight: '500',
-  },
-  rowOuter: {
-    opacity: 1,
-  },
-  rowHidden: {
-    opacity: 0,
-  },
-  notificationCardFace: {
-    alignItems: 'flex-start',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    overflow: 'hidden',
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#000',
-    backgroundColor: '#f0ebe3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  rowText: {
-    flex: 1,
-    minWidth: 0,
-    paddingRight: 8,
-  },
-  rowHeadline: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#0a0a0a',
-    lineHeight: 21,
-  },
-  actorName: {
-    fontWeight: '700',
-  },
-  rowDetail: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
-    lineHeight: 18,
-    fontWeight: '500',
-  },
-  rowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    alignSelf: 'center',
-  },
-  timeStack: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  time: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#888',
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#0a0a0a',
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-});

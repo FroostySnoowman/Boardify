@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -25,9 +25,10 @@ import {
   type BoardSettings,
 } from '../src/storage/boardSettings';
 import { getBoard, patchBoard } from '../src/api/boards';
+import { useTheme } from '../src/theme';
+import type { ThemeColors } from '../src/theme/colors';
 
 const BELOW_HEADER_GAP = 10;
-const BG = '#f5f0e8';
 const INSET_CARD_SHIFT = 5;
 
 const VIEW_OPTIONS: { label: string; value: BoardViewMode | 'inherit'; swatchColor: string }[] = [
@@ -44,25 +45,291 @@ const WEEK_START_OPTIONS: { label: string; value: 'monday' | 'sunday'; swatchCol
   { label: 'Sunday', value: 'sunday', swatchColor: '#fde047' },
 ];
 
+function createBoardSettingsStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    flex: { flex: 1 },
+    sheetFill: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'flex-start',
+      paddingHorizontal: 20,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    card: {
+      alignSelf: 'stretch',
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      padding: 24,
+    },
+    helper: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 20,
+      fontWeight: '500',
+    },
+    section: {
+      marginBottom: 22,
+    },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 12,
+    },
+    metaLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      marginBottom: 6,
+    },
+    sublabelTiny: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginBottom: 8,
+      marginTop: -2,
+    },
+    gapTop: {
+      marginTop: 16,
+    },
+    inputSingle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    input: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.textPrimary,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      backgroundColor: colors.modalCreamCanvas,
+      minHeight: 88,
+      textAlignVertical: 'top',
+    },
+    sublabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 12,
+      lineHeight: 18,
+    },
+    insetListWrap: {
+      position: 'relative',
+      marginRight: INSET_CARD_SHIFT,
+      marginBottom: INSET_CARD_SHIFT,
+      alignSelf: 'stretch',
+    },
+    insetListShadow: {
+      position: 'absolute',
+      left: INSET_CARD_SHIFT,
+      top: INSET_CARD_SHIFT,
+      right: -INSET_CARD_SHIFT,
+      bottom: -INSET_CARD_SHIFT,
+      backgroundColor: colors.shadowFill,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    insetListCard: {
+      position: 'relative',
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+      alignSelf: 'stretch',
+    },
+    insetListHint: {
+      fontSize: 13,
+      color: colors.textTertiary,
+      marginBottom: 12,
+      lineHeight: 18,
+    },
+    insetListInner: {
+      width: '100%',
+      alignSelf: 'stretch',
+    },
+    choiceRowOuter: {
+      width: '100%',
+      alignSelf: 'stretch',
+    },
+    choiceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      width: '100%',
+      minHeight: 48,
+      paddingVertical: 10,
+      paddingRight: 4,
+      paddingLeft: 0,
+    },
+    choiceRowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.divider,
+    },
+    choiceRowSelected: {
+      backgroundColor: colors.surfaceMuted,
+    },
+    choiceRowPressed: {
+      backgroundColor: colors.tableRowAlt,
+    },
+    choiceSwatch: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      borderWidth: 2,
+      borderColor: colors.border,
+      marginLeft: 10,
+      marginRight: 12,
+      flexShrink: 0,
+    },
+    choiceRowName: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      minWidth: 0,
+    },
+    choiceRowNameOn: {
+      color: colors.textPrimary,
+      fontWeight: '800',
+    },
+    choiceRowToggle: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.focusDotInactive,
+      backgroundColor: colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    choiceRowToggleOn: {
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceElevated,
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingVertical: 6,
+    },
+    toggleTextCol: {
+      flex: 1,
+      minWidth: 0,
+      paddingRight: 8,
+    },
+    toggleLabel: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    toggleSublabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 4,
+      lineHeight: 18,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.divider,
+      marginVertical: 4,
+    },
+    navLinkCell: {
+      alignSelf: 'stretch',
+      width: '100%',
+      paddingVertical: 12,
+    },
+    navLinkRowPressed: {
+      opacity: 0.7,
+    },
+    navLinkTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      width: '100%',
+      flexWrap: 'nowrap',
+      gap: 8,
+    },
+    navLinkChevron: {
+      flexShrink: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    navLinkTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    navLinkSub: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 4,
+      lineHeight: 18,
+    },
+    actions: {
+      marginTop: 8,
+      marginBottom: 4,
+      alignItems: 'stretch',
+    },
+    labelDone: {
+      color: colors.textPrimary,
+    },
+  });
+}
+
+type BoardSettingsSheet = ReturnType<typeof createBoardSettingsStyles>;
+
 function SettingsInsetChoiceList({
+  sheet,
   hint,
   children,
 }: {
+  sheet: BoardSettingsSheet;
   hint: string;
   children: React.ReactNode;
 }) {
   return (
-    <View style={styles.insetListWrap}>
-      <View style={styles.insetListShadow} />
-      <View style={styles.insetListCard}>
-        <Text style={styles.insetListHint}>{hint}</Text>
-        <View style={styles.insetListInner}>{children}</View>
+    <View style={sheet.insetListWrap}>
+      <View style={sheet.insetListShadow} />
+      <View style={sheet.insetListCard}>
+        <Text style={sheet.insetListHint}>{hint}</Text>
+        <View style={sheet.insetListInner}>{children}</View>
       </View>
     </View>
   );
 }
 
 function SettingsChoiceRow({
+  sheet,
+  colors,
   label,
   selected,
   onPress,
@@ -70,6 +337,8 @@ function SettingsChoiceRow({
   swatchColor,
   accessibilityRole,
 }: {
+  sheet: BoardSettingsSheet;
+  colors: ThemeColors;
   label: string;
   selected: boolean;
   onPress: () => void;
@@ -88,19 +357,19 @@ function SettingsChoiceRow({
       accessibilityState={role === 'radio' ? { selected } : { checked: selected }}
       accessibilityLabel={label}
       style={({ pressed }) => [
-        styles.choiceRowOuter,
-        showBorderBottom && styles.choiceRowBorder,
-        selected && styles.choiceRowSelected,
-        pressed && styles.choiceRowPressed,
+        sheet.choiceRowOuter,
+        showBorderBottom && sheet.choiceRowBorder,
+        selected && sheet.choiceRowSelected,
+        pressed && sheet.choiceRowPressed,
       ]}
     >
-      <View style={styles.choiceRow}>
-        <View style={[styles.choiceSwatch, { backgroundColor: swatchColor }]} />
-        <Text style={[styles.choiceRowName, selected && styles.choiceRowNameOn]} numberOfLines={1}>
+      <View style={sheet.choiceRow}>
+        <View style={[sheet.choiceSwatch, { backgroundColor: swatchColor }]} />
+        <Text style={[sheet.choiceRowName, selected && sheet.choiceRowNameOn]} numberOfLines={1}>
           {label}
         </Text>
-        <View style={[styles.choiceRowToggle, selected && styles.choiceRowToggleOn]}>
-          {selected ? <Feather name="check" size={18} color="#0a0a0a" /> : null}
+        <View style={[sheet.choiceRowToggle, selected && sheet.choiceRowToggleOn]}>
+          {selected ? <Feather name="check" size={18} color={colors.iconPrimary} /> : null}
         </View>
       </View>
     </Pressable>
@@ -112,31 +381,43 @@ function resolveBoardName(raw: string | string[] | undefined): string {
   return s?.trim() ? s.trim() : 'My Board';
 }
 
-function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingsSection({
+  sheet,
+  title,
+  children,
+}: {
+  sheet: BoardSettingsSheet;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={sheet.section}>
+      <Text style={sheet.sectionTitle}>{title}</Text>
       {children}
     </View>
   );
 }
 
 function SettingsToggleRow({
+  sheet,
+  colors,
   label,
   sublabel,
   value,
   onValueChange,
 }: {
+  sheet: BoardSettingsSheet;
+  colors: ThemeColors;
   label: string;
   sublabel?: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
 }) {
   return (
-    <View style={styles.toggleRow}>
-      <View style={styles.toggleTextCol}>
-        <Text style={styles.toggleLabel}>{label}</Text>
-        {sublabel ? <Text style={styles.toggleSublabel}>{sublabel}</Text> : null}
+    <View style={sheet.toggleRow}>
+      <View style={sheet.toggleTextCol}>
+        <Text style={sheet.toggleLabel}>{label}</Text>
+        {sublabel ? <Text style={sheet.toggleSublabel}>{sublabel}</Text> : null}
       </View>
       <Switch
         value={value}
@@ -144,14 +425,16 @@ function SettingsToggleRow({
           hapticLight();
           onValueChange(v);
         }}
-        trackColor={{ false: '#d4cfc4', true: '#a5d6a5' }}
-        thumbColor={Platform.OS === 'ios' ? undefined : value ? '#fff' : '#f4f4f4'}
+        trackColor={{ false: colors.switchTrackOff, true: colors.successTrack }}
+        thumbColor={Platform.OS === 'ios' ? undefined : value ? colors.switchThumb : colors.surfaceMuted}
       />
     </View>
   );
 }
 
 export default function BoardSettingsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createBoardSettingsStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { boardName: boardNameParam, boardId: boardIdParam } = useLocalSearchParams<{
@@ -229,14 +512,14 @@ export default function BoardSettingsScreen() {
           style={
             Platform.OS === 'ios'
               ? { backgroundColor: 'transparent' }
-              : { backgroundColor: BG }
+              : { backgroundColor: colors.modalCreamCanvas }
           }
         />
-        <Stack.Screen.Title style={{ fontWeight: '800', color: '#0a0a0a' }}>
+        <Stack.Screen.Title style={{ fontWeight: '800', color: colors.modalCreamHeaderTint }}>
           Board settings
         </Stack.Screen.Title>
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor="#0a0a0a" />
+          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor={colors.modalCreamHeaderTint} />
         </Stack.Toolbar>
       </Stack.Screen>
 
@@ -259,11 +542,9 @@ export default function BoardSettingsScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.card, cardShadow]}>
-            <Text style={styles.helper}>
-              Tune how this board behaves.
-            </Text>
+            <Text style={styles.helper}>Tune how this board behaves.</Text>
 
-            <SettingsSection title="Board">
+            <SettingsSection sheet={styles} title="Board">
               <Text style={styles.metaLabel}>Board name</Text>
               <Text style={styles.sublabelTiny}>
                 Shown at the top of the board. The home list still identifies this board as “{boardName}”.
@@ -286,7 +567,7 @@ export default function BoardSettingsScreen() {
                   }
                 }}
                 placeholder="Board title"
-                placeholderTextColor="#888"
+                placeholderTextColor={colors.placeholder}
                 style={styles.inputSingle}
                 maxLength={80}
                 returnKeyType="done"
@@ -302,7 +583,7 @@ export default function BoardSettingsScreen() {
                 onChangeText={setDescDraft}
                 onBlur={() => patch({ boardDescription: descDraft })}
                 placeholder="Goals, sprint theme, links…"
-                placeholderTextColor="#888"
+                placeholderTextColor={colors.placeholder}
                 style={styles.input}
                 multiline
                 maxLength={500}
@@ -310,11 +591,9 @@ export default function BoardSettingsScreen() {
               />
             </SettingsSection>
 
-            <SettingsSection title="Default view">
-              <Text style={styles.sublabel}>
-                When you open this board from the home list, start here.
-              </Text>
-              <SettingsInsetChoiceList hint="Tap a row to choose the starting view.">
+            <SettingsSection sheet={styles} title="Default view">
+              <Text style={styles.sublabel}>When you open this board from the home list, start here.</Text>
+              <SettingsInsetChoiceList sheet={styles} hint="Tap a row to choose the starting view.">
                 {VIEW_OPTIONS.map(({ label, value, swatchColor }, index) => {
                   const selected =
                     value === 'inherit'
@@ -323,6 +602,8 @@ export default function BoardSettingsScreen() {
                   return (
                     <SettingsChoiceRow
                       key={value}
+                      sheet={styles}
+                      colors={colors}
                       label={label}
                       swatchColor={swatchColor}
                       selected={selected}
@@ -341,8 +622,10 @@ export default function BoardSettingsScreen() {
               </SettingsInsetChoiceList>
             </SettingsSection>
 
-            <SettingsSection title="Productivity">
+            <SettingsSection sheet={styles} title="Productivity">
               <SettingsToggleRow
+                sheet={styles}
+                colors={colors}
                 label="Haptic feedback"
                 sublabel="Light taps when you drag cards and use controls"
                 value={settings.hapticsEnabled}
@@ -350,6 +633,8 @@ export default function BoardSettingsScreen() {
               />
               <View style={styles.divider} />
               <SettingsToggleRow
+                sheet={styles}
+                colors={colors}
                 label="Confirm destructive actions"
                 sublabel="Extra check before archive-style actions"
                 value={settings.confirmBeforeDestructive}
@@ -357,6 +642,8 @@ export default function BoardSettingsScreen() {
               />
               <View style={styles.divider} />
               <SettingsToggleRow
+                sheet={styles}
+                colors={colors}
                 label="Compact card density"
                 sublabel="Tighter rows in table and list-style views"
                 value={settings.compactCardDensity}
@@ -364,6 +651,8 @@ export default function BoardSettingsScreen() {
               />
               <View style={styles.divider} />
               <SettingsToggleRow
+                sheet={styles}
+                colors={colors}
                 label="Show assignee avatars"
                 sublabel="On cards and timeline bars when space allows"
                 value={settings.showAssigneeAvatars}
@@ -371,6 +660,8 @@ export default function BoardSettingsScreen() {
               />
               <View style={styles.divider} />
               <SettingsToggleRow
+                sheet={styles}
+                colors={colors}
                 label="Open card details on tap"
                 sublabel="Prefer the expanded card sheet over inline edit"
                 value={settings.autoOpenCardDetails}
@@ -378,16 +669,18 @@ export default function BoardSettingsScreen() {
               />
             </SettingsSection>
 
-            <SettingsSection title="Calendar & timeline">
+            <SettingsSection sheet={styles} title="Calendar & timeline">
               <Text style={styles.sublabel}>
                 First day of the week for calendar and timeline layouts.
               </Text>
-              <SettingsInsetChoiceList hint="Tap a row to set the week start.">
+              <SettingsInsetChoiceList sheet={styles} hint="Tap a row to set the week start.">
                 {WEEK_START_OPTIONS.map(({ label, value, swatchColor }, index) => {
                   const selected = settings.weekStartsOn === value;
                   return (
                     <SettingsChoiceRow
                       key={value}
+                      sheet={styles}
+                      colors={colors}
                       label={label}
                       swatchColor={swatchColor}
                       selected={selected}
@@ -400,7 +693,7 @@ export default function BoardSettingsScreen() {
               </SettingsInsetChoiceList>
             </SettingsSection>
 
-            <SettingsSection title="Archive & activity">
+            <SettingsSection sheet={styles} title="Archive & activity">
               <Pressable
                 onPress={() => {
                   hapticLight();
@@ -416,7 +709,7 @@ export default function BoardSettingsScreen() {
                     Archived items
                   </Text>
                   <View style={styles.navLinkChevron} pointerEvents="none">
-                    <Feather name="chevron-right" size={20} color="#666" />
+                    <Feather name="chevron-right" size={20} color={colors.iconMuted} />
                   </View>
                 </View>
                 <Text style={styles.navLinkSub}>Tasks and lists removed from the board</Text>
@@ -437,7 +730,7 @@ export default function BoardSettingsScreen() {
                     Activity log
                   </Text>
                   <View style={styles.navLinkChevron} pointerEvents="none">
-                    <Feather name="chevron-right" size={20} color="#666" />
+                    <Feather name="chevron-right" size={20} color={colors.iconMuted} />
                   </View>
                 </View>
                 <Text style={styles.navLinkSub}>
@@ -446,8 +739,10 @@ export default function BoardSettingsScreen() {
               </Pressable>
             </SettingsSection>
 
-            <SettingsSection title="Reminders">
+            <SettingsSection sheet={styles} title="Reminders">
               <SettingsToggleRow
+                sheet={styles}
+                colors={colors}
                 label="Daily digest reminder"
                 sublabel="Nudge once a day for due cards"
                 value={settings.dailyDigestReminder}
@@ -455,6 +750,8 @@ export default function BoardSettingsScreen() {
               />
               <View style={styles.divider} />
               <SettingsToggleRow
+                sheet={styles}
+                colors={colors}
                 label="Focused list by default"
                 sublabel="Start in one-list focus when opening from shortcuts"
                 value={settings.focusModeByDefault}
@@ -464,7 +761,7 @@ export default function BoardSettingsScreen() {
 
             <View style={styles.actions}>
               <BoardStyleActionButton
-                shadowColor="#e0e0e0"
+                shadowColor={colors.shadowFill}
                 onPress={close}
                 label="Done"
                 labelStyle={styles.labelDone}
@@ -476,261 +773,3 @@ export default function BoardSettingsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  flex: { flex: 1 },
-  sheetFill: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  card: {
-    alignSelf: 'stretch',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    padding: 24,
-  },
-  helper: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#444',
-    marginBottom: 20,
-    fontWeight: '500',
-  },
-  section: {
-    marginBottom: 22,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 12,
-  },
-  metaLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#666',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 6,
-  },
-  sublabelTiny: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-    marginTop: -2,
-  },
-  gapTop: {
-    marginTop: 16,
-  },
-  inputSingle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#0a0a0a',
-    borderWidth: 2,
-    borderColor: '#000',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: BG,
-  },
-  input: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#0a0a0a',
-    borderWidth: 2,
-    borderColor: '#000',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: BG,
-    minHeight: 88,
-    textAlignVertical: 'top',
-  },
-  sublabel: {
-    fontSize: 13,
-    color: '#555',
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  insetListWrap: {
-    position: 'relative',
-    marginRight: INSET_CARD_SHIFT,
-    marginBottom: INSET_CARD_SHIFT,
-    alignSelf: 'stretch',
-  },
-  insetListShadow: {
-    position: 'absolute',
-    left: INSET_CARD_SHIFT,
-    top: INSET_CARD_SHIFT,
-    right: -INSET_CARD_SHIFT,
-    bottom: -INSET_CARD_SHIFT,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  insetListCard: {
-    position: 'relative',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    padding: 14,
-    alignSelf: 'stretch',
-  },
-  insetListHint: {
-    fontSize: 13,
-    color: '#888',
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  insetListInner: {
-    width: '100%',
-    alignSelf: 'stretch',
-  },
-  choiceRowOuter: {
-    width: '100%',
-    alignSelf: 'stretch',
-  },
-  choiceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    minHeight: 48,
-    paddingVertical: 10,
-    paddingRight: 4,
-    paddingLeft: 0,
-  },
-  choiceRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e5e5',
-  },
-  choiceRowSelected: {
-    backgroundColor: '#f5f5f5',
-  },
-  choiceRowPressed: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  choiceSwatch: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#000',
-    marginLeft: 10,
-    marginRight: 12,
-    flexShrink: 0,
-  },
-  choiceRowName: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#444',
-    minWidth: 0,
-  },
-  choiceRowNameOn: {
-    color: '#0a0a0a',
-    fontWeight: '800',
-  },
-  choiceRowToggle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#c4c4c4',
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  choiceRowToggleOn: {
-    borderColor: '#000',
-    backgroundColor: 'rgba(255,255,255,0.95)',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 6,
-  },
-  toggleTextCol: {
-    flex: 1,
-    minWidth: 0,
-    paddingRight: 8,
-  },
-  toggleLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0a0a0a',
-  },
-  toggleSublabel: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(0,0,0,0.12)',
-    marginVertical: 4,
-  },
-  navLinkCell: {
-    alignSelf: 'stretch',
-    width: '100%',
-    paddingVertical: 12,
-  },
-  navLinkRowPressed: {
-    opacity: 0.7,
-  },
-  navLinkTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    flexWrap: 'nowrap',
-    gap: 8,
-  },
-  navLinkChevron: {
-    flexShrink: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  navLinkTitle: {
-    flex: 1,
-    minWidth: 0,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0a0a0a',
-  },
-  navLinkSub: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  actions: {
-    marginTop: 8,
-    marginBottom: 4,
-    alignItems: 'stretch',
-  },
-  labelDone: {
-    color: '#0a0a0a',
-  },
-});

@@ -1,4 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useTheme } from '../theme';
+import type { ThemeColors } from '../theme/colors';
 import {
   View,
   Text,
@@ -19,7 +21,6 @@ import type { BoardCardData, BoardColumnData, TaskMember } from '../types/board'
 const EDGE_PAD = Platform.select({ web: 24, default: 16 }) ?? 16;
 const HEADER_H = 44;
 const TIMELINE_TRAIL_PAD = 44;
-const BOARD_SCREEN_BG = '#f5f0e8';
 const TOOLBAR_H = 52;
 const ROW_MIN_H = 80;
 const LANE_H = 44;
@@ -178,24 +179,6 @@ function assignLanesVisual(
   return out;
 }
 
-function AssigneeStack({ members }: { members?: TaskMember[] }) {
-  if (!members?.length) return null;
-  const show = members.slice(0, 3);
-  return (
-    <View style={styles.avatarRow}>
-      {show.map((m, i) => (
-        <View
-          key={m.id}
-          style={[styles.avatar, i > 0 && styles.avatarOverlap]}
-          accessibilityLabel={m.name}
-        >
-          <Text style={styles.avatarText}>{m.initials}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 function barDisplayWidth(left: number, rawWidth: number, timelineInnerW: number): number {
   const minW = 56;
   const maxRight = timelineInnerW - 4;
@@ -218,7 +201,278 @@ function steppedBarLayout(
   return { left, width };
 }
 
+function createBoardTimelineStyles(colors: ThemeColors) {
+  const screenBg = colors.canvas;
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      minHeight: 0,
+      backgroundColor: screenBg,
+    },
+    toolbar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 10,
+      minHeight: TOOLBAR_H,
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.timelineLine,
+      backgroundColor: screenBg,
+    },
+    toolbarLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 10,
+      flex: 1,
+    },
+    toolbarYear: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginRight: 4,
+    },
+    todayBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 4,
+      backgroundColor: colors.glassFallbackBg,
+      borderWidth: 1,
+      borderColor: colors.divider,
+    },
+    todayBtnText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    navArrows: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    granularity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    granChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      minHeight: 40,
+      justifyContent: 'center',
+      borderRadius: 4,
+      backgroundColor: colors.glassFallbackBg,
+      borderWidth: 1,
+      borderColor: 'transparent',
+    },
+    granChipOn: {
+      backgroundColor: colors.surfaceMuted,
+      borderColor: colors.boardLink,
+    },
+    granChipText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    granChipTextOn: {
+      color: colors.boardLink,
+    },
+    periodTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      paddingVertical: 8,
+      backgroundColor: screenBg,
+    },
+    gridBody: {
+      flex: 1,
+      minHeight: 0,
+      backgroundColor: screenBg,
+    },
+    gridRow: {
+      flex: 1,
+      minHeight: 0,
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      backgroundColor: screenBg,
+    },
+    stickyListColumn: {
+      flexShrink: 0,
+      alignSelf: 'stretch',
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderRightColor: colors.calendarGridLine,
+      backgroundColor: screenBg,
+    },
+    listHeaderCell: {
+      justifyContent: 'center',
+      paddingHorizontal: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.timelineLine,
+      backgroundColor: screenBg,
+    },
+    listHeaderCellText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
+    },
+    timelineHScroll: {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: screenBg,
+    },
+    monthHeader: {
+      flexDirection: 'row',
+      backgroundColor: screenBg,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.timelineLine,
+    },
+    monthHeaderTrail: {
+      width: TIMELINE_TRAIL_PAD,
+      backgroundColor: screenBg,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.timelineLine,
+    },
+    trackTrailSpacer: {
+      width: TIMELINE_TRAIL_PAD,
+      backgroundColor: screenBg,
+      alignSelf: 'stretch',
+    },
+    monthTrack: {
+      position: 'relative',
+      backgroundColor: screenBg,
+    },
+    monthLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      letterSpacing: 0.5,
+      paddingLeft: 6,
+    },
+    swimlaneTrackOnly: {
+      flexDirection: 'row',
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.timelineLine,
+      backgroundColor: screenBg,
+    },
+    listLabel: {
+      paddingHorizontal: 10,
+      paddingVertical: 12,
+      justifyContent: 'center',
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.calendarGridLine,
+      backgroundColor: screenBg,
+    },
+    listLabelText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    listMeta: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    track: {
+      position: 'relative',
+      backgroundColor: screenBg,
+      overflow: 'hidden',
+    },
+    gridV: {
+      position: 'absolute',
+      top: 0,
+      width: StyleSheet.hairlineWidth,
+      backgroundColor: colors.chartGrid,
+    },
+    bar: {
+      position: 'absolute',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 8,
+      backgroundColor: colors.cardFace,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: colors.divider,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+      elevation: 2,
+      gap: 6,
+    },
+    barCompact: {
+      paddingHorizontal: 6,
+      gap: 4,
+      borderRadius: 5,
+    },
+    barTitle: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      minWidth: 0,
+    },
+    barTitleRoomy: {
+      fontSize: 13,
+    },
+    avatarRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    avatar: {
+      width: AVATAR,
+      height: AVATAR,
+      borderRadius: AVATAR / 2,
+      backgroundColor: colors.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: screenBg,
+    },
+    avatarOverlap: {
+      marginLeft: -6,
+    },
+    avatarText: {
+      fontSize: 8,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+  });
+}
+
+type BoardTimelineSheet = ReturnType<typeof createBoardTimelineStyles>;
+
+function AssigneeStack({
+  members,
+  sheet,
+}: {
+  members?: TaskMember[];
+  sheet: BoardTimelineSheet;
+}) {
+  if (!members?.length) return null;
+  const show = members.slice(0, 3);
+  return (
+    <View style={sheet.avatarRow}>
+      {show.map((m, i) => (
+        <View
+          key={m.id}
+          style={[sheet.avatar, i > 0 && sheet.avatarOverlap]}
+          accessibilityLabel={m.name}
+        >
+          <Text style={sheet.avatarText}>{m.initials}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function BoardTimelineView({ columns, bottomClearance, onOpenTask }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createBoardTimelineStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const { width: windowW, height: windowH } = useWindowDimensions();
   const leftVScrollRef = useRef<ScrollView>(null);
@@ -388,10 +642,10 @@ export function BoardTimelineView({ columns, bottomClearance, onOpenTask }: Prop
           </Pressable>
           <View style={styles.navArrows}>
             <Pressable onPress={goPrev} hitSlop={10} accessibilityLabel="Previous period">
-              <Feather name="chevron-left" size={22} color="#172b4d" />
+              <Feather name="chevron-left" size={22} color={colors.textPrimary} />
             </Pressable>
             <Pressable onPress={goNext} hitSlop={10} accessibilityLabel="Next period">
-              <Feather name="chevron-right" size={22} color="#172b4d" />
+              <Feather name="chevron-right" size={22} color={colors.textPrimary} />
             </Pressable>
           </View>
         </View>
@@ -427,11 +681,11 @@ export function BoardTimelineView({ columns, bottomClearance, onOpenTask }: Prop
               ref={leftVScrollRef}
               scrollEnabled={false}
               showsVerticalScrollIndicator={false}
-              style={{ height: scrollAreaH, backgroundColor: BOARD_SCREEN_BG }}
+              style={{ height: scrollAreaH, backgroundColor: colors.canvas }}
               contentContainerStyle={{
                 flexGrow: 1,
                 minHeight: scrollAreaH,
-                backgroundColor: BOARD_SCREEN_BG,
+                backgroundColor: colors.canvas,
                 paddingBottom: bottomClearance + 16,
               }}
             >
@@ -461,7 +715,7 @@ export function BoardTimelineView({ columns, bottomClearance, onOpenTask }: Prop
               style={{
                 width: timelineContentW,
                 minHeight: gridBodyH,
-                backgroundColor: BOARD_SCREEN_BG,
+                backgroundColor: colors.canvas,
               }}
             >
               <View style={[styles.monthHeader, { width: timelineContentW, height: HEADER_H }]}>
@@ -487,7 +741,7 @@ export function BoardTimelineView({ columns, bottomClearance, onOpenTask }: Prop
               </View>
 
               <ScrollView
-                style={{ height: scrollAreaH, backgroundColor: BOARD_SCREEN_BG }}
+                style={{ height: scrollAreaH, backgroundColor: colors.canvas }}
                 nestedScrollEnabled
                 showsVerticalScrollIndicator
                 scrollEventThrottle={16}
@@ -495,7 +749,7 @@ export function BoardTimelineView({ columns, bottomClearance, onOpenTask }: Prop
                 contentContainerStyle={{
                   flexGrow: 1,
                   minHeight: scrollAreaH,
-                  backgroundColor: BOARD_SCREEN_BG,
+                  backgroundColor: colors.canvas,
                   paddingBottom: bottomClearance + 16,
                 }}
               >
@@ -549,7 +803,7 @@ export function BoardTimelineView({ columns, bottomClearance, onOpenTask }: Prop
                             >
                               {p.card.title}
                             </Text>
-                            {showAssignees ? <AssigneeStack members={p.card.assignees} /> : null}
+                            {showAssignees ? <AssigneeStack members={p.card.assignees} sheet={styles} /> : null}
                           </Pressable>
                         );
                       })}
@@ -565,243 +819,3 @@ export function BoardTimelineView({ columns, bottomClearance, onOpenTask }: Prop
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    minHeight: 0,
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  toolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 10,
-    minHeight: TOOLBAR_H,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.08)',
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  toolbarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
-    flex: 1,
-  },
-  toolbarYear: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#172b4d',
-    marginRight: 4,
-  },
-  todayBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.45)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.12)',
-  },
-  todayBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#172b4d',
-  },
-  navArrows: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  granularity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  granChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minHeight: 40,
-    justifyContent: 'center',
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  granChipOn: {
-    backgroundColor: '#e9f2ff',
-    borderColor: '#0c66e4',
-  },
-  granChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#5e6c84',
-  },
-  granChipTextOn: {
-    color: '#0c66e4',
-  },
-  periodTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#172b4d',
-    paddingVertical: 8,
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  gridBody: {
-    flex: 1,
-    minHeight: 0,
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  gridRow: {
-    flex: 1,
-    minHeight: 0,
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  stickyListColumn: {
-    flexShrink: 0,
-    alignSelf: 'stretch',
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: 'rgba(0,0,0,0.12)',
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  listHeaderCell: {
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.08)',
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  listHeaderCellText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#5e6c84',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  timelineHScroll: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  monthHeader: {
-    flexDirection: 'row',
-    backgroundColor: BOARD_SCREEN_BG,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.08)',
-  },
-  monthHeaderTrail: {
-    width: TIMELINE_TRAIL_PAD,
-    backgroundColor: BOARD_SCREEN_BG,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.08)',
-  },
-  trackTrailSpacer: {
-    width: TIMELINE_TRAIL_PAD,
-    backgroundColor: BOARD_SCREEN_BG,
-    alignSelf: 'stretch',
-  },
-  monthTrack: {
-    position: 'relative',
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  monthLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#5e6c84',
-    letterSpacing: 0.5,
-    paddingLeft: 6,
-  },
-  swimlaneTrackOnly: {
-    flexDirection: 'row',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.08)',
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  listLabel: {
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    justifyContent: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
-    backgroundColor: BOARD_SCREEN_BG,
-  },
-  listLabelText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#172b4d',
-  },
-  listMeta: {
-    fontSize: 11,
-    color: '#5e6c84',
-    marginTop: 4,
-  },
-  track: {
-    position: 'relative',
-    backgroundColor: BOARD_SCREEN_BG,
-    overflow: 'hidden',
-  },
-  gridV: {
-    position: 'absolute',
-    top: 0,
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-  },
-  bar: {
-    position: 'absolute',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    backgroundColor: '#fff',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#dfe1e6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-    gap: 6,
-  },
-  barCompact: {
-    paddingHorizontal: 6,
-    gap: 4,
-    borderRadius: 5,
-  },
-  barTitle: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#172b4d',
-    minWidth: 0,
-  },
-  barTitleRoomy: {
-    fontSize: 13,
-  },
-  avatarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: AVATAR,
-    height: AVATAR,
-    borderRadius: AVATAR / 2,
-    backgroundColor: '#dfe1e6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: BOARD_SCREEN_BG,
-  },
-  avatarOverlap: {
-    marginLeft: -6,
-  },
-  avatarText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#172b4d',
-  },
-});

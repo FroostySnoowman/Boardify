@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,21 +15,74 @@ import { hapticLight } from '../src/utils/haptics';
 import { BoardStyleActionButton } from '../src/components/BoardStyleActionButton';
 import { useAuth } from '../src/contexts/AuthContext';
 import { fetchCurrentUser, resendVerificationEmail } from '../src/api/auth';
+import { useTheme } from '../src/theme';
+import type { ThemeColors } from '../src/theme/colors';
 
 const BELOW_HEADER_GAP = 10;
-const BG = '#f5f0e8';
 
-const cardShadow =
-  Platform.OS === 'ios'
-    ? {
-        shadowColor: '#000',
-        shadowOffset: { width: 5, height: 5 },
-        shadowOpacity: 0.2,
-        shadowRadius: 0,
-      }
-    : { elevation: 5 };
+function createVerifyEmailStyles(colors: ThemeColors) {
+  const cardShadow =
+    Platform.OS === 'ios'
+      ? {
+          shadowColor: '#000',
+          shadowOffset: { width: 5, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 0,
+        }
+      : { elevation: 5 };
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    flex: { flex: 1 },
+    sheetFill: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'flex-start',
+      paddingHorizontal: 20,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    card: {
+      alignSelf: 'stretch',
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      padding: 24,
+      ...cardShadow,
+    },
+    helper: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 28,
+      fontWeight: '500',
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      width: '100%',
+      overflow: 'hidden',
+      paddingBottom: 11,
+      marginBottom: 12,
+    },
+    labelCancel: { color: colors.textPrimary },
+    labelPrimary: { color: colors.textPrimary },
+    labelMuted: { color: colors.textTertiary },
+  });
+}
 
 export default function VerifyEmailScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createVerifyEmailStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { user, refreshUser } = useAuth();
@@ -83,14 +136,14 @@ export default function VerifyEmailScreen() {
           style={
             Platform.OS === 'ios'
               ? { backgroundColor: 'transparent' }
-              : { backgroundColor: BG }
+              : { backgroundColor: colors.modalCreamCanvas }
           }
         />
-        <Stack.Screen.Title style={{ fontWeight: '800', color: '#0a0a0a' }}>
+        <Stack.Screen.Title style={{ fontWeight: '800', color: colors.modalCreamHeaderTint }}>
           Verify email
         </Stack.Screen.Title>
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor="#0a0a0a" />
+          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor={colors.modalCreamHeaderTint} />
         </Stack.Toolbar>
       </Stack.Screen>
 
@@ -114,18 +167,18 @@ export default function VerifyEmailScreen() {
           <View style={styles.card}>
             <Text style={styles.helper}>
               We sent a verification link to{' '}
-              <Text style={{ fontWeight: '800', color: '#0a0a0a' }}>{user?.email ?? 'your email'}</Text>.
+              <Text style={{ fontWeight: '800', color: colors.textPrimary }}>{user?.email ?? 'your email'}</Text>.
               Open it on this device, then tap Continue.
             </Text>
             <View style={styles.actions}>
               <BoardStyleActionButton
-                shadowColor="#e0e0e0"
+                shadowColor={colors.shadowFill}
                 onPress={close}
                 label="Close"
                 labelStyle={styles.labelCancel}
               />
               <BoardStyleActionButton
-                shadowColor="#a5d6a5"
+                shadowColor={colors.success}
                 onPress={() => void onContinue()}
                 label="Continue"
                 labelStyle={styles.labelPrimary}
@@ -133,7 +186,7 @@ export default function VerifyEmailScreen() {
             </View>
             <BoardStyleActionButton
               layout="stack"
-              shadowColor={resending ? '#d0d0d0' : '#e8e8e8'}
+              shadowColor={resending ? colors.shadowFill : colors.surfaceMuted}
               onPress={() => void onResend()}
               disabled={resending}
               label={resending ? 'Sending…' : 'Resend verification email'}
@@ -145,51 +198,3 @@ export default function VerifyEmailScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  flex: { flex: 1 },
-  sheetFill: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  card: {
-    alignSelf: 'stretch',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    padding: 24,
-    ...cardShadow,
-  },
-  helper: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#444',
-    marginBottom: 28,
-    fontWeight: '500',
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    width: '100%',
-    overflow: 'hidden',
-    paddingBottom: 11,
-    marginBottom: 12,
-  },
-  labelCancel: { color: '#0a0a0a' },
-  labelPrimary: { color: '#0a0a0a' },
-  labelMuted: { color: '#888' },
-});

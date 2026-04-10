@@ -21,6 +21,7 @@ import type {
 } from '../../types/board';
 import { TaskDatetimeField, type TaskDatetimeFieldKey } from './TaskDatetimeField';
 import { TaskWorkTimeSection } from './TaskWorkTimeSection';
+import { useTheme } from '../../theme';
 
 const SHIFT = 5;
 const MEMBERS_SCROLL_PADDING = 12;
@@ -50,6 +51,7 @@ type Props = {
 };
 
 export function TaskDetailContent({ task, onChange }: Props) {
+  const { colors } = useTheme();
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [labelsSectionOpen, setLabelsSectionOpen] = useState(true);
   const [activeDateField, setActiveDateField] = useState<TaskDatetimeFieldKey | null>(null);
@@ -348,7 +350,7 @@ export function TaskDetailContent({ task, onChange }: Props) {
                         accessibilityLabel={`${m.name}, assigned. Tap to remove from card.`}
                         style={({ pressed }) => [styles.memberChip, pressed && styles.memberChipPressed]}
                       >
-                        <View style={styles.memberChipAvatar}>
+                        <View style={[styles.memberChipAvatar, { backgroundColor: colors.canvas }]}>
                           <Text style={styles.memberChipAvatarText}>{m.initials}</Text>
                         </View>
                         <View style={styles.memberChipRemoveRow} accessibilityElementsHidden={true}>
@@ -454,8 +456,8 @@ export function TaskDetailContent({ task, onChange }: Props) {
           <Section title="Attachments" icon="paperclip">
             {attachments.map((a) => (
               <View key={a.id} style={styles.attachRow}>
-                <View style={styles.attachIcon}>
-                  <Feather name="file-text" size={18} color="#0a0a0a" />
+                <View style={[styles.attachIcon, { backgroundColor: colors.canvas }]}>
+                  <Feather name="file-text" size={18} color={colors.textPrimary} />
                 </View>
                 <View style={styles.attachMeta}>
                   <Text style={styles.attachName}>{a.name}</Text>
@@ -976,7 +978,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#f5f0e8',
     borderWidth: 2,
     borderColor: '#000',
     alignItems: 'center',
@@ -1098,7 +1099,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#000',
-    backgroundColor: '#f5f0e8',
     alignItems: 'center',
     justifyContent: 'center',
   },

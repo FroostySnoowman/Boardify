@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -18,9 +18,10 @@ import { BOARD_PENDING_RESTORE_EVENT } from '../src/board/boardRestoreEvents';
 import type { BoardCardData, BoardColumnData } from '../src/types/board';
 import { getBoardArchive, restoreBoard } from '../src/api/boards';
 import type { ArchivedCardRow, ArchivedListRow } from '../src/api/boards';
+import { useTheme } from '../src/theme';
+import type { ThemeColors } from '../src/theme/colors';
 
 const BELOW_HEADER_GAP = 10;
-const BG = '#f5f0e8';
 const SHIFT = 5;
 
 type ArchivedCardItem = {
@@ -81,7 +82,129 @@ function mapListRow(row: ArchivedListRow): ArchivedListItem | null {
   }
 }
 
+function createBoardArchiveStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.modalCreamCanvas },
+    flex: { flex: 1 },
+    scrollContent: {
+      paddingHorizontal: 20,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    helper: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 20,
+      fontWeight: '500',
+    },
+    section: { marginBottom: 24 },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 12,
+    },
+    emptyCard: {
+      alignItems: 'center',
+      paddingVertical: 36,
+      paddingHorizontal: 20,
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      gap: 10,
+    },
+    emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+    emptyHint: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+    rowWrap: {
+      position: 'relative',
+      marginBottom: 12,
+      marginRight: SHIFT,
+      alignSelf: 'stretch',
+    },
+    rowShadow: {
+      position: 'absolute',
+      left: SHIFT,
+      top: SHIFT,
+      right: -SHIFT,
+      bottom: -SHIFT,
+      backgroundColor: colors.border,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    rowFace: {
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+    },
+    rowTextCol: { flex: 1, minWidth: 0 },
+    rowTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+    rowSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+    restoreBtn: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: colors.border,
+      backgroundColor: colors.success,
+    },
+    restoreBtnPressed: { opacity: 0.85 },
+    restoreBtnLabel: { fontSize: 14, fontWeight: '800', color: colors.textPrimary },
+  });
+}
+
+type ArchiveSheet = ReturnType<typeof createBoardArchiveStyles>;
+
+function ArchiveRow({
+  sheet,
+  title,
+  subtitle,
+  onRestore,
+}: {
+  sheet: ArchiveSheet;
+  title: string;
+  subtitle: string;
+  onRestore: () => void;
+}) {
+  return (
+    <View style={sheet.rowWrap}>
+      <View style={sheet.rowShadow} />
+      <View style={sheet.rowFace}>
+        <View style={sheet.rowTextCol}>
+          <Text style={sheet.rowTitle} numberOfLines={2}>
+            {title}
+          </Text>
+          <Text style={sheet.rowSub} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        </View>
+        <Pressable
+          onPress={onRestore}
+          style={({ pressed }) => [sheet.restoreBtn, pressed && sheet.restoreBtnPressed]}
+          hitSlop={6}
+        >
+          <Text style={sheet.restoreBtnLabel}>Restore</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export default function BoardArchiveScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createBoardArchiveStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { boardId: boardIdParam } = useLocalSearchParams<{ boardId?: string | string[] }>();
@@ -160,12 +283,12 @@ export default function BoardArchiveScreen() {
           style={
             Platform.OS === 'ios'
               ? { backgroundColor: 'transparent' }
-              : { backgroundColor: BG }
+              : { backgroundColor: colors.modalCreamCanvas }
           }
         />
-        <Stack.Screen.Title style={{ fontWeight: '800', color: '#0a0a0a' }}>Archive</Stack.Screen.Title>
+        <Stack.Screen.Title style={{ fontWeight: '800', color: colors.modalCreamHeaderTint }}>Archive</Stack.Screen.Title>
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor="#0a0a0a" />
+          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor={colors.modalCreamHeaderTint} />
         </Stack.Toolbar>
       </Stack.Screen>
 
@@ -178,7 +301,13 @@ export default function BoardArchiveScreen() {
             paddingBottom: insets.bottom + 28,
           },
         ]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a0a0a" />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.modalCreamHeaderTint}
+          />
+        }
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -188,7 +317,7 @@ export default function BoardArchiveScreen() {
 
         {empty ? (
           <View style={styles.emptyCard}>
-            <Feather name="archive" size={36} color="#999" />
+            <Feather name="archive" size={36} color={colors.iconMuted} />
             <Text style={styles.emptyTitle}>Nothing archived yet</Text>
             <Text style={styles.emptyHint}>Drag a card or list to the top “Drop here to archive” zone.</Text>
           </View>
@@ -200,6 +329,7 @@ export default function BoardArchiveScreen() {
             {lists.map((item) => (
               <ArchiveRow
                 key={item.archiveId}
+                sheet={styles}
                 title={item.column.title}
                 subtitle={`${item.column.cards.length} cards · ${formatWhen(item.archivedAtIso)}`}
                 onRestore={() => onRestoreList(item.archiveId)}
@@ -214,6 +344,7 @@ export default function BoardArchiveScreen() {
             {cards.map((item) => (
               <ArchiveRow
                 key={item.archiveId}
+                sheet={styles}
                 title={item.card.title}
                 subtitle={`${item.sourceListTitle || 'List'} · ${formatWhen(item.archivedAtIso)}`}
                 onRestore={() => onRestoreCard(item.archiveId)}
@@ -225,117 +356,3 @@ export default function BoardArchiveScreen() {
     </View>
   );
 }
-
-function ArchiveRow({
-  title,
-  subtitle,
-  onRestore,
-}: {
-  title: string;
-  subtitle: string;
-  onRestore: () => void;
-}) {
-  return (
-    <View style={styles.rowWrap}>
-      <View style={styles.rowShadow} />
-      <View style={styles.rowFace}>
-        <View style={styles.rowTextCol}>
-          <Text style={styles.rowTitle} numberOfLines={2}>
-            {title}
-          </Text>
-          <Text style={styles.rowSub} numberOfLines={2}>
-            {subtitle}
-          </Text>
-        </View>
-        <Pressable
-          onPress={onRestore}
-          style={({ pressed }) => [styles.restoreBtn, pressed && styles.restoreBtnPressed]}
-          hitSlop={6}
-        >
-          <Text style={styles.restoreBtnLabel}>Restore</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  flex: { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: 20,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  helper: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#444',
-    marginBottom: 20,
-    fontWeight: '500',
-  },
-  section: { marginBottom: 24 },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 12,
-  },
-  emptyCard: {
-    alignItems: 'center',
-    paddingVertical: 36,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    gap: 10,
-  },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: '#0a0a0a' },
-  emptyHint: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20 },
-  rowWrap: {
-    position: 'relative',
-    marginBottom: 12,
-    marginRight: SHIFT,
-    alignSelf: 'stretch',
-  },
-  rowShadow: {
-    position: 'absolute',
-    left: SHIFT,
-    top: SHIFT,
-    right: -SHIFT,
-    bottom: -SHIFT,
-    backgroundColor: '#000',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  rowFace: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-  },
-  rowTextCol: { flex: 1, minWidth: 0 },
-  rowTitle: { fontSize: 16, fontWeight: '700', color: '#0a0a0a' },
-  rowSub: { fontSize: 13, color: '#666', marginTop: 4 },
-  restoreBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#000',
-    backgroundColor: '#a5d6a5',
-  },
-  restoreBtnPressed: { opacity: 0.85 },
-  restoreBtnLabel: { fontSize: 14, fontWeight: '800', color: '#0a0a0a' },
-});

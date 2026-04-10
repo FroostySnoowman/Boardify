@@ -144,7 +144,7 @@ module.exports = {
     scheme: 'boardify',
     orientation: 'portrait',
     icon: './assets/icon.png',
-    userInterfaceStyle: 'light',
+    userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     plugins: [
       'expo-router',

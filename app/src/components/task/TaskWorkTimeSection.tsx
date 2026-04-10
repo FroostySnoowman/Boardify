@@ -12,6 +12,7 @@ import {
 } from '../../utils/workTime';
 import { formatTaskDateTimeDisplay, hasValidTaskIso } from '../../utils/taskDateTime';
 import { TaskDatetimeField, type TaskDatetimeFieldKey } from './TaskDatetimeField';
+import { useTheme } from '../../theme';
 
 function uid() {
   return `w-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -29,6 +30,7 @@ type Props = {
 };
 
 export function TaskWorkTimeSection({ task, onChange, activeField, onActiveChange }: Props) {
+  const { colors } = useTheme();
   const [tick, setTick] = useState(0);
   const [manualStartIso, setManualStartIso] = useState<string | undefined>();
   const [manualEndIso, setManualEndIso] = useState<string | undefined>();
@@ -157,11 +159,12 @@ export function TaskWorkTimeSection({ task, onChange, activeField, onActiveChang
               <View
                 style={[
                   styles.neuBtnFace,
+                  { backgroundColor: colors.canvas },
                   pressed && styles.neuBtnFacePressed,
                   pressed && styles.neuBtnFacePressDim,
                 ]}
               >
-                <Feather name={running ? 'pause' : 'play'} size={20} color="#0a0a0a" />
+                <Feather name={running ? 'pause' : 'play'} size={20} color={colors.textPrimary} />
                 <Text style={styles.neuBtnFaceText}>{running ? 'Pause' : 'Start'}</Text>
               </View>
             </View>
@@ -218,6 +221,7 @@ export function TaskWorkTimeSection({ task, onChange, activeField, onActiveChang
               <View
                 style={[
                   styles.neuBtnFace,
+                  { backgroundColor: colors.canvas },
                   styles.neuBtnFaceCompact,
                   !canAddManual && styles.neuBtnFaceDisabled,
                   pressed && canAddManual && styles.neuBtnFacePressed,
@@ -381,7 +385,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: '#f5f0e8',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#000',

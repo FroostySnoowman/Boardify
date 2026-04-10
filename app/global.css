@@ -2,12 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  background-color: #020617;
+/* Pre-hydration shell; ThemeProvider syncs html/body background + .dark from resolved scheme. */
+html,
+body {
+  background-color: #f5f0e8;
+}
+
+html.dark,
+html.dark body {
+  background-color: #141210;
 }
 
 @media (max-width: 767px) {
-  html, body {
+  html,
+  body {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
   }
@@ -17,7 +25,7 @@ html, body {
   .container {
     @apply mx-auto w-[min(1200px,92vw)] px-4 sm:px-0;
   }
-  
+
   @media (min-width: 768px) {
     .web-grid-2 {
       display: grid;
@@ -25,7 +33,7 @@ html, body {
       gap: 1rem;
     }
   }
-  
+
   @media (min-width: 1024px) {
     .web-grid-3 {
       display: grid;
@@ -34,4 +42,3 @@ html, body {
     }
   }
 }
-

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { hapticLight } from '../utils/haptics';
+import { useTheme } from '../theme';
 
 const ANDROID_HW_TEXTURE =
   Platform.OS === 'android' ? ({ renderToHardwareTextureAndroid: true } as const) : null;
@@ -67,6 +68,51 @@ export function ContextMenu({
   hostMatchContents = false,
   iosGlassMenuTrigger = true,
 }: ContextMenuProps) {
+  const { colors, resolvedScheme } = useTheme();
+  const swiftScheme = resolvedScheme === 'dark' ? ('dark' as const) : ('light' as const);
+
+  const androidStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        androidMenuOverlay: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: colors.overlayScrim,
+        },
+        androidMenuContainer: {
+          minWidth: 200,
+          backgroundColor: colors.surfaceElevated,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingVertical: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.3,
+          shadowRadius: 16,
+          elevation: 8,
+          overflow: 'hidden',
+        },
+        androidMenuItem: {
+          paddingHorizontal: 20,
+          paddingVertical: 12,
+          minHeight: 44,
+          justifyContent: 'center',
+        },
+        androidMenuItemText: {
+          color: colors.textPrimary,
+          fontSize: 16,
+          fontWeight: '500',
+          letterSpacing: 0.1,
+        },
+        androidMenuDivider: {
+          height: 1,
+          backgroundColor: colors.divider,
+          marginHorizontal: 8,
+        },
+      }),
+    [colors]
+  );
+
   const iosMenuModifiers =
     iosGlassMenuTrigger && menuGlassModifiers && menuGlassModifiers.length > 0
       ? menuGlassModifiers
@@ -191,7 +237,7 @@ export function ContextMenu({
           collapsable={false}
         >
           <Host
-            colorScheme="light"
+            colorScheme={swiftScheme}
             style={hostSlotStyle}
             matchContents={hostMatchContents ? true : undefined}
           >
@@ -221,7 +267,7 @@ export function ContextMenu({
           collapsable={false}
         >
           <Host
-            colorScheme="light"
+            colorScheme={swiftScheme}
             style={hostSlotStyle}
             matchContents={hostMatchContents ? true : undefined}
           >
@@ -277,7 +323,7 @@ export function ContextMenu({
         <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseAndroidMenu}>
           <Animated.View
             style={[
-              styles.androidMenuOverlay,
+              androidStyles.androidMenuOverlay,
               {
                 opacity: androidMenuOpacity,
               },
@@ -290,7 +336,7 @@ export function ContextMenu({
         >
           <Animated.View
             style={[
-              styles.androidMenuContainer,
+              androidStyles.androidMenuContainer,
               {
                 opacity: androidMenuOpacity,
                 transform: [{ scale: androidMenuScale }],
@@ -299,13 +345,13 @@ export function ContextMenu({
           >
             {options.map((option, index) => (
               <React.Fragment key={option.value}>
-                {index > 0 && <View style={styles.androidMenuDivider} />}
+                {index > 0 && <View style={androidStyles.androidMenuDivider} />}
                 <TouchableOpacity
                   onPress={() => handleAndroidMenuAction(option)}
-                  style={styles.androidMenuItem}
+                  style={androidStyles.androidMenuItem}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.androidMenuItemText}>{option.label}</Text>
+                  <Text style={androidStyles.androidMenuItemText}>{option.label}</Text>
                 </TouchableOpacity>
               </React.Fragment>
             ))}
@@ -348,40 +394,5 @@ const styles = StyleSheet.create({
   },
   triggerWrapperIos: {
     overflow: 'visible',
-  },
-  androidMenuOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-  },
-  androidMenuContainer: {
-    minWidth: 200,
-    backgroundColor: 'rgba(20, 20, 20, 0.95)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  androidMenuItem: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  androidMenuItemText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '500',
-    letterSpacing: 0.1,
-  },
-  androidMenuDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginHorizontal: 8,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { useNavigationState } from '@react-navigation/native';
 import { router, usePathname } from 'expo-router';
 import { GlassView, isLiquidGlassAvailable, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { ContextMenu } from './ContextMenu';
+import { GlassRoundIconButton } from './GlassRoundIconButton';
 import { hapticLight } from '../utils/haptics';
 import {
   BOARD_SORT_LABELS,
@@ -17,6 +18,7 @@ import {
   MESSAGE_FILTER_ORDER,
   useMessageFilter,
 } from '../contexts/MessageFilterContext';
+import { useTheme } from '../theme';
 
 export const ACTIVITIES_HEADER_HEIGHT = 64;
 export const MOBILE_NAV_HEIGHT = 64;
@@ -66,7 +68,120 @@ export function ActivitiesHeader({
     tabScreen === 'messages' ? 'Messages' : tabScreen === 'account' ? 'Account' : 'Home';
   const { sortMode, setSortMode } = useBoardSort();
   const { messageFilter, setMessageFilter } = useMessageFilter();
+  const { colors, resolvedScheme } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: ACTIVITIES_HEADER_HEIGHT,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 16,
+          backgroundColor: colors.canvas,
+          zIndex: 5000,
+          elevation: 0,
+          overflow: 'visible',
+        },
+        containerEmbedded: {
+          flex: 1,
+          width: '100%',
+          minHeight: ACTIVITIES_HEADER_HEIGHT,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 16,
+          backgroundColor: colors.canvas,
+          overflow: 'visible',
+          zIndex: 5000,
+        },
+        homeRow: {
+          flex: 1,
+          position: 'relative',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: ACTIVITIES_HEADER_HEIGHT,
+        },
+        homeTitleWrap: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          minWidth: 0,
+          zIndex: 0,
+          paddingHorizontal: 56,
+        },
+        homeOrb: {
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          width: 45,
+          justifyContent: 'center',
+          zIndex: 20,
+          overflow: 'visible',
+        },
+        homeOrbLeading: {
+          left: 0,
+          alignItems: 'center',
+        },
+        homeOrbTrailing: {
+          right: 0,
+          alignItems: 'flex-end',
+        },
+        glassContainer: {
+          width: 45,
+          height: 45,
+          borderRadius: 22.5,
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'visible',
+          zIndex: 2,
+        },
+        glassFallback: {
+          borderWidth: 1,
+          borderColor: colors.glassFallbackBorder,
+          backgroundColor: colors.glassFallbackBg,
+        },
+        centerIcon: {
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        glassPressable: {
+          opacity: 1,
+          overflow: 'visible',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        contextMenuOrbTriggerWrap: {
+          width: 45,
+          minHeight: 45,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        swiftMenuIconWrap: {
+          backgroundColor: 'transparent',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        menuLabelGlyphNudge: {
+          transform: [{ translateX: -11 }, { translateY: -6 }],
+        },
+        title: {
+          fontSize: 22,
+          fontWeight: '700',
+          color: colors.textPrimary,
+        },
+      }),
+    [colors]
+  );
   const isGlassAvailable = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
+  const glassScheme = resolvedScheme === 'dark' ? ('dark' as const) : ('light' as const);
+  const glassTint =
+    resolvedScheme === 'dark' ? 'rgba(40, 38, 36, 0.72)' : 'rgba(255, 255, 255, 0.42)';
   const openCreateBoard = useCallback(() => {
     hapticLight();
     router.push('/create-board');
@@ -77,7 +192,7 @@ export function ActivitiesHeader({
     router.push('/');
   };
 
-  const iconColor = '#0a0a0a';
+  const iconColor = colors.iconPrimary;
 
   const renderGlassRound = (
     icon: keyof typeof Feather.glyphMap,
@@ -98,8 +213,8 @@ export function ActivitiesHeader({
       return (
         <GlassView
           isInteractive
-          colorScheme="light"
-          tintColor="rgba(255, 255, 255, 0.42)"
+          colorScheme={glassScheme}
+          tintColor={glassTint}
           style={styles.glassContainer}
         >
           {glyph}
@@ -112,7 +227,7 @@ export function ActivitiesHeader({
           styles.glassContainer,
           swiftMenuTrigger && Platform.OS === 'ios'
             ? styles.swiftMenuIconWrap
-            : [styles.glassFallbackLight, styles.centerIcon],
+            : [styles.glassFallback, styles.centerIcon],
         ]}
       >
         {glyph}
@@ -146,8 +261,6 @@ export function ActivitiesHeader({
     };
   });
 
-  const titleStyle = styles.title;
-
   const headerShell = (
     <>
       {isHomeTab ? (
@@ -161,7 +274,7 @@ export function ActivitiesHeader({
           <View style={styles.homeRow}>
             <View style={styles.homeTitleWrap}>
               <Pressable onPress={goHome} hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
-                <Text style={titleStyle} numberOfLines={1}>
+                <Text style={styles.title} numberOfLines={1}>
                   Home
                 </Text>
               </Pressable>
@@ -182,8 +295,8 @@ export function ActivitiesHeader({
                 }
               />
             </View>
-            <View style={[styles.homeOrb, styles.homeOrbTrailing]} pointerEvents="box-none">
-              {user ? (
+            {user ? (
+              <View style={[styles.homeOrb, styles.homeOrbTrailing]} pointerEvents="box-none">
                 <Pressable
                   hitSlop={12}
                   accessibilityLabel="Create new board"
@@ -192,20 +305,20 @@ export function ActivitiesHeader({
                 >
                   {renderGlassRound('plus', 23)}
                 </Pressable>
-              ) : (
-                <Pressable
-                  hitSlop={12}
+              </View>
+            ) : (
+              <View style={[styles.homeOrb, styles.homeOrbTrailing]} pointerEvents="box-none">
+                <GlassRoundIconButton
+                  icon="user"
+                  size={22}
                   accessibilityLabel="Sign in"
                   onPress={() => {
                     hapticLight();
                     router.push('/login');
                   }}
-                  style={styles.signInPill}
-                >
-                  <Text style={styles.signInPillText}>Sign in</Text>
-                </Pressable>
-              )}
-            </View>
+                />
+              </View>
+            )}
           </View>
         </View>
       ) : (
@@ -218,7 +331,7 @@ export function ActivitiesHeader({
         >
           <View style={styles.homeRow}>
             <View style={styles.homeTitleWrap}>
-              <Text style={titleStyle} numberOfLines={1}>
+              <Text style={styles.title} numberOfLines={1}>
                 {tabTitle}
               </Text>
             </View>
@@ -260,123 +373,3 @@ export function ActivitiesHeader({
 
   return headerShell;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: ACTIVITIES_HEADER_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    backgroundColor: '#f5f0e8',
-    zIndex: 5000,
-    elevation: 0,
-    overflow: 'visible',
-  },
-  containerEmbedded: {
-    flex: 1,
-    width: '100%',
-    minHeight: ACTIVITIES_HEADER_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    backgroundColor: '#f5f0e8',
-    overflow: 'visible',
-    zIndex: 5000,
-  },
-  homeRow: {
-    flex: 1,
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: ACTIVITIES_HEADER_HEIGHT,
-  },
-  homeTitleWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 0,
-    zIndex: 0,
-    paddingHorizontal: 56,
-  },
-  homeOrb: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 45,
-    justifyContent: 'center',
-    zIndex: 20,
-    overflow: 'visible',
-  },
-  homeOrbLeading: {
-    left: 0,
-    alignItems: 'center',
-  },
-  homeOrbTrailing: {
-    right: 0,
-    alignItems: 'flex-end',
-  },
-  glassContainer: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
-    zIndex: 2,
-  },
-  glassFallbackLight: {
-    borderWidth: 1,
-    borderColor: '#000',
-    backgroundColor: 'rgba(255,255,255,0.85)',
-  },
-  centerIcon: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  glassPressable: {
-    opacity: 1,
-    overflow: 'visible',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contextMenuOrbTriggerWrap: {
-    width: 45,
-    minHeight: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  swiftMenuIconWrap: {
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuLabelGlyphNudge: {
-    transform: [{ translateX: -11 }, { translateY: -6 }],
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#0a0a0a',
-  },
-  signInPill: {
-    alignSelf: 'flex-end',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#000',
-    backgroundColor: 'rgba(255,255,255,0.9)',
-  },
-  signInPillText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0a0a0a',
-  },
-});

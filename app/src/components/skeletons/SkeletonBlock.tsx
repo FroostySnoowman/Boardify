@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { type DimensionValue, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
@@ -8,14 +8,9 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { useTheme } from '../../theme';
 
 type Variant = 'warm' | 'dark' | 'onWhite';
-
-const BG: Record<Variant, string> = {
-  warm: '#dfd9cf',
-  dark: 'rgba(255,255,255,0.14)',
-  onWhite: '#e8e4dc',
-};
 
 export function SkeletonBlock({
   width,
@@ -30,6 +25,18 @@ export function SkeletonBlock({
   variant?: Variant;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { colors } = useTheme();
+  const bg = useMemo(() => {
+    switch (variant) {
+      case 'onWhite':
+        return colors.skeletonOnCard;
+      case 'dark':
+        return colors.skeletonDark;
+      default:
+        return colors.skeletonWarm;
+    }
+  }, [colors, variant]);
+
   const phase = useSharedValue(0);
 
   useEffect(() => {
@@ -54,7 +61,7 @@ export function SkeletonBlock({
           width,
           height,
           borderRadius,
-          backgroundColor: BG[variant],
+          backgroundColor: bg,
           overflow: 'hidden',
         },
         style,

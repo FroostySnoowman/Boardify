@@ -23,6 +23,8 @@ import {
   isoToDatetimeLocalInput,
   datetimeLocalInputToIso,
 } from '../../utils/taskDateTime';
+import { useTheme } from '../../theme';
+import type { ThemeColors } from '../../theme/colors';
 
 export type TaskDatetimeFieldKey = 'start' | 'due' | 'workManualStart' | 'workManualEnd';
 
@@ -45,6 +47,27 @@ export function TaskDatetimeField({
   onActiveChange,
   showDividerTop,
 }: Props) {
+  const { colors, resolvedScheme } = useTheme();
+  const fieldStyles = useMemo(() => createTaskDatetimeFieldStyles(colors), [colors]);
+  const webInputStyle = useMemo(
+    () =>
+      ({
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: '12px 14px',
+        fontSize: 16,
+        fontWeight: 600,
+        color: colors.textPrimary,
+        backgroundColor: colors.canvas,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 10,
+        outline: 'none',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      }) as Record<string, string | number>,
+    [colors]
+  );
+  const pickerTheme = resolvedScheme === 'dark' ? ('dark' as const) : ('light' as const);
+  const iosPickerTextColor = colors.textPrimary;
   const expanded = Platform.OS === 'ios' && activeField === fieldKey;
   const [iosDraft, setIosDraft] = useState(() => parseTaskDateTime(valueIso));
   const iosDraftRef = useRef(iosDraft);
@@ -124,10 +147,10 @@ export function TaskDatetimeField({
 
   if (Platform.OS === 'web') {
     return (
-      <View style={[styles.block, showDividerTop && styles.blockDivider]}>
-        <Text style={styles.upperLabel}>{label}</Text>
-        <View style={styles.webRow}>
-          <View style={styles.webInputWrap}>
+      <View style={[fieldStyles.block, showDividerTop && fieldStyles.blockDivider]}>
+        <Text style={fieldStyles.upperLabel}>{label}</Text>
+        <View style={fieldStyles.webRow}>
+          <View style={fieldStyles.webInputWrap}>
             {createElement('input', {
               type: 'datetime-local',
               value: isoToDatetimeLocalInput(valueIso),
@@ -139,8 +162,8 @@ export function TaskDatetimeField({
             })}
           </View>
           {hasValidTaskIso(valueIso) ? (
-            <Pressable onPress={clear} style={styles.clearWeb} hitSlop={8}>
-              <Text style={styles.clearText}>Clear</Text>
+            <Pressable onPress={clear} style={fieldStyles.clearWeb} hitSlop={8}>
+              <Text style={fieldStyles.clearText}>Clear</Text>
             </Pressable>
           ) : null}
         </View>
@@ -149,27 +172,27 @@ export function TaskDatetimeField({
   }
 
   return (
-    <View style={[styles.block, showDividerTop && styles.blockDivider]}>
-      <Text style={styles.upperLabel}>{label}</Text>
+    <View style={[fieldStyles.block, showDividerTop && fieldStyles.blockDivider]}>
+      <Text style={fieldStyles.upperLabel}>{label}</Text>
       <Pressable
         onPress={Platform.OS === 'ios' ? openIos : openAndroid}
-        style={({ pressed }) => [styles.row, pressed && { opacity: 0.92 }]}
+        style={({ pressed }) => [fieldStyles.row, pressed && { opacity: 0.92 }]}
       >
-        <Text style={[styles.rowText, !hasValidTaskIso(valueIso) && styles.rowPlaceholder]}>
+        <Text style={[fieldStyles.rowText, !hasValidTaskIso(valueIso) && fieldStyles.rowPlaceholder]}>
           {displayText}
         </Text>
       </Pressable>
 
       {hasValidTaskIso(valueIso) ? (
-        <Pressable onPress={clear} style={styles.clearNative} hitSlop={8}>
-          <Text style={styles.clearText}>Clear</Text>
+        <Pressable onPress={clear} style={fieldStyles.clearNative} hitSlop={8}>
+          <Text style={fieldStyles.clearText}>Clear</Text>
         </Pressable>
       ) : null}
 
       {expanded ? (
-        <View style={styles.iosPanel}>
-          <View style={styles.iosPanelHeader}>
-            <Text style={styles.iosPanelTitle}>Date</Text>
+        <View style={fieldStyles.iosPanel}>
+          <View style={fieldStyles.iosPanelHeader}>
+            <Text style={fieldStyles.iosPanelTitle}>Date</Text>
           </View>
           {DateTimePickerNative ? (
             <DateTimePickerNative
@@ -183,15 +206,15 @@ export function TaskDatetimeField({
                 setIosDraft(next);
                 onChangeIso(toIsoString(next));
               }}
-              themeVariant="light"
-              {...(Platform.OS === 'ios' ? { textColor: '#0a0a0a' as const } : {})}
-              style={styles.picker}
+              themeVariant={pickerTheme}
+              {...(Platform.OS === 'ios' ? { textColor: iosPickerTextColor } : {})}
+              style={fieldStyles.picker}
             />
           ) : null}
-          <View style={[styles.iosPanelHeader, styles.iosPanelHeaderSpaced]}>
-            <Text style={styles.iosPanelTitle}>Time</Text>
+          <View style={[fieldStyles.iosPanelHeader, fieldStyles.iosPanelHeaderSpaced]}>
+            <Text style={fieldStyles.iosPanelTitle}>Time</Text>
             <Pressable onPress={closeIosPanel} hitSlop={10}>
-              <Text style={styles.doneText}>Done</Text>
+              <Text style={fieldStyles.doneText}>Done</Text>
             </Pressable>
           </View>
           {DateTimePickerNative ? (
@@ -206,9 +229,9 @@ export function TaskDatetimeField({
                 setIosDraft(next);
                 onChangeIso(toIsoString(next));
               }}
-              themeVariant="light"
-              {...(Platform.OS === 'ios' ? { textColor: '#0a0a0a' as const } : {})}
-              style={styles.picker}
+              themeVariant={pickerTheme}
+              {...(Platform.OS === 'ios' ? { textColor: iosPickerTextColor } : {})}
+              style={fieldStyles.picker}
             />
           ) : null}
         </View>
@@ -234,114 +257,102 @@ export function TaskDatetimeField({
   );
 }
 
-const webInputStyle: Record<string, string | number> = {
-  width: '100%',
-  boxSizing: 'border-box',
-  padding: '12px 14px',
-  fontSize: 16,
-  fontWeight: 600,
-  color: '#0a0a0a',
-  backgroundColor: '#f5f0e8',
-  border: '1px solid #000',
-  borderRadius: 10,
-  outline: 'none',
-  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-};
-
-const styles = StyleSheet.create({
-  block: {
-    marginBottom: 4,
-  },
-  blockDivider: {
-    paddingTop: 14,
-    marginTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e5e5',
-  },
-  upperLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#666',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#000',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#f5f0e8',
-    minHeight: 48,
-  },
-  rowText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0a0a0a',
-    marginRight: 10,
-  },
-  rowPlaceholder: {
-    color: '#888',
-    fontWeight: '500',
-  },
-  clearNative: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    paddingVertical: 4,
-  },
-  clearWeb: {
-    marginLeft: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    justifyContent: 'center',
-  },
-  clearText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#b91c1c',
-  },
-  iosPanel: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#faf8f5',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  iosPanelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  iosPanelHeaderSpaced: {
-    marginTop: 8,
-  },
-  iosPanelTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0a0a0a',
-  },
-  doneText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#15803d',
-  },
-  picker: {
-    backgroundColor: 'transparent',
-    height: 180,
-  },
-  webRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-  },
-  webInputWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-});
+function createTaskDatetimeFieldStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    block: {
+      marginBottom: 4,
+    },
+    blockDivider: {
+      paddingTop: 14,
+      marginTop: 6,
+      borderTopWidth: 1,
+      borderTopColor: colors.divider,
+    },
+    upperLabel: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: colors.textSecondary,
+      marginBottom: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      backgroundColor: colors.canvas,
+      minHeight: 48,
+    },
+    rowText: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginRight: 10,
+    },
+    rowPlaceholder: {
+      color: colors.placeholder,
+      fontWeight: '500',
+    },
+    clearNative: {
+      alignSelf: 'flex-start',
+      marginTop: 8,
+      paddingVertical: 4,
+    },
+    clearWeb: {
+      marginLeft: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+      justifyContent: 'center',
+    },
+    clearText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.dangerText,
+    },
+    iosPanel: {
+      marginTop: 12,
+      padding: 12,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    iosPanelHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    iosPanelHeaderSpaced: {
+      marginTop: 8,
+    },
+    iosPanelTitle: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
+    doneText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.successEmphasis,
+    },
+    picker: {
+      backgroundColor: 'transparent',
+      height: 180,
+    },
+    webRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      width: '100%',
+    },
+    webInputWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+  });
+}

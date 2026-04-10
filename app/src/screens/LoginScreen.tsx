@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -31,25 +31,232 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNetwork } from '../contexts/NetworkContext';
 import { ENV } from '../config/env';
 import { isNetworkError } from '../utils/networkError';
+import { useTheme } from '../theme';
+import type { ThemeColors } from '../theme/colors';
 
 function isGoogleSignInConfigured(): boolean {
   return !!(ENV.GOOGLE_OAUTH_CLIENT_ID || ENV.GOOGLE_OAUTH_CLIENT_ID_DEV);
 }
 
 const BELOW_HEADER_GAP = 10;
-const BG = '#f5f0e8';
 
-const cardShadow =
-  Platform.OS === 'ios'
-    ? {
-        shadowColor: '#000',
-        shadowOffset: { width: 5, height: 5 },
-        shadowOpacity: 0.2,
-        shadowRadius: 0,
-      }
-    : { elevation: 5 };
+function createLoginStyles(colors: ThemeColors) {
+  const cardShadow =
+    Platform.OS === 'ios'
+      ? {
+          shadowColor: '#000',
+          shadowOffset: { width: 5, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 0,
+        }
+      : { elevation: 5 };
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    flex: {
+      flex: 1,
+    },
+    sheetFill: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'flex-start',
+      paddingHorizontal: 20,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    card: {
+      alignSelf: 'stretch',
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      padding: 24,
+      ...cardShadow,
+    },
+    helper: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 22,
+      fontWeight: '500',
+    },
+    fieldLabel: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 10,
+    },
+    errorContainer: {
+      backgroundColor: colors.surfaceMuted,
+      borderWidth: 1,
+      borderColor: colors.danger,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 16,
+    },
+    errorText: {
+      color: colors.dangerText,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    inputContainer: {
+      position: 'relative',
+      marginBottom: 16,
+    },
+    input: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      backgroundColor: colors.modalCreamCanvas,
+      minHeight: 48,
+    },
+    inputWithEye: {
+      paddingRight: 48,
+    },
+    codeInput: {
+      textAlign: 'center',
+      letterSpacing: 8,
+      fontSize: 24,
+      fontWeight: '700',
+    },
+    eyeButton: {
+      position: 'absolute',
+      right: 12,
+      top: 14,
+      padding: 4,
+    },
+    strengthContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 16,
+    },
+    strengthBar: {
+      flex: 1,
+      height: 8,
+      backgroundColor: colors.divider,
+      borderRadius: 4,
+      overflow: 'hidden',
+    },
+    strengthFill: {
+      height: '100%',
+      borderRadius: 4,
+    },
+    strengthText: {
+      fontSize: 14,
+      fontWeight: '600',
+      width: 60,
+      textAlign: 'right',
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginTop: 8,
+      gap: 12,
+      width: '100%',
+      overflow: 'hidden',
+      paddingBottom: 11,
+    },
+    labelPrimaryDisabled: {
+      color: colors.textTertiary,
+    },
+    divider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 20,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.divider,
+    },
+    dividerText: {
+      marginHorizontal: 16,
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    socialStack: {
+      width: '100%',
+      gap: 12,
+      marginBottom: 8,
+    },
+    socialIcon: {
+      width: 20,
+      height: 20,
+    },
+    switchButton: {
+      marginTop: 12,
+    },
+    switchText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+    switchLink: {
+      color: colors.successEmphasis,
+      fontWeight: '700',
+    },
+    linkText: {
+      color: colors.successEmphasis,
+      fontSize: 14,
+      textAlign: 'center',
+      fontWeight: '600',
+    },
+    resetHint: {
+      color: colors.dangerText,
+      fontSize: 12,
+      textAlign: 'center',
+      marginBottom: 16,
+      fontWeight: '600',
+    },
+    successIconWrap: {
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    successIconCircle: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.successTrack,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    resetOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: colors.modalCreamCanvas,
+      zIndex: 100,
+    },
+    resetScrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: 20,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+  });
+}
 
 export default function LoginScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createLoginStyles(colors), [colors]);
   const { setUserContext } = useAuth();
   const { isOnline } = useNetwork();
   const headerHeight = useHeaderHeight();
@@ -293,12 +500,12 @@ export default function LoginScreen() {
           style={
             Platform.OS === 'ios'
               ? { backgroundColor: 'transparent' }
-              : { backgroundColor: BG }
+              : { backgroundColor: colors.modalCreamCanvas }
           }
         />
-        <Stack.Screen.Title style={{ fontWeight: '800', color: '#0a0a0a' }}>{screenTitle}</Stack.Screen.Title>
+        <Stack.Screen.Title style={{ fontWeight: '800', color: colors.modalCreamHeaderTint }}>{screenTitle}</Stack.Screen.Title>
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button icon="xmark" onPress={toolbarClose} tintColor="#0a0a0a" />
+          <Stack.Toolbar.Button icon="xmark" onPress={toolbarClose} tintColor={colors.modalCreamHeaderTint} />
         </Stack.Toolbar>
       </Stack.Screen>
 
@@ -326,8 +533,8 @@ export default function LoginScreen() {
             </Text>
 
             {!isOnline ? (
-              <View style={[styles.errorContainer, { backgroundColor: 'rgba(100, 116, 139, 0.3)', marginBottom: 12 }]}>
-                <Text style={[styles.errorText, { color: '#94a3b8' }]}>
+              <View style={[styles.errorContainer, { backgroundColor: colors.offlineBanner, marginBottom: 12 }]}>
+                <Text style={[styles.errorText, { color: colors.offlineBannerText }]}>
                   You're offline. Sign in when you're back online.
                 </Text>
               </View>
@@ -344,7 +551,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="you@example.com"
-                placeholderTextColor="#888"
+                placeholderTextColor={colors.placeholder}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -358,7 +565,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Your password"
-                placeholderTextColor="#888888"
+                placeholderTextColor={colors.placeholder}
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -380,7 +587,7 @@ export default function LoginScreen() {
                 <Feather
                   name={showPassword ? 'eye-off' : 'eye'}
                   size={20}
-                  color="#666666"
+                  color={colors.iconMuted}
                 />
               </TouchableOpacity>
             </View>
@@ -392,7 +599,7 @@ export default function LoginScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="Same as above"
-                    placeholderTextColor="#888"
+                    placeholderTextColor={colors.placeholder}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry={!showConfirmPassword}
@@ -406,7 +613,7 @@ export default function LoginScreen() {
                     <Feather
                       name={showConfirmPassword ? 'eye-off' : 'eye'}
                       size={20}
-                      color="#666666"
+                      color={colors.iconMuted}
                     />
                   </TouchableOpacity>
                 </View>
@@ -449,7 +656,7 @@ export default function LoginScreen() {
                                 ? '#22c55e'
                                 : passwordStrength === 'Strong'
                                   ? '#22c55e'
-                                  : '#666666',
+                                  : colors.iconMuted,
                         },
                       ]}
                     >
@@ -468,7 +675,7 @@ export default function LoginScreen() {
                 }}
                 style={{ marginBottom: 16, alignSelf: 'flex-end', marginTop: -8 }}
               >
-                <Text style={{ color: '#15803d', fontSize: 14, fontWeight: '600' }}>
+                <Text style={{ color: colors.successEmphasis, fontSize: 14, fontWeight: '600' }}>
                   Forgot Password?
                 </Text>
               </TouchableOpacity>
@@ -476,13 +683,12 @@ export default function LoginScreen() {
 
             <View style={styles.actions}>
               <BoardStyleActionButton
-                shadowColor="#e0e0e0"
+                shadowColor={colors.shadowFill}
                 onPress={cancelPress}
                 label="Cancel"
-                labelStyle={styles.labelCancel}
               />
               <BoardStyleActionButton
-                shadowColor={canSubmit && !signInDisabled ? '#a5d6a5' : '#d0d0d0'}
+                shadowColor={canSubmit && !signInDisabled ? colors.success : colors.shadowFill}
                 onPress={() => void handleSubmit()}
                 disabled={!canSubmit || signInDisabled}
                 label={
@@ -495,7 +701,7 @@ export default function LoginScreen() {
                       : 'Sign in'
                 }
                 labelStyle={
-                  canSubmit && !signInDisabled ? styles.labelPrimary : styles.labelPrimaryDisabled
+                  canSubmit && !signInDisabled ? {} : styles.labelPrimaryDisabled
                 }
               />
             </View>
@@ -512,7 +718,7 @@ export default function LoginScreen() {
                 leading={
                   <Image source={require('../../assets/google.png')} style={styles.socialIcon} />
                 }
-                shadowColor={isGoogleSignInConfigured() ? '#e8e8e8' : '#d0d0d0'}
+                shadowColor={isGoogleSignInConfigured() ? colors.surfaceMuted : colors.shadowFill}
                 onPress={handleGoogle}
                 disabled={signInDisabled || !isGoogleSignInConfigured()}
                 label={
@@ -522,7 +728,7 @@ export default function LoginScreen() {
                 }
                 labelStyle={
                   isGoogleSignInConfigured() && !signInDisabled
-                    ? styles.labelPrimary
+                    ? {}
                     : styles.labelPrimaryDisabled
                 }
               />
@@ -532,11 +738,11 @@ export default function LoginScreen() {
                   leading={
                     <Image source={require('../../assets/apple.png')} style={styles.socialIcon} />
                   }
-                  shadowColor="#e8e8e8"
+                  shadowColor={colors.surfaceMuted}
                   onPress={handleApple}
                   disabled={signInDisabled}
                   label="Continue with Apple"
-                  labelStyle={!signInDisabled ? styles.labelPrimary : styles.labelPrimaryDisabled}
+                  labelStyle={!signInDisabled ? {} : styles.labelPrimaryDisabled}
                 />
               ) : null}
             </View>
@@ -599,7 +805,7 @@ export default function LoginScreen() {
                     <TextInput
                       style={styles.input}
                       placeholder="you@example.com"
-                      placeholderTextColor="#888"
+                      placeholderTextColor={colors.placeholder}
                       value={resetEmail}
                       onChangeText={setResetEmail}
                       keyboardType="email-address"
@@ -611,7 +817,9 @@ export default function LoginScreen() {
                   <BoardStyleActionButton
                     layout="stack"
                     shadowColor={
-                      resetEmail.trim() && !resetLoading && resendCooldown === 0 ? '#a5d6a5' : '#d0d0d0'
+                      resetEmail.trim() && !resetLoading && resendCooldown === 0
+                        ? colors.success
+                        : colors.shadowFill
                     }
                     onPress={() => void handleForgotSendCode()}
                     disabled={!resetEmail.trim() || resetLoading || resendCooldown > 0}
@@ -624,7 +832,7 @@ export default function LoginScreen() {
                     }
                     labelStyle={
                       resetEmail.trim() && !resetLoading && resendCooldown === 0
-                        ? styles.labelPrimary
+                        ? {}
                         : styles.labelPrimaryDisabled
                     }
                   />
@@ -635,7 +843,7 @@ export default function LoginScreen() {
                 <>
                   <Text style={styles.helper}>
                     We sent a 6-digit code to{' '}
-                    <Text style={{ fontWeight: '800', color: '#0a0a0a' }}>{resetEmail}</Text>
+                    <Text style={{ fontWeight: '800', color: colors.textPrimary }}>{resetEmail}</Text>
                   </Text>
                   {resetError ? (
                     <View style={styles.errorContainer}>
@@ -647,7 +855,7 @@ export default function LoginScreen() {
                     <TextInput
                       style={[styles.input, styles.codeInput]}
                       placeholder="000000"
-                      placeholderTextColor="#888"
+                      placeholderTextColor={colors.placeholder}
                       value={resetCode}
                       onChangeText={(t) => setResetCode(t.replace(/[^0-9]/g, '').slice(0, 6))}
                       keyboardType="number-pad"
@@ -658,14 +866,12 @@ export default function LoginScreen() {
                   <Text style={styles.resetHint}>Code expires in 15 minutes.</Text>
                   <BoardStyleActionButton
                     layout="stack"
-                    shadowColor={resetCode.length === 6 && !resetLoading ? '#a5d6a5' : '#d0d0d0'}
+                    shadowColor={resetCode.length === 6 && !resetLoading ? colors.success : colors.shadowFill}
                     onPress={() => void handleVerifyCode()}
                     disabled={resetCode.length !== 6 || resetLoading}
                     label={resetLoading ? 'Verifying…' : 'Verify code'}
                     labelStyle={
-                      resetCode.length === 6 && !resetLoading
-                        ? styles.labelPrimary
-                        : styles.labelPrimaryDisabled
+                      resetCode.length === 6 && !resetLoading ? {} : styles.labelPrimaryDisabled
                     }
                   />
                   <TouchableOpacity
@@ -693,7 +899,7 @@ export default function LoginScreen() {
                     <TextInput
                       style={[styles.input, styles.inputWithEye]}
                       placeholder="New password"
-                      placeholderTextColor="#888"
+                      placeholderTextColor={colors.placeholder}
                       value={newPassword}
                       onChangeText={setNewPassword}
                       secureTextEntry={!showNewPassword}
@@ -706,7 +912,7 @@ export default function LoginScreen() {
                       onPress={() => setShowNewPassword(!showNewPassword)}
                       hitSlop={8}
                     >
-                      <Feather name={showNewPassword ? 'eye-off' : 'eye'} size={20} color="#666666" />
+                      <Feather name={showNewPassword ? 'eye-off' : 'eye'} size={20} color={colors.iconMuted} />
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.fieldLabel}>Confirm</Text>
@@ -714,7 +920,7 @@ export default function LoginScreen() {
                     <TextInput
                       style={[styles.input, styles.inputWithEye]}
                       placeholder="Confirm new password"
-                      placeholderTextColor="#888"
+                      placeholderTextColor={colors.placeholder}
                       value={confirmNewPassword}
                       onChangeText={setConfirmNewPassword}
                       secureTextEntry={!showConfirmNewPassword}
@@ -726,20 +932,20 @@ export default function LoginScreen() {
                       onPress={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
                       hitSlop={8}
                     >
-                      <Feather name={showConfirmNewPassword ? 'eye-off' : 'eye'} size={20} color="#666666" />
+                      <Feather name={showConfirmNewPassword ? 'eye-off' : 'eye'} size={20} color={colors.iconMuted} />
                     </TouchableOpacity>
                   </View>
                   <BoardStyleActionButton
                     layout="stack"
                     shadowColor={
-                      newPassword && confirmNewPassword && !resetLoading ? '#a5d6a5' : '#d0d0d0'
+                      newPassword && confirmNewPassword && !resetLoading ? colors.success : colors.shadowFill
                     }
                     onPress={() => void handleResetPassword()}
                     disabled={!newPassword || !confirmNewPassword || resetLoading}
                     label={resetLoading ? 'Saving…' : 'Save password'}
                     labelStyle={
                       newPassword && confirmNewPassword && !resetLoading
-                        ? styles.labelPrimary
+                        ? {}
                         : styles.labelPrimaryDisabled
                     }
                   />
@@ -750,7 +956,7 @@ export default function LoginScreen() {
                 <>
                   <View style={styles.successIconWrap}>
                     <View style={styles.successIconCircle}>
-                      <Feather name="check" size={32} color="#15803d" />
+                      <Feather name="check" size={32} color={colors.successEmphasis} />
                     </View>
                   </View>
                   <Text style={styles.helper}>
@@ -758,10 +964,9 @@ export default function LoginScreen() {
                   </Text>
                   <BoardStyleActionButton
                     layout="stack"
-                    shadowColor="#a5d6a5"
+                    shadowColor={colors.success}
                     onPress={exitResetFlow}
                     label="Back to sign in"
-                    labelStyle={styles.labelPrimary}
                   />
                 </>
               )}
@@ -773,211 +978,3 @@ export default function LoginScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  flex: {
-    flex: 1,
-  },
-  sheetFill: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  card: {
-    alignSelf: 'stretch',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    padding: 24,
-    ...cardShadow,
-  },
-  helper: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#444',
-    marginBottom: 22,
-    fontWeight: '500',
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  errorContainer: {
-    backgroundColor: 'rgba(254, 226, 226, 0.95)',
-    borderWidth: 1,
-    borderColor: '#f87171',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#991b1b',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  inputContainer: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-  input: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#0a0a0a',
-    borderWidth: 2,
-    borderColor: '#000',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: BG,
-    minHeight: 48,
-  },
-  inputWithEye: {
-    paddingRight: 48,
-  },
-  codeInput: {
-    textAlign: 'center',
-    letterSpacing: 8,
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  eyeButton: {
-    position: 'absolute',
-    right: 12,
-    top: 14,
-    padding: 4,
-  },
-  strengthContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-  },
-  strengthBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: '#e5e5e5',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  strengthFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  strengthText: {
-    fontSize: 14,
-    fontWeight: '600',
-    width: 60,
-    textAlign: 'right',
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 8,
-    gap: 12,
-    width: '100%',
-    overflow: 'hidden',
-    paddingBottom: 11,
-  },
-  labelCancel: {
-    color: '#0a0a0a',
-  },
-  labelPrimary: {
-    color: '#0a0a0a',
-  },
-  labelPrimaryDisabled: {
-    color: '#888',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#ccc',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#666',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  socialStack: {
-    width: '100%',
-    gap: 12,
-    marginBottom: 8,
-  },
-  socialIcon: {
-    width: 20,
-    height: 20,
-  },
-  switchButton: {
-    marginTop: 12,
-  },
-  switchText: {
-    color: '#666',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  switchLink: {
-    color: '#15803d',
-    fontWeight: '700',
-  },
-  linkText: {
-    color: '#15803d',
-    fontSize: 14,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  resetHint: {
-    color: '#92400e',
-    fontSize: 12,
-    textAlign: 'center',
-    marginBottom: 16,
-    fontWeight: '600',
-  },
-  successIconWrap: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  successIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  resetOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: BG,
-    zIndex: 100,
-  },
-  resetScrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-});

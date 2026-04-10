@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { View as RNView } from 'react-native';
+import type { ThemeColors } from '../theme/colors';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -58,18 +59,20 @@ export const neuListRowShadowBase = {
   borderColor: '#000' as const,
 };
 
-export const neuListRowCardBase = {
-  position: 'relative' as const,
-  flexDirection: 'row' as const,
-  alignItems: 'center' as const,
-  backgroundColor: '#fff',
-  borderRadius: 14,
-  borderWidth: 1,
-  borderColor: '#000' as const,
-  paddingVertical: 16,
-  paddingHorizontal: 16,
-  paddingLeft: 14,
-};
+export function getNeuListRowCardBase(colors: ThemeColors) {
+  return {
+    position: 'relative' as const,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: colors.cardFace,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingLeft: 14,
+  };
+}
 
 const styles = StyleSheet.create({
   wrap: {

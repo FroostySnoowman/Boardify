@@ -75,10 +75,9 @@ import type {
   DashboardLineTimeframe,
   DashboardTile,
 } from '../types/dashboard';
-import {
-  boardDropZoneChrome,
-  BOARD_DROP_ZONE_CARD_RADIUS,
-} from '../board/boardDropZoneStyles';
+import { BOARD_DROP_ZONE_CARD_RADIUS } from '../board/boardDropZoneStyles';
+import { useTheme } from '../theme';
+import type { ThemeColors } from '../theme/colors';
 import { BOARD_PENDING_RESTORE_EVENT, type BoardPendingRestorePayload } from '../board/boardRestoreEvents';
 import { useBoardWebSocket } from '../hooks/useBoardWebSocket';
 import {
@@ -177,6 +176,8 @@ export default function BoardScreen({
   onOpenBoardNotifications,
   glassBottomBar,
 }: BoardScreenProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createBoardScreenStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const screenWRef = useRef(screenW);
@@ -1588,7 +1589,7 @@ export default function BoardScreen({
             ref={cardSearchInputRef}
             style={styles.cardSearchInput}
             placeholder="Filter cards…"
-            placeholderTextColor="#888"
+            placeholderTextColor={colors.placeholder}
             value={cardSearchQuery}
             onChangeText={setCardSearchQuery}
             returnKeyType="search"
@@ -1841,7 +1842,7 @@ export default function BoardScreen({
                   >
                     <View style={styles.addListShadow} />
                     <View style={styles.addList}>
-                      <Feather name="plus" size={20} color="#666" />
+                      <Feather name="plus" size={20} color={colors.iconChevron} />
                       <Text style={styles.addListText}>Add list</Text>
                     </View>
                   </TouchableOpacity>
@@ -1861,7 +1862,7 @@ export default function BoardScreen({
                         value={inlineAddListDraft}
                         onChangeText={setInlineAddListDraft}
                         placeholder="List name"
-                        placeholderTextColor="#888"
+                        placeholderTextColor={colors.placeholder}
                         style={styles.inlineNewListTitleInput}
                         autoCorrect
                         autoCapitalize="sentences"
@@ -2084,10 +2085,18 @@ export default function BoardScreen({
   );
 }
 
-const styles = StyleSheet.create({
+function createBoardScreenStyles(colors: ThemeColors) {
+  const boardDropZone = {
+    borderWidth: 2,
+    borderStyle: 'dashed' as const,
+    borderColor: colors.dropZoneBorder,
+    backgroundColor: colors.dropZoneBg,
+  };
+
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f0e8',
+    backgroundColor: colors.canvas,
     overflow: 'visible',
   },
   boardGate: {
@@ -2097,7 +2106,7 @@ const styles = StyleSheet.create({
   },
   boardGateError: {
     fontSize: 15,
-    color: '#444',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -2106,13 +2115,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#000',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   boardGateBackLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0a0a0a',
+    color: colors.textPrimary,
   },
   archiveHeaderReplacement: {
     position: 'relative',
@@ -2163,7 +2172,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     zIndex: 20,
-    backgroundColor: '#f5f0e8',
+    backgroundColor: colors.boardHeaderBg,
     overflow: 'visible',
   },
   headerSearchBar: {
@@ -2178,11 +2187,11 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#000',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.inputBackground,
     fontSize: 17,
     fontWeight: '600',
-    color: '#0a0a0a',
+    color: colors.textPrimary,
   },
   headerSide: {
     width: 45,
@@ -2205,7 +2214,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 22,
     fontWeight: '700',
-    color: '#0a0a0a',
+    color: colors.textPrimary,
     textAlign: 'center',
     minWidth: 0,
     paddingHorizontal: 8,
@@ -2248,10 +2257,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#c4c4c4',
+    backgroundColor: colors.focusDotInactive,
   },
   focusDotActive: {
-    backgroundColor: '#0a0a0a',
+    backgroundColor: colors.textPrimary,
     width: 9,
     height: 9,
     borderRadius: 4,
@@ -2274,10 +2283,10 @@ const styles = StyleSheet.create({
     top: SHIFT,
     right: -SHIFT,
     bottom: -SHIFT,
-    backgroundColor: '#000',
+    backgroundColor: colors.shadowFillColumn,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: colors.border,
   },
   addList: {
     position: 'relative',
@@ -2286,10 +2295,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#e8e8e8',
+    backgroundColor: colors.columnSurface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: colors.border,
     paddingVertical: 20,
     paddingHorizontal: 24,
     minHeight: 120,
@@ -2297,15 +2306,15 @@ const styles = StyleSheet.create({
   addListText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   inlineNewListColumn: {
     position: 'relative',
     zIndex: 1,
-    backgroundColor: '#e8e8e8',
+    backgroundColor: colors.columnSurface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: colors.border,
     paddingVertical: 12,
     paddingHorizontal: 12,
     minHeight: 360,
@@ -2323,20 +2332,20 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
-    color: '#0a0a0a',
+    color: colors.textPrimary,
     paddingVertical: 4,
     paddingRight: 8,
   },
   inlineNewListCount: {
     fontSize: 13,
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   inlineNewListBody: {
     minHeight: 220,
     maxHeight: 400,
     borderRadius: BOARD_DROP_ZONE_CARD_RADIUS,
-    ...boardDropZoneChrome,
+    ...boardDropZone,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 24,
@@ -2345,7 +2354,7 @@ const styles = StyleSheet.create({
   inlineNewListHint: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#777',
+    color: colors.textTertiary,
     textAlign: 'center',
   },
   inlineNewListActions: {
@@ -2362,22 +2371,22 @@ const styles = StyleSheet.create({
   inlineNewListActionCancel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0c66e4',
+    color: colors.boardLink,
   },
   inlineNewListActionAdd: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0a0a0a',
+    color: colors.textPrimary,
   },
   inlineNewListActionAddDisabled: {
-    color: '#aaa',
+    color: colors.placeholder,
   },
   listDragOverlayInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderRadius: BOARD_DROP_ZONE_CARD_RADIUS,
-    ...boardDropZoneChrome,
+    ...boardDropZone,
     paddingVertical: 10,
     paddingHorizontal: 12,
     gap: 8,
@@ -2386,30 +2395,31 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
-    color: '#0a0a0a',
+    color: colors.textPrimary,
   },
   listDragOverlayCount: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   tableRowDragOverlayInner: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.cardFace,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: colors.border,
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
   tableRowDragTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0a0a0a',
+    color: colors.textPrimary,
   },
   tableRowDragSub: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 4,
   },
 });
+}

@@ -10,8 +10,8 @@ import {
 } from 'expo-glass-effect';
 import { hapticLight } from '../utils/haptics';
 import { GlassRoundIconButton } from './GlassRoundIconButton';
+import { useTheme } from '../theme';
 
-const ICON_COLOR = '#0a0a0a';
 const ICON_SIZE = 22;
 
 export type BoardBottomBarLayoutMode = 'board' | 'list' | 'calendar';
@@ -86,18 +86,31 @@ function GlassIconStrip({
   onBellPress,
   onSettingsPress,
 }: GlassIconStripProps) {
+  const { colors, resolvedScheme } = useTheme();
   const isGlass = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
+  const glassScheme = resolvedScheme === 'dark' ? ('dark' as const) : ('light' as const);
+  const glassTint =
+    resolvedScheme === 'dark' ? 'rgba(40, 38, 36, 0.72)' : 'rgba(255, 255, 255, 0.42)';
+  const iconColor = colors.iconPrimary;
+  const tripleFallback = useMemo(
+    () => ({
+      borderWidth: 1,
+      borderColor: colors.glassFallbackBorder,
+      backgroundColor: colors.glassFallbackBg,
+    }),
+    [colors]
+  );
 
   const row = (
     <View style={styles.tripleInner} collapsable={false} pointerEvents="box-none">
       <TripleIconColumn label="Search cards" onPress={onSearchCardsPress}>
-        <Feather name="search" size={ICON_SIZE} color={ICON_COLOR} />
+        <Feather name="search" size={ICON_SIZE} color={iconColor} />
       </TripleIconColumn>
       <TripleIconColumn label="Notifications" onPress={onBellPress}>
-        <Feather name="bell" size={ICON_SIZE} color={ICON_COLOR} />
+        <Feather name="bell" size={ICON_SIZE} color={iconColor} />
       </TripleIconColumn>
       <TripleIconColumn label="Settings" onPress={onSettingsPress}>
-        <Feather name="settings" size={ICON_SIZE} color={ICON_COLOR} />
+        <Feather name="settings" size={ICON_SIZE} color={iconColor} />
       </TripleIconColumn>
     </View>
   );
@@ -106,8 +119,8 @@ function GlassIconStrip({
     return (
       <GlassView
         isInteractive
-        colorScheme="light"
-        tintColor="rgba(255, 255, 255, 0.42)"
+        colorScheme={glassScheme}
+        tintColor={glassTint}
         style={styles.tripleGlass}
       >
         {row}
@@ -115,7 +128,7 @@ function GlassIconStrip({
     );
   }
 
-  return <View style={[styles.tripleGlass, styles.tripleFallback]}>{row}</View>;
+  return <View style={[styles.tripleGlass, tripleFallback]}>{row}</View>;
 }
 
 function BoardExpandGlassPressable({
@@ -127,6 +140,12 @@ function BoardExpandGlassPressable({
   active?: boolean;
   disabled?: boolean;
 }) {
+  const { colors, resolvedScheme } = useTheme();
+  const glassScheme = resolvedScheme === 'dark' ? ('dark' as const) : ('light' as const);
+  const glassTint =
+    resolvedScheme === 'dark' ? 'rgba(40, 38, 36, 0.72)' : 'rgba(255, 255, 255, 0.42)';
+  const iconColor = colors.iconPrimary;
+
   return (
     <Pressable
       collapsable={false}
@@ -151,12 +170,12 @@ function BoardExpandGlassPressable({
     >
       <GlassView
         isInteractive
-        colorScheme="light"
-        tintColor="rgba(255, 255, 255, 0.42)"
+        colorScheme={glassScheme}
+        tintColor={glassTint}
         style={styles.expandGlass}
       >
         <View style={styles.expandGlassInner} collapsable={false}>
-          <Feather name={active ? 'minimize-2' : 'maximize-2'} size={ICON_SIZE} color={ICON_COLOR} />
+          <Feather name={active ? 'minimize-2' : 'maximize-2'} size={ICON_SIZE} color={iconColor} />
         </View>
       </GlassView>
     </Pressable>
@@ -378,11 +397,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: TRIPLE_ICON_GAP,
-  },
-  tripleFallback: {
-    borderWidth: 1,
-    borderColor: '#000',
-    backgroundColor: 'rgba(255,255,255,0.85)',
   },
   tripleColumn: {
     width: TRIPLE_SLOT,

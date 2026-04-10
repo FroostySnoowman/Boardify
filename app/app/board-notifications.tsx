@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, createElement } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, createElement } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import {
 } from '../src/storage/boardNotificationSettings';
 import { getNotificationSettings, patchNotificationSettings } from '../src/api/boards';
 import { BoardNotificationsSkeleton } from '../src/components/skeletons';
+import { useTheme } from '../src/theme';
+import type { ThemeColors } from '../src/theme/colors';
 
 const DateTimePickerNative =
   Platform.OS === 'web'
@@ -31,7 +33,6 @@ const DateTimePickerNative =
     : (require('@react-native-community/datetimepicker').default as typeof import('@react-native-community/datetimepicker').default);
 
 const BELOW_HEADER_GAP = 10;
-const BG = '#f5f0e8';
 
 function resolveBoardName(raw: string | string[] | undefined): string {
   const s = Array.isArray(raw) ? raw[0] : raw;
@@ -65,31 +66,206 @@ function fromWebTimeValue(s: string, fallback: Date): Date {
   return mergeTimeOfDay(fallback, timeOnReferenceDate(Number.isFinite(hh) ? hh : 0, Number.isFinite(mm) ? mm : 0));
 }
 
-function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+function webTimeInputRowStyle(colors: ThemeColors): Record<string, string | number> {
+  return {
+    flex: 1,
+    minWidth: 100,
+    maxWidth: 220,
+    marginLeft: 16,
+    boxSizing: 'border-box',
+    padding: '8px 10px',
+    fontSize: 16,
+    fontWeight: 600,
+    color: colors.textPrimary,
+    backgroundColor: colors.surfaceMuted,
+    border: `1px solid ${colors.divider}`,
+    borderRadius: 8,
+    outline: 'none',
+    fontVariantNumeric: 'tabular-nums',
+    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  };
+}
+
+function createBoardNotificationStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    flex: { flex: 1 },
+    sheetFill: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'flex-start',
+      paddingHorizontal: 20,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    card: {
+      alignSelf: 'stretch',
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      padding: 24,
+    },
+    helper: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 20,
+      fontWeight: '500',
+    },
+    section: {
+      marginBottom: 22,
+    },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 12,
+    },
+    quietSummary: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginTop: 8,
+      marginBottom: 4,
+      lineHeight: 18,
+    },
+    timeRowTrailing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      flexShrink: 0,
+      maxWidth: '52%',
+    },
+    timeRowValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      fontVariant: ['tabular-nums'],
+    },
+    timeRowPressed: {
+      opacity: 0.85,
+    },
+    quietWebRowFlat: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingVertical: 8,
+      width: '100%',
+    },
+    iosPickerPanel: {
+      marginTop: 10,
+      marginBottom: 4,
+      borderRadius: 10,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.divider,
+      overflow: 'hidden',
+      backgroundColor: colors.surfaceMuted,
+    },
+    iosPickerHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.divider,
+    },
+    iosPickerTitle: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    iosPickerDone: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.boardLink,
+    },
+    iosPickerWheel: {
+      width: '100%',
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingVertical: 6,
+    },
+    toggleTextCol: {
+      flex: 1,
+      minWidth: 0,
+      paddingRight: 8,
+    },
+    toggleLabel: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    toggleSublabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 4,
+      lineHeight: 18,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.divider,
+      marginVertical: 4,
+    },
+  });
+}
+
+type NotificationSheet = ReturnType<typeof createBoardNotificationStyles>;
+
+function SettingsSection({
+  sheet,
+  title,
+  children,
+}: {
+  sheet: NotificationSheet;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={sheet.section}>
+      <Text style={sheet.sectionTitle}>{title}</Text>
       {children}
     </View>
   );
 }
 
 function SettingsToggleRow({
+  sheet,
+  colors,
   label,
   sublabel,
   value,
   onValueChange,
 }: {
+  sheet: NotificationSheet;
+  colors: ThemeColors;
   label: string;
   sublabel?: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
 }) {
   return (
-    <View style={styles.toggleRow}>
-      <View style={styles.toggleTextCol}>
-        <Text style={styles.toggleLabel}>{label}</Text>
-        {sublabel ? <Text style={styles.toggleSublabel}>{sublabel}</Text> : null}
+    <View style={sheet.toggleRow}>
+      <View style={sheet.toggleTextCol}>
+        <Text style={sheet.toggleLabel}>{label}</Text>
+        {sublabel ? <Text style={sheet.toggleSublabel}>{sublabel}</Text> : null}
       </View>
       <Switch
         value={value}
@@ -97,8 +273,8 @@ function SettingsToggleRow({
           hapticLight();
           onValueChange(v);
         }}
-        trackColor={{ false: '#d4cfc4', true: '#a5d6a5' }}
-        thumbColor={Platform.OS === 'ios' ? undefined : value ? '#fff' : '#f4f4f4'}
+        trackColor={{ false: colors.switchTrackOff, true: colors.successTrack }}
+        thumbColor={Platform.OS === 'ios' ? undefined : value ? colors.switchThumb : colors.surfaceMuted}
       />
     </View>
   );
@@ -121,6 +297,11 @@ function mergePrefsFromApi(prefs: Record<string, unknown> | null): BoardNotifica
 }
 
 export default function BoardNotificationsScreen() {
+  const { colors, resolvedScheme } = useTheme();
+  const styles = useMemo(() => createBoardNotificationStyles(colors), [colors]);
+  const webTimeStyle = useMemo(() => webTimeInputRowStyle(colors), [colors]);
+  const pickerTheme = resolvedScheme === 'dark' ? ('dark' as const) : ('light' as const);
+
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { boardName: boardNameParam, boardId: boardIdParam } = useLocalSearchParams<{
@@ -292,14 +473,14 @@ export default function BoardNotificationsScreen() {
           style={
             Platform.OS === 'ios'
               ? { backgroundColor: 'transparent' }
-              : { backgroundColor: BG }
+              : { backgroundColor: colors.modalCreamCanvas }
           }
         />
-        <Stack.Screen.Title style={{ fontWeight: '800', color: '#0a0a0a' }}>
+        <Stack.Screen.Title style={{ fontWeight: '800', color: colors.modalCreamHeaderTint }}>
           Notifications
         </Stack.Screen.Title>
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor="#0a0a0a" />
+          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor={colors.modalCreamHeaderTint} />
         </Stack.Toolbar>
       </Stack.Screen>
 
@@ -323,393 +504,246 @@ export default function BoardNotificationsScreen() {
           {!hydrated ? (
             <BoardNotificationsSkeleton />
           ) : (
-          <View style={[styles.card, cardShadow]}>
-            <Text style={styles.helper}>
-              Manage how you stay updated on “{boardName}”. Delivery respects system notification permissions
-              where they apply.
-            </Text>
+            <View style={[styles.card, cardShadow]}>
+              <Text style={styles.helper}>
+                Manage how you stay updated on “{boardName}”. Delivery respects system notification permissions
+                where they apply.
+              </Text>
 
-            <SettingsSection title="Delivery">
-              <SettingsToggleRow
-                label="Push notifications"
-                sublabel="Instant alerts when something important happens"
-                value={pushEnabled}
-                onValueChange={(v) => {
-                  setPushEnabled(v);
-                  if (boardId) void patchNotificationSettings(boardId, { pushEnabled: v });
-                }}
-              />
-              <View style={styles.divider} />
-              <SettingsToggleRow
-                label="Email digest"
-                sublabel="Once-a-day summary of board activity"
-                value={emailDigest}
-                onValueChange={(v) => {
-                  setEmailDigest(v);
-                  if (boardId) void patchNotificationSettings(boardId, { emailDigest: v });
-                }}
-              />
-            </SettingsSection>
+              <SettingsSection sheet={styles} title="Delivery">
+                <SettingsToggleRow
+                  sheet={styles}
+                  colors={colors}
+                  label="Push notifications"
+                  sublabel="Instant alerts when something important happens"
+                  value={pushEnabled}
+                  onValueChange={(v) => {
+                    setPushEnabled(v);
+                    if (boardId) void patchNotificationSettings(boardId, { pushEnabled: v });
+                  }}
+                />
+                <View style={styles.divider} />
+                <SettingsToggleRow
+                  sheet={styles}
+                  colors={colors}
+                  label="Email digest"
+                  sublabel="Once-a-day summary of board activity"
+                  value={emailDigest}
+                  onValueChange={(v) => {
+                    setEmailDigest(v);
+                    if (boardId) void patchNotificationSettings(boardId, { emailDigest: v });
+                  }}
+                />
+              </SettingsSection>
 
-            <SettingsSection title="Activity on this board">
-              <SettingsToggleRow
-                label="@mentions of you"
-                value={mentionYou}
-                onValueChange={(v) => {
-                  setMentionYou(v);
-                  if (boardId) void patchNotificationSettings(boardId, { mentionYou: v });
-                }}
-              />
-              <View style={styles.divider} />
-              <SettingsToggleRow
-                label="Cards assigned to you"
-                value={assignedCard}
-                onValueChange={(v) => {
-                  setAssignedCard(v);
-                  if (boardId) void patchNotificationSettings(boardId, { assignedCard: v });
-                }}
-              />
-              <View style={styles.divider} />
-              <SettingsToggleRow
-                label="Due dates approaching"
-                sublabel="Cards due in the next 24 hours"
-                value={dueSoon}
-                onValueChange={(v) => {
-                  setDueSoon(v);
-                  if (boardId) void patchNotificationSettings(boardId, { dueSoon: v });
-                }}
-              />
-              <View style={styles.divider} />
-              <SettingsToggleRow
-                label="Comments on followed cards"
-                value={commentsFollowed}
-                onValueChange={(v) => {
-                  setCommentsFollowed(v);
-                  if (boardId) void patchNotificationSettings(boardId, { commentsFollowed: v });
-                }}
-              />
-            </SettingsSection>
+              <SettingsSection sheet={styles} title="Activity on this board">
+                <SettingsToggleRow
+                  sheet={styles}
+                  colors={colors}
+                  label="@mentions of you"
+                  value={mentionYou}
+                  onValueChange={(v) => {
+                    setMentionYou(v);
+                    if (boardId) void patchNotificationSettings(boardId, { mentionYou: v });
+                  }}
+                />
+                <View style={styles.divider} />
+                <SettingsToggleRow
+                  sheet={styles}
+                  colors={colors}
+                  label="Cards assigned to you"
+                  value={assignedCard}
+                  onValueChange={(v) => {
+                    setAssignedCard(v);
+                    if (boardId) void patchNotificationSettings(boardId, { assignedCard: v });
+                  }}
+                />
+                <View style={styles.divider} />
+                <SettingsToggleRow
+                  sheet={styles}
+                  colors={colors}
+                  label="Due dates approaching"
+                  sublabel="Cards due in the next 24 hours"
+                  value={dueSoon}
+                  onValueChange={(v) => {
+                    setDueSoon(v);
+                    if (boardId) void patchNotificationSettings(boardId, { dueSoon: v });
+                  }}
+                />
+                <View style={styles.divider} />
+                <SettingsToggleRow
+                  sheet={styles}
+                  colors={colors}
+                  label="Comments on followed cards"
+                  value={commentsFollowed}
+                  onValueChange={(v) => {
+                    setCommentsFollowed(v);
+                    if (boardId) void patchNotificationSettings(boardId, { commentsFollowed: v });
+                  }}
+                />
+              </SettingsSection>
 
-            <SettingsSection title="Quiet hours">
-              <SettingsToggleRow
-                label="Pause overnight"
-                sublabel="Silence push notifications during a daily time window"
-                value={quietHours}
-                onValueChange={(v) => {
-                  setQuietHours(v);
-                  if (boardId) void patchNotificationSettings(boardId, { quietHours: v });
-                }}
-              />
-              {quietHours ? (
-                <>
-                  <Text style={styles.quietSummary}>{quietRangeSummary}</Text>
-                  {Platform.OS === 'web' ? (
-                    <>
-                      <View style={styles.quietWebRowFlat}>
-                        <Text style={styles.toggleLabel}>From</Text>
-                        {createElement('input', {
-                          type: 'time',
-                          value: toWebTimeValue(quietFrom),
-                          onChange: (e: { target: HTMLInputElement }) => {
-                            setQuietFrom((prev) => {
-                              const next = fromWebTimeValue(e.target.value, prev);
-                              if (boardId) void patchNotificationSettings(boardId, {
-                                quietFromMinutes: dateToNotificationMinutes(next),
-                              });
-                              return next;
-                            });
-                          },
-                          style: webTimeInputRowStyle,
-                        })}
-                      </View>
-                      <View style={styles.divider} />
-                      <View style={styles.quietWebRowFlat}>
-                        <Text style={styles.toggleLabel}>Until</Text>
-                        {createElement('input', {
-                          type: 'time',
-                          value: toWebTimeValue(quietUntil),
-                          onChange: (e: { target: HTMLInputElement }) => {
-                            setQuietUntil((prev) => {
-                              const next = fromWebTimeValue(e.target.value, prev);
-                              if (boardId) void patchNotificationSettings(boardId, {
-                                quietUntilMinutes: dateToNotificationMinutes(next),
-                              });
-                              return next;
-                            });
-                          },
-                          style: webTimeInputRowStyle,
-                        })}
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Quiet hours start, ${formatLocalTime(quietFrom)}`}
-                        accessibilityHint="Opens time picker"
-                        onPress={() =>
-                          Platform.OS === 'ios' ? openIosPicker('from') : openAndroidPicker('from')
-                        }
-                        style={({ pressed }) => [
-                          styles.toggleRow,
-                          pressed && styles.timeRowPressed,
-                        ]}
-                      >
-                        <View style={styles.toggleTextCol}>
+              <SettingsSection sheet={styles} title="Quiet hours">
+                <SettingsToggleRow
+                  sheet={styles}
+                  colors={colors}
+                  label="Pause overnight"
+                  sublabel="Silence push notifications during a daily time window"
+                  value={quietHours}
+                  onValueChange={(v) => {
+                    setQuietHours(v);
+                    if (boardId) void patchNotificationSettings(boardId, { quietHours: v });
+                  }}
+                />
+                {quietHours ? (
+                  <>
+                    <Text style={styles.quietSummary}>{quietRangeSummary}</Text>
+                    {Platform.OS === 'web' ? (
+                      <>
+                        <View style={styles.quietWebRowFlat}>
                           <Text style={styles.toggleLabel}>From</Text>
+                          {createElement('input', {
+                            type: 'time',
+                            value: toWebTimeValue(quietFrom),
+                            onChange: (e: { target: HTMLInputElement }) => {
+                              setQuietFrom((prev) => {
+                                const next = fromWebTimeValue(e.target.value, prev);
+                                if (boardId)
+                                  void patchNotificationSettings(boardId, {
+                                    quietFromMinutes: dateToNotificationMinutes(next),
+                                  });
+                                return next;
+                              });
+                            },
+                            style: webTimeStyle,
+                          })}
                         </View>
-                        <View style={styles.timeRowTrailing}>
-                          <Text style={styles.timeRowValue} numberOfLines={1}>
-                            {formatLocalTime(quietFrom)}
-                          </Text>
-                          <Feather name="chevron-right" size={18} color="#a3a3a3" />
-                        </View>
-                      </Pressable>
-                      <View style={styles.divider} />
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Quiet hours end, ${formatLocalTime(quietUntil)}`}
-                        accessibilityHint="Opens time picker"
-                        onPress={() =>
-                          Platform.OS === 'ios' ? openIosPicker('until') : openAndroidPicker('until')
-                        }
-                        style={({ pressed }) => [
-                          styles.toggleRow,
-                          pressed && styles.timeRowPressed,
-                        ]}
-                      >
-                        <View style={styles.toggleTextCol}>
+                        <View style={styles.divider} />
+                        <View style={styles.quietWebRowFlat}>
                           <Text style={styles.toggleLabel}>Until</Text>
+                          {createElement('input', {
+                            type: 'time',
+                            value: toWebTimeValue(quietUntil),
+                            onChange: (e: { target: HTMLInputElement }) => {
+                              setQuietUntil((prev) => {
+                                const next = fromWebTimeValue(e.target.value, prev);
+                                if (boardId)
+                                  void patchNotificationSettings(boardId, {
+                                    quietUntilMinutes: dateToNotificationMinutes(next),
+                                  });
+                                return next;
+                              });
+                            },
+                            style: webTimeStyle,
+                          })}
                         </View>
-                        <View style={styles.timeRowTrailing}>
-                          <Text style={styles.timeRowValue} numberOfLines={1}>
-                            {formatLocalTime(quietUntil)}
-                          </Text>
-                          <Feather name="chevron-right" size={18} color="#a3a3a3" />
-                        </View>
-                      </Pressable>
-
-                      {Platform.OS === 'ios' && iosPicker != null ? (
-                        <View style={styles.iosPickerPanel}>
-                          <View style={styles.iosPickerHeader}>
-                            <Text style={styles.iosPickerTitle}>
-                              {iosPicker === 'from' ? 'Start time' : 'End time'}
-                            </Text>
-                            <Pressable
-                              onPress={() => {
-                                hapticLight();
-                                flushIosQuietPersist();
-                                setIosPicker(null);
-                              }}
-                              hitSlop={10}
-                            >
-                              <Text style={styles.iosPickerDone}>Done</Text>
-                            </Pressable>
+                      </>
+                    ) : (
+                      <>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Quiet hours start, ${formatLocalTime(quietFrom)}`}
+                          accessibilityHint="Opens time picker"
+                          onPress={() =>
+                            Platform.OS === 'ios' ? openIosPicker('from') : openAndroidPicker('from')
+                          }
+                          style={({ pressed }) => [styles.toggleRow, pressed && styles.timeRowPressed]}
+                        >
+                          <View style={styles.toggleTextCol}>
+                            <Text style={styles.toggleLabel}>From</Text>
                           </View>
-                          {DateTimePickerNative ? (
-                            <DateTimePickerNative
-                              value={iosPicker === 'from' ? quietFrom : quietUntil}
-                              mode="time"
-                              display="spinner"
-                              onChange={(_, date) => {
-                                if (!date) return;
-                                if (iosPicker === 'from') {
-                                  setQuietFrom((prev) => mergeTimeOfDay(prev, date));
-                                } else {
-                                  setQuietUntil((prev) => mergeTimeOfDay(prev, date));
-                                }
-                                scheduleIosQuietPersist();
-                              }}
-                              themeVariant="light"
-                              {...(Platform.OS === 'ios' ? { textColor: '#0a0a0a' as const } : {})}
-                              style={styles.iosPickerWheel}
-                            />
-                          ) : null}
-                        </View>
-                      ) : null}
+                          <View style={styles.timeRowTrailing}>
+                            <Text style={styles.timeRowValue} numberOfLines={1}>
+                              {formatLocalTime(quietFrom)}
+                            </Text>
+                            <Feather name="chevron-right" size={18} color={colors.iconChevron} />
+                          </View>
+                        </Pressable>
+                        <View style={styles.divider} />
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Quiet hours end, ${formatLocalTime(quietUntil)}`}
+                          accessibilityHint="Opens time picker"
+                          onPress={() =>
+                            Platform.OS === 'ios' ? openIosPicker('until') : openAndroidPicker('until')
+                          }
+                          style={({ pressed }) => [styles.toggleRow, pressed && styles.timeRowPressed]}
+                        >
+                          <View style={styles.toggleTextCol}>
+                            <Text style={styles.toggleLabel}>Until</Text>
+                          </View>
+                          <View style={styles.timeRowTrailing}>
+                            <Text style={styles.timeRowValue} numberOfLines={1}>
+                              {formatLocalTime(quietUntil)}
+                            </Text>
+                            <Feather name="chevron-right" size={18} color={colors.iconChevron} />
+                          </View>
+                        </Pressable>
 
-                      {DateTimePickerNative && Platform.OS === 'android' && androidPicker === 'from' ? (
-                        <DateTimePickerNative
-                          value={quietFrom}
-                          mode="time"
-                          display="default"
-                          onChange={(e, d) => onAndroidTimeChange('from', e, d)}
-                        />
-                      ) : null}
-                      {DateTimePickerNative && Platform.OS === 'android' && androidPicker === 'until' ? (
-                        <DateTimePickerNative
-                          value={quietUntil}
-                          mode="time"
-                          display="default"
-                          onChange={(e, d) => onAndroidTimeChange('until', e, d)}
-                        />
-                      ) : null}
-                    </>
-                  )}
-                </>
-              ) : null}
-            </SettingsSection>
-          </View>
+                        {Platform.OS === 'ios' && iosPicker != null ? (
+                          <View style={styles.iosPickerPanel}>
+                            <View style={styles.iosPickerHeader}>
+                              <Text style={styles.iosPickerTitle}>
+                                {iosPicker === 'from' ? 'Start time' : 'End time'}
+                              </Text>
+                              <Pressable
+                                onPress={() => {
+                                  hapticLight();
+                                  flushIosQuietPersist();
+                                  setIosPicker(null);
+                                }}
+                                hitSlop={10}
+                              >
+                                <Text style={styles.iosPickerDone}>Done</Text>
+                              </Pressable>
+                            </View>
+                            {DateTimePickerNative ? (
+                              <DateTimePickerNative
+                                value={iosPicker === 'from' ? quietFrom : quietUntil}
+                                mode="time"
+                                display="spinner"
+                                onChange={(_, date) => {
+                                  if (!date) return;
+                                  if (iosPicker === 'from') {
+                                    setQuietFrom((prev) => mergeTimeOfDay(prev, date));
+                                  } else {
+                                    setQuietUntil((prev) => mergeTimeOfDay(prev, date));
+                                  }
+                                  scheduleIosQuietPersist();
+                                }}
+                                themeVariant={pickerTheme}
+                                {...(Platform.OS === 'ios' ? { textColor: colors.textPrimary } : {})}
+                                style={styles.iosPickerWheel}
+                              />
+                            ) : null}
+                          </View>
+                        ) : null}
+
+                        {DateTimePickerNative && Platform.OS === 'android' && androidPicker === 'from' ? (
+                          <DateTimePickerNative
+                            value={quietFrom}
+                            mode="time"
+                            display="default"
+                            onChange={(e, d) => onAndroidTimeChange('from', e, d)}
+                          />
+                        ) : null}
+                        {DateTimePickerNative && Platform.OS === 'android' && androidPicker === 'until' ? (
+                          <DateTimePickerNative
+                            value={quietUntil}
+                            mode="time"
+                            display="default"
+                            onChange={(e, d) => onAndroidTimeChange('until', e, d)}
+                          />
+                        ) : null}
+                      </>
+                    )}
+                  </>
+                ) : null}
+              </SettingsSection>
+            </View>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
-
-const webTimeInputRowStyle: Record<string, string | number> = {
-  flex: 1,
-  minWidth: 100,
-  maxWidth: 220,
-  marginLeft: 16,
-  boxSizing: 'border-box',
-  padding: '8px 10px',
-  fontSize: 16,
-  fontWeight: 600,
-  color: '#0a0a0a',
-  backgroundColor: '#fafafa',
-  border: '1px solid rgba(0,0,0,0.12)',
-  borderRadius: 8,
-  outline: 'none',
-  fontVariantNumeric: 'tabular-nums',
-  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  flex: { flex: 1 },
-  sheetFill: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-    paddingHorizontal: 20,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  card: {
-    alignSelf: 'stretch',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#000',
-    padding: 24,
-  },
-  helper: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#444',
-    marginBottom: 20,
-    fontWeight: '500',
-  },
-  section: {
-    marginBottom: 22,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 12,
-  },
-  quietSummary: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#666',
-    marginTop: 8,
-    marginBottom: 4,
-    lineHeight: 18,
-  },
-  timeRowTrailing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    flexShrink: 0,
-    maxWidth: '52%',
-  },
-  timeRowValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#525252',
-    fontVariant: ['tabular-nums'],
-  },
-  timeRowPressed: {
-    opacity: 0.85,
-  },
-  quietWebRowFlat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 8,
-    width: '100%',
-  },
-  iosPickerPanel: {
-    marginTop: 10,
-    marginBottom: 4,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(0,0,0,0.1)',
-    overflow: 'hidden',
-    backgroundColor: '#f9fafb',
-  },
-  iosPickerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
-  },
-  iosPickerTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#444',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  iosPickerDone: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0c66e4',
-  },
-  iosPickerWheel: {
-    width: '100%',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 6,
-  },
-  toggleTextCol: {
-    flex: 1,
-    minWidth: 0,
-    paddingRight: 8,
-  },
-  toggleLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0a0a0a',
-  },
-  toggleSublabel: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(0,0,0,0.12)',
-    marginVertical: 4,
-  },
-});

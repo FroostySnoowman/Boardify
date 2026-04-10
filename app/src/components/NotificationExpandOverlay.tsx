@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import type { CardLayout } from './BoardCardExpandOverlay';
+import { useTheme } from '../theme';
 
 const LIST_TITLE_SIZE = 15;
 const LIST_TITLE_LH = 21;
@@ -98,6 +99,7 @@ function iconForKind(kind: NotificationKind): keyof typeof Feather.glyphMap {
 }
 
 export function NotificationExpandOverlay({ data, onClose, onMeasureSource, onOpenBoard }: Props) {
+  const { colors } = useTheme();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -403,11 +405,14 @@ export function NotificationExpandOverlay({ data, onClose, onMeasureSource, onOp
                             cardId: data.cardId,
                           });
                         }}
-                        style={styles.openBoardBtn}
+                        style={[
+                          styles.openBoardBtn,
+                          { backgroundColor: colors.canvas, borderColor: colors.border },
+                        ]}
                         accessibilityRole="button"
                         accessibilityLabel="Open board"
                       >
-                        <Text style={styles.openBoardBtnText}>Open board</Text>
+                        <Text style={[styles.openBoardBtnText, { color: colors.textPrimary }]}>Open board</Text>
                         <Feather name="arrow-right" size={18} color="#0a0a0a" />
                       </Pressable>
                     ) : (
@@ -552,12 +557,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#0a0a0a',
-    backgroundColor: '#f5f0e8',
   },
   openBoardBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0a0a0a',
   },
 });

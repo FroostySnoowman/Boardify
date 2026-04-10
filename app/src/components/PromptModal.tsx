@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticLight } from '../utils/haptics';
+import { useTheme } from '../theme';
 
 type Props = {
   visible: boolean;
@@ -32,7 +33,74 @@ export function PromptModal({
   onSubmit,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [text, setText] = useState(initialValue);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        backdrop: {
+          flex: 1,
+          backgroundColor: colors.overlayScrim,
+          justifyContent: 'flex-end',
+        },
+        sheet: {
+          backgroundColor: colors.surface,
+          borderRadius: 14,
+          borderWidth: 2,
+          borderColor: colors.border,
+          padding: 18,
+          maxWidth: 400,
+          alignSelf: 'center',
+          width: '100%',
+        },
+        title: {
+          fontSize: 17,
+          fontWeight: '800',
+          color: colors.textPrimary,
+          marginBottom: 12,
+        },
+        input: {
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 10,
+          paddingHorizontal: 12,
+          paddingVertical: 12,
+          fontSize: 16,
+          color: colors.textPrimary,
+          backgroundColor: colors.inputBackground,
+          marginBottom: 16,
+        },
+        actions: {
+          flexDirection: 'row',
+          justifyContent: 'flex-end',
+          gap: 12,
+        },
+        btnSecondary: {
+          paddingVertical: 10,
+          paddingHorizontal: 14,
+        },
+        btnSecondaryText: {
+          fontSize: 16,
+          fontWeight: '600',
+          color: colors.textSecondary,
+        },
+        btnPrimary: {
+          backgroundColor: colors.primaryButtonBg,
+          paddingVertical: 10,
+          paddingHorizontal: 18,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        btnPrimaryText: {
+          fontSize: 16,
+          fontWeight: '700',
+          color: colors.primaryButtonText,
+        },
+      }),
+    [colors]
+  );
 
   useEffect(() => {
     if (visible) setText(initialValue);
@@ -70,7 +138,7 @@ export function PromptModal({
             value={text}
             onChangeText={setText}
             placeholder={placeholder}
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.placeholder}
             style={styles.input}
             autoFocus
             returnKeyType="done"
@@ -89,64 +157,3 @@ export function PromptModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#000',
-    padding: 18,
-    maxWidth: 400,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    marginBottom: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#000',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#0a0a0a',
-    marginBottom: 16,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  btnSecondary: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  btnSecondaryText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-  },
-  btnPrimary: {
-    backgroundColor: '#0a0a0a',
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  btnPrimaryText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-});

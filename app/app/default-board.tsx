@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -25,41 +25,146 @@ import { getStoredDefaultBoardId, setStoredDefaultBoardId } from '../src/storage
 import { sortBoards, useBoardSort } from '../src/contexts/BoardSortContext';
 import { useAuth } from '../src/contexts/AuthContext';
 import { NeuListRowPressable } from '../src/components/NeuListRowPressable';
+import { useTheme } from '../src/theme';
+import type { ThemeColors } from '../src/theme/colors';
 
 const BELOW_HEADER_GAP = 10;
-const BG = '#f5f0e8';
 const SHIFT = 5;
 const PRESS_IN = 60;
 
-const boardRow = StyleSheet.create({
-  face: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    paddingLeft: 14,
-  },
-  name: {
-    flex: 1,
-    minWidth: 0,
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0a0a0a',
-  },
-});
+function createBoardRowStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    face: {
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      paddingLeft: 14,
+    },
+    name: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+  });
+}
+
+function createDefaultBoardStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    flex: {
+      flex: 1,
+    },
+    sheetFill: {
+      flex: 1,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: 16,
+      maxWidth: 800,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    helper: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      fontWeight: '500',
+      lineHeight: 22,
+      marginBottom: 20,
+    },
+    list: {
+      gap: 12,
+    },
+    trailSpacer: {
+      width: 20,
+      height: 20,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginTop: 28,
+      gap: 12,
+      width: '100%',
+      overflow: 'hidden',
+      paddingBottom: SHIFT + 6,
+    },
+    boardBtnWrap: {
+      position: 'relative',
+      flex: 1,
+      minWidth: 0,
+      marginRight: SHIFT,
+      marginBottom: SHIFT,
+      zIndex: 0,
+    },
+    boardBtnShadow: {
+      position: 'absolute',
+      left: SHIFT,
+      top: SHIFT,
+      right: -SHIFT,
+      bottom: -SHIFT,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      zIndex: 0,
+    },
+    boardBtnFace: {
+      position: 'relative',
+      zIndex: 1,
+      elevation: 4,
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 52,
+    },
+    boardBtnFaceDisabled: {
+      backgroundColor: colors.surfaceMuted,
+    },
+    boardBtnLabel: {
+      fontSize: 17,
+      fontWeight: '700',
+      textAlign: 'center',
+      width: '100%',
+      color: colors.textPrimary,
+    },
+    labelCancel: {
+      color: colors.textPrimary,
+    },
+    labelCreate: {
+      color: colors.textPrimary,
+    },
+    labelCreateDisabled: {
+      color: colors.textTertiary,
+    },
+  });
+}
+
+type DefaultBoardSheet = ReturnType<typeof createDefaultBoardStyles>;
 
 function BoardStyleButton({
+  sheet,
   shadowColor,
   onPress,
   disabled,
   label,
   labelStyle,
 }: {
+  sheet: DefaultBoardSheet;
   shadowColor: string;
   onPress: () => void;
   disabled?: boolean;
@@ -84,26 +189,22 @@ function BoardStyleButton({
         cancelAnimation(offset);
         offset.value = 0;
       }}
-      style={styles.boardBtnWrap}
+      style={sheet.boardBtnWrap}
     >
-      <View
-        style={[styles.boardBtnShadow, { backgroundColor: shadowColor }]}
-        pointerEvents="none"
-      />
+      <View style={[sheet.boardBtnShadow, { backgroundColor: shadowColor }]} pointerEvents="none" />
       <Animated.View
-        style={[
-          styles.boardBtnFace,
-          disabled && styles.boardBtnFaceDisabled,
-          animatedStyle,
-        ]}
+        style={[sheet.boardBtnFace, disabled && sheet.boardBtnFaceDisabled, animatedStyle]}
       >
-        <Text style={[styles.boardBtnLabel, labelStyle]}>{label}</Text>
+        <Text style={[sheet.boardBtnLabel, labelStyle]}>{label}</Text>
       </Animated.View>
     </Pressable>
   );
 }
 
 export default function DefaultBoardScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createDefaultBoardStyles(colors), [colors]);
+  const boardRow = useMemo(() => createBoardRowStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { sortMode } = useBoardSort();
@@ -169,14 +270,14 @@ export default function DefaultBoardScreen() {
           style={
             Platform.OS === 'ios'
               ? { backgroundColor: 'transparent' }
-              : { backgroundColor: BG }
+              : { backgroundColor: colors.modalCreamCanvas }
           }
         />
-        <Stack.Screen.Title style={{ fontWeight: '800', color: '#0a0a0a' }}>
+        <Stack.Screen.Title style={{ fontWeight: '800', color: colors.modalCreamHeaderTint }}>
           Default board
         </Stack.Screen.Title>
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor="#0a0a0a" />
+          <Stack.Toolbar.Button icon="xmark" onPress={close} tintColor={colors.modalCreamHeaderTint} />
         </Stack.Toolbar>
       </Stack.Screen>
 
@@ -198,7 +299,7 @@ export default function DefaultBoardScreen() {
 
           <View style={styles.list}>
             <NeuListRowPressable
-              shadowStyle={{ backgroundColor: '#d4d4d4' }}
+              shadowStyle={{ backgroundColor: colors.shadowFill }}
               topStyle={boardRow.face}
               onPress={() => select(null)}
             >
@@ -206,7 +307,7 @@ export default function DefaultBoardScreen() {
                 None
               </Text>
               {selectedId === null ? (
-                <Feather name="check" size={20} color="#0a0a0a" />
+                <Feather name="check" size={20} color={colors.iconPrimary} />
               ) : (
                 <View style={styles.trailSpacer} />
               )}
@@ -223,7 +324,7 @@ export default function DefaultBoardScreen() {
                   {b.name}
                 </Text>
                 {selectedId === b.id ? (
-                  <Feather name="check" size={20} color="#0a0a0a" />
+                  <Feather name="check" size={20} color={colors.iconPrimary} />
                 ) : (
                   <View style={styles.trailSpacer} />
                 )}
@@ -233,13 +334,15 @@ export default function DefaultBoardScreen() {
 
           <View style={styles.actions}>
             <BoardStyleButton
-              shadowColor="#e0e0e0"
+              sheet={styles}
+              shadowColor={colors.shadowFill}
               onPress={close}
               label="Cancel"
               labelStyle={styles.labelCancel}
             />
             <BoardStyleButton
-              shadowColor={canSave ? '#a5d6a5' : '#d0d0d0'}
+              sheet={styles}
+              shadowColor={canSave ? colors.success : colors.shadowFill}
               onPress={save}
               disabled={!canSave}
               label="Save"
@@ -251,99 +354,3 @@ export default function DefaultBoardScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  flex: {
-    flex: 1,
-  },
-  sheetFill: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 16,
-    maxWidth: 800,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  helper: {
-    fontSize: 15,
-    color: '#666',
-    fontWeight: '500',
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  list: {
-    gap: 12,
-  },
-  trailSpacer: {
-    width: 20,
-    height: 20,
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 28,
-    gap: 12,
-    width: '100%',
-    overflow: 'hidden',
-    paddingBottom: SHIFT + 6,
-  },
-  boardBtnWrap: {
-    position: 'relative',
-    flex: 1,
-    minWidth: 0,
-    marginRight: SHIFT,
-    marginBottom: SHIFT,
-    zIndex: 0,
-  },
-  boardBtnShadow: {
-    position: 'absolute',
-    left: SHIFT,
-    top: SHIFT,
-    right: -SHIFT,
-    bottom: -SHIFT,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    zIndex: 0,
-  },
-  boardBtnFace: {
-    position: 'relative',
-    zIndex: 1,
-    elevation: 4,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-  },
-  boardBtnFaceDisabled: {
-    backgroundColor: '#eee',
-  },
-  boardBtnLabel: {
-    fontSize: 17,
-    fontWeight: '700',
-    textAlign: 'center',
-    width: '100%',
-    color: '#0a0a0a',
-  },
-  labelCancel: {
-    color: '#0a0a0a',
-  },
-  labelCreate: {
-    color: '#0a0a0a',
-  },
-  labelCreateDisabled: {
-    color: '#888',
-  },
-});

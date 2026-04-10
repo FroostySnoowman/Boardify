@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import {
   NEU_LIST_ROW_SHIFT,
-  neuListRowCardBase,
+  getNeuListRowCardBase,
   neuListRowShadowBase,
 } from '../NeuListRowPressable';
 import { SkeletonBlock } from './SkeletonBlock';
+import { useTheme } from '../../theme';
 
 const ACCENTS = ['#a5d6a5', '#F3D9B1', '#b39ddb', '#d0d0d0', '#c4c4c4'];
 
@@ -23,19 +24,68 @@ function RowSkeleton({
   accent: string;
   showUnread: boolean;
 }) {
+  const { colors } = useTheme();
+  const row = useMemo(
+    () =>
+      StyleSheet.create({
+        neuWrap: {
+          position: 'relative',
+          marginRight: NEU_LIST_ROW_SHIFT,
+          marginBottom: NEU_LIST_ROW_SHIFT,
+        },
+        avatar: {
+          width: 44,
+          height: 44,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.avatarBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+        },
+        rowText: {
+          flex: 1,
+          minWidth: 0,
+          paddingRight: 8,
+        },
+        headlineRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          minWidth: 0,
+        },
+        headlineRest: {
+          flex: 1,
+          minWidth: 0,
+          marginLeft: 4,
+        },
+        rowRight: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          alignSelf: 'center',
+        },
+        timeStack: {
+          alignItems: 'flex-end',
+          gap: 4,
+        },
+      }),
+    [colors]
+  );
+
   const leftBar = { borderLeftWidth: 4 as const, borderLeftColor: accent };
 
   return (
-    <View style={s.neuWrap}>
+    <View style={row.neuWrap}>
       <View style={[neuListRowShadowBase, { backgroundColor: accent }]} />
-      <View style={[neuListRowCardBase, NOTIFICATION_FACE, leftBar]}>
-        <View style={s.avatar}>
+      <View style={[getNeuListRowCardBase(colors), NOTIFICATION_FACE, leftBar]}>
+        <View style={row.avatar}>
           <SkeletonBlock width={22} height={22} borderRadius={6} variant="warm" />
         </View>
-        <View style={s.rowText}>
-          <View style={s.headlineRow}>
+        <View style={row.rowText}>
+          <View style={row.headlineRow}>
             <SkeletonBlock height={15} width={68} borderRadius={5} variant="onWhite" />
-            <View style={s.headlineRest}>
+            <View style={row.headlineRest}>
               <SkeletonBlock height={15} width="100%" borderRadius={5} variant="onWhite" />
             </View>
           </View>
@@ -47,8 +97,8 @@ function RowSkeleton({
             style={{ marginTop: 4 }}
           />
         </View>
-        <View style={s.rowRight}>
-          <View style={s.timeStack}>
+        <View style={row.rowRight}>
+          <View style={row.timeStack}>
             <SkeletonBlock height={12} width={38} borderRadius={4} variant="onWhite" />
             {showUnread ? (
               <SkeletonBlock width={8} height={8} borderRadius={4} variant="onWhite" />
@@ -71,47 +121,3 @@ export function MessagesScreenSkeleton() {
     </>
   );
 }
-
-const s = StyleSheet.create({
-  neuWrap: {
-    position: 'relative',
-    marginRight: NEU_LIST_ROW_SHIFT,
-    marginBottom: NEU_LIST_ROW_SHIFT,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#000',
-    backgroundColor: '#f0ebe3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  rowText: {
-    flex: 1,
-    minWidth: 0,
-    paddingRight: 8,
-  },
-  headlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 0,
-  },
-  headlineRest: {
-    flex: 1,
-    minWidth: 0,
-    marginLeft: 4,
-  },
-  rowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    alignSelf: 'center',
-  },
-  timeStack: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-});

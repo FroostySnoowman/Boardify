@@ -24,28 +24,124 @@ import {
   saveAccountUiPrefs,
 } from '../storage/accountPrefs';
 import { syncPushRegistrationFromAccountPrefs } from '../notifications/expoPush';
+import { useTheme } from '../theme';
 
 const SHIFT = 5;
 
-export type AccountConfig = {
+type LocalPrefs = {
   notificationsEnabled: boolean;
   defaultBoardId: string | null;
-  theme: 'system' | 'light' | 'dark';
 };
 
-const DEFAULT_CONFIG: AccountConfig = {
+const DEFAULT_LOCAL: LocalPrefs = {
   notificationsEnabled: true,
   defaultBoardId: null,
-  theme: 'system',
 };
 
 export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout, invalidateLocalAuth } = useAuth();
-  const [config, setConfig] = useState<AccountConfig>(DEFAULT_CONFIG);
+  const { colors, preference, setThemePreference, refreshThemeFromStorage } = useTheme();
+  const [local, setLocal] = useState<LocalPrefs>(DEFAULT_LOCAL);
   const [defaultBoardLabel, setDefaultBoardLabel] = useState('None');
   const isWeb = Platform.OS === 'web';
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.canvas,
+        },
+        scrollContent: {
+          flexGrow: 1,
+          width: '100%',
+        },
+        hero: {
+          marginBottom: 28,
+        },
+        title: {
+          fontSize: 28,
+          fontWeight: '800',
+          color: colors.textPrimary,
+        },
+        subtitle: {
+          fontSize: 15,
+          color: colors.subtitle,
+          marginTop: 6,
+          fontWeight: '500',
+        },
+        signInBlock: {
+          marginBottom: 24,
+        },
+        section: {
+          marginBottom: 24,
+        },
+        sectionTitle: {
+          fontSize: 13,
+          fontWeight: '700',
+          color: colors.sectionLabel,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+          marginBottom: 12,
+        },
+        cardWrap: {
+          position: 'relative',
+          marginRight: SHIFT,
+          marginBottom: SHIFT,
+        },
+        cardShadow: {
+          position: 'absolute',
+          left: SHIFT,
+          top: SHIFT,
+          right: -SHIFT,
+          bottom: -SHIFT,
+          backgroundColor: colors.shadowFill,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        card: {
+          position: 'relative',
+          backgroundColor: colors.surface,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingVertical: 4,
+          paddingHorizontal: 16,
+        },
+        configRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 14,
+        },
+        configLabelBlock: {
+          flex: 1,
+        },
+        configLabel: {
+          fontSize: 16,
+          fontWeight: '600',
+          color: colors.textPrimary,
+        },
+        configSublabel: {
+          fontSize: 13,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
+        configDivider: {
+          height: 1,
+          backgroundColor: colors.divider,
+          marginLeft: 0,
+        },
+        themeMenuTriggerWrap: {
+          borderRadius: 0,
+          width: '100%',
+          alignSelf: 'stretch',
+        },
+      }),
+    [colors]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -53,12 +149,11 @@ export default function AccountScreen() {
       void (async () => {
         const [id, ui] = await Promise.all([getStoredDefaultBoardId(), loadAccountUiPrefs()]);
         if (cancel) return;
-        setConfig((c) => ({
-          ...c,
+        setLocal({
           defaultBoardId: id,
           notificationsEnabled: ui.notificationsEnabled,
-          theme: ui.theme,
-        }));
+        });
+        void refreshThemeFromStorage();
         if (!id) {
           setDefaultBoardLabel('None');
           return;
@@ -84,55 +179,41 @@ export default function AccountScreen() {
       return () => {
         cancel = true;
       };
-    }, [user, invalidateLocalAuth])
+    }, [user, invalidateLocalAuth, refreshThemeFromStorage])
   );
 
-  const persistUiPrefs = useCallback(async (next: Pick<AccountConfig, 'notificationsEnabled' | 'theme'>) => {
+  const persistNotifications = useCallback(async (enabled: boolean) => {
+    const current = await loadAccountUiPrefs();
     await saveAccountUiPrefs({
-      notificationsEnabled: next.notificationsEnabled,
-      theme: next.theme,
+      ...current,
+      notificationsEnabled: enabled,
     });
     await syncPushRegistrationFromAccountPrefs();
   }, []);
 
-  const updateConfig = <K extends keyof AccountConfig>(key: K, value: AccountConfig[K]) => {
+  const updateNotifications = (value: boolean) => {
     hapticLight();
-    setConfig((c) => {
-      const next = { ...c, [key]: value };
-      if (key === 'notificationsEnabled' || key === 'theme') {
-        void persistUiPrefs({
-          notificationsEnabled: next.notificationsEnabled,
-          theme: next.theme,
-        });
-      }
-      return next;
-    });
+    setLocal((c) => ({ ...c, notificationsEnabled: value }));
+    void persistNotifications(value);
   };
 
   const themeSublabel =
-    config.theme === 'system' ? 'System' : config.theme === 'light' ? 'Light' : 'Dark';
+    preference === 'system' ? 'System' : preference === 'light' ? 'Light' : 'Dark';
 
   const themeMenuOptions = useMemo(
     () =>
       (['system', 'light', 'dark'] as const).map((mode) => {
         const base = mode === 'system' ? 'System' : mode === 'light' ? 'Light' : 'Dark';
         return {
-          label: config.theme === mode ? `✓ ${base}` : base,
+          label: preference === mode ? `✓ ${base}` : base,
           value: mode,
           onPress: () => {
             hapticLight();
-            setConfig((c) => {
-              const next = { ...c, theme: mode };
-              void persistUiPrefs({
-                notificationsEnabled: next.notificationsEnabled,
-                theme: next.theme,
-              });
-              return next;
-            });
+            void setThemePreference(mode);
           },
         };
       }),
-    [config.theme, persistUiPrefs],
+    [preference, setThemePreference],
   );
 
   const ipadPad = Platform.OS === 'ios' && Platform.isPad ? IPAD_TAB_CONTENT_TOP_PADDING : 0;
@@ -153,130 +234,168 @@ export default function AccountScreen() {
       showsVerticalScrollIndicator={false}
       bounces={Platform.OS === 'ios'}
     >
-        <View style={styles.hero}>
-          <Text style={styles.title}>Account</Text>
-          <Text style={styles.subtitle}>
-            {user?.email ?? 'Not signed in'}
-          </Text>
-        </View>
+      <View style={styles.hero}>
+        <Text style={styles.title}>Account</Text>
+        <Text style={styles.subtitle}>{user?.email ?? 'Not signed in'}</Text>
+      </View>
 
-        {!user ? (
-          <View style={styles.signInBlock}>
-            <View style={styles.cardWrap}>
-              <View style={styles.cardShadow} />
-              <View style={styles.card}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.configRow}
-                  onPress={() => {
-                    hapticLight();
-                    router.push('/login');
-                  }}
-                >
-                  <View style={styles.configLabelBlock}>
-                    <Text style={styles.configLabel}>Sign in</Text>
-                    <Text style={styles.configSublabel}>
-                      Use your email, Google, or Apple to sync boards.
-                    </Text>
-                  </View>
-                  <Feather name="chevron-right" size={18} color="#666" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        ) : null}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
+      {!user ? (
+        <View style={styles.signInBlock}>
           <View style={styles.cardWrap}>
             <View style={styles.cardShadow} />
             <View style={styles.card}>
-              <ConfigRow
-                label="Notifications"
-                sublabel="Push for board updates"
-                right={
-                  <Switch
-                    value={config.notificationsEnabled}
-                    onValueChange={(v) => updateConfig('notificationsEnabled', v)}
-                    trackColor={{ false: '#e0e0e0', true: '#a5d6a5' }}
-                    thumbColor="#fff"
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.configRow}
+                onPress={() => {
+                  hapticLight();
+                  router.push('/login');
+                }}
+              >
+                <View style={styles.configLabelBlock}>
+                  <Text style={styles.configLabel}>Sign in</Text>
+                  <Text style={styles.configSublabel}>
+                    Use your email, Google, or Apple to sync boards.
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.iconChevron} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      ) : null}
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Preferences</Text>
+        <View style={styles.cardWrap}>
+          <View style={styles.cardShadow} />
+          <View style={styles.card}>
+            <ConfigRow
+              label="Notifications"
+              sublabel="Push for board updates"
+              rowStyle={styles.configRow}
+              labelStyle={styles.configLabel}
+              sublabelStyle={styles.configSublabel}
+              labelBlockStyle={styles.configLabelBlock}
+              right={
+                <Switch
+                  value={local.notificationsEnabled}
+                  onValueChange={updateNotifications}
+                  trackColor={{ false: colors.switchTrackOff, true: colors.successTrack }}
+                  thumbColor={colors.switchThumb}
+                />
+              }
+            />
+            <ConfigRowDivider dividerStyle={styles.configDivider} />
+            <ConfigRow
+              label="Default board"
+              sublabel={defaultBoardLabel}
+              rowStyle={styles.configRow}
+              labelStyle={styles.configLabel}
+              sublabelStyle={styles.configSublabel}
+              labelBlockStyle={styles.configLabelBlock}
+              chevronColor={colors.iconChevron}
+              onPress={() => {
+                hapticLight();
+                router.push('/default-board');
+              }}
+              showChevron
+            />
+            <ConfigRowDivider dividerStyle={styles.configDivider} />
+            {Platform.OS === 'ios' ? (
+              <ContextMenu
+                iosGlassMenuTrigger={false}
+                triggerWrapperStyle={styles.themeMenuTriggerWrap}
+                options={themeMenuOptions}
+                trigger={
+                  <ConfigRow
+                    label="Theme"
+                    sublabel={themeSublabel}
+                    rowStyle={styles.configRow}
+                    labelStyle={styles.configLabel}
+                    sublabelStyle={styles.configSublabel}
+                    labelBlockStyle={styles.configLabelBlock}
+                    chevronColor={colors.iconChevron}
+                    showChevron
                   />
                 }
               />
-              <ConfigRowDivider />
+            ) : (
               <ConfigRow
-                label="Default board"
-                sublabel={defaultBoardLabel}
+                label="Theme"
+                sublabel={themeSublabel}
+                rowStyle={styles.configRow}
+                labelStyle={styles.configLabel}
+                sublabelStyle={styles.configSublabel}
+                labelBlockStyle={styles.configLabelBlock}
+                chevronColor={colors.iconChevron}
                 onPress={() => {
+                  const next = {
+                    system: 'light' as const,
+                    light: 'dark' as const,
+                    dark: 'system' as const,
+                  };
                   hapticLight();
-                  router.push('/default-board');
+                  void setThemePreference(next[preference]);
                 }}
                 showChevron
               />
-              <ConfigRowDivider />
-              {Platform.OS === 'ios' ? (
-                <ContextMenu
-                  iosGlassMenuTrigger={false}
-                  triggerWrapperStyle={styles.themeMenuTriggerWrap}
-                  options={themeMenuOptions}
-                  trigger={
-                    <ConfigRow label="Theme" sublabel={themeSublabel} showChevron />
-                  }
-                />
-              ) : (
+            )}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <View style={styles.cardWrap}>
+          <View style={styles.cardShadow} />
+          <View style={styles.card}>
+            {user ? (
+              <>
                 <ConfigRow
-                  label="Theme"
-                  sublabel={themeSublabel}
+                  label="Profile"
+                  sublabel="Name, photo"
+                  rowStyle={styles.configRow}
+                  labelStyle={styles.configLabel}
+                  sublabelStyle={styles.configSublabel}
+                  labelBlockStyle={styles.configLabelBlock}
+                  chevronColor={colors.iconChevron}
                   onPress={() => {
-                    const next = {
-                      system: 'light' as const,
-                      light: 'dark' as const,
-                      dark: 'system' as const,
-                    };
-                    updateConfig('theme', next[config.theme]);
+                    hapticLight();
+                    router.push('/profile');
                   }}
                   showChevron
                 />
-              )}
-            </View>
+                <ConfigRowDivider dividerStyle={styles.configDivider} />
+                <ConfigRow
+                  label="Sign out"
+                  sublabel=""
+                  rowStyle={styles.configRow}
+                  labelStyle={styles.configLabel}
+                  sublabelStyle={styles.configSublabel}
+                  labelBlockStyle={styles.configLabelBlock}
+                  onPress={() => {
+                    hapticLight();
+                    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Sign out', style: 'destructive', onPress: () => logout() },
+                    ]);
+                  }}
+                />
+              </>
+            ) : (
+              <ConfigRow
+                label="Profile"
+                sublabel="Sign in to edit your profile"
+                rowStyle={styles.configRow}
+                labelStyle={styles.configLabel}
+                sublabelStyle={styles.configSublabel}
+                labelBlockStyle={styles.configLabelBlock}
+              />
+            )}
           </View>
         </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <View style={styles.cardWrap}>
-            <View style={styles.cardShadow} />
-            <View style={styles.card}>
-              {user ? (
-                <>
-                  <ConfigRow
-                    label="Profile"
-                    sublabel="Name, photo"
-                    onPress={() => {
-                      hapticLight();
-                      router.push('/profile');
-                    }}
-                    showChevron
-                  />
-                  <ConfigRowDivider />
-                  <ConfigRow
-                    label="Sign out"
-                    sublabel=""
-                    onPress={() => {
-                      hapticLight();
-                      Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Sign out', style: 'destructive', onPress: () => logout() },
-                      ]);
-                    }}
-                  />
-                </>
-              ) : (
-                <ConfigRow label="Profile" sublabel="Sign in to edit your profile" />
-              )}
-            </View>
-          </View>
-        </View>
+      </View>
     </ScrollView>
   );
 
@@ -293,124 +412,44 @@ function ConfigRow({
   right,
   onPress,
   showChevron,
+  rowStyle,
+  labelBlockStyle,
+  labelStyle,
+  sublabelStyle,
+  chevronColor,
 }: {
   label: string;
   sublabel: string;
   right?: React.ReactNode;
   onPress?: () => void;
   showChevron?: boolean;
+  rowStyle: object;
+  labelBlockStyle: object;
+  labelStyle: object;
+  sublabelStyle: object;
+  chevronColor?: string;
 }) {
+  const { colors } = useTheme();
+  const chevron = chevronColor ?? colors.iconChevron;
   const content = (
     <>
-      <View style={styles.configLabelBlock}>
-        <Text style={styles.configLabel}>{label}</Text>
-        {sublabel ? <Text style={styles.configSublabel}>{sublabel}</Text> : null}
+      <View style={labelBlockStyle}>
+        <Text style={labelStyle}>{label}</Text>
+        {sublabel ? <Text style={sublabelStyle}>{sublabel}</Text> : null}
       </View>
-      {right ?? (showChevron ? <Feather name="chevron-right" size={18} color="#666" /> : null)}
+      {right ?? (showChevron ? <Feather name="chevron-right" size={18} color={chevron} /> : null)}
     </>
   );
   if (onPress) {
     return (
-      <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={styles.configRow}>
+      <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={rowStyle}>
         {content}
       </TouchableOpacity>
     );
   }
-  return <View style={styles.configRow}>{content}</View>;
+  return <View style={rowStyle}>{content}</View>;
 }
 
-function ConfigRowDivider() {
-  return <View style={styles.configDivider} />;
+function ConfigRowDivider({ dividerStyle }: { dividerStyle: object }) {
+  return <View style={dividerStyle} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0e8',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    width: '100%',
-  },
-  hero: {
-    marginBottom: 28,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0a0a0a',
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#666',
-    marginTop: 6,
-    fontWeight: '500',
-  },
-  signInBlock: {
-    marginBottom: 24,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#666',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  cardWrap: {
-    position: 'relative',
-    marginRight: SHIFT,
-    marginBottom: SHIFT,
-  },
-  cardShadow: {
-    position: 'absolute',
-    left: SHIFT,
-    top: SHIFT,
-    right: -SHIFT,
-    bottom: -SHIFT,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  card: {
-    position: 'relative',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 4,
-    paddingHorizontal: 16,
-  },
-  configRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  configLabelBlock: {
-    flex: 1,
-  },
-  configLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0a0a0a',
-  },
-  configSublabel: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 2,
-  },
-  configDivider: {
-    height: 1,
-    backgroundColor: '#e5e5e5',
-    marginLeft: 0,
-  },
-  themeMenuTriggerWrap: {
-    borderRadius: 0,
-    width: '100%',
-    alignSelf: 'stretch',
-  },
-});

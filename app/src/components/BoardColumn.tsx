@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, memo } from 'react';
+import React, { useRef, useCallback, useEffect, memo, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import { DraggableColumnHeader } from './DraggableColumnHeader';
 import { BoardCardPlaceholder } from './BoardCardPlaceholder';
 import type { SharedValue } from 'react-native-reanimated';
 import type { BoardCardData } from '../types/board';
+import { useTheme } from '../theme';
+import type { ThemeColors } from '../theme/colors';
 
 const COLUMN_SHIFT = 5;
 
@@ -115,6 +117,8 @@ function BoardColumnInner({
   columnMaxHeight,
   cardScrollMaxHeight,
 }: BoardColumnProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createBoardColumnStyles(colors), [colors]);
   const cardRefs = useRef<Record<string, React.ElementRef<typeof DraggableBoardCard> | null>>({});
   const listRef = useRef<React.ElementRef<typeof GHScrollView> | null>(null);
   const wrapRef = useRef<View | null>(null);
@@ -277,7 +281,7 @@ function BoardColumnInner({
                 value={addCardComposerValue}
                 onChangeText={onAddCardComposerChangeText}
                 placeholder="Enter a title for this card…"
-                placeholderTextColor="#888"
+                placeholderTextColor={colors.placeholder}
                 style={styles.composerInput}
                 multiline
                 scrollEnabled
@@ -288,7 +292,7 @@ function BoardColumnInner({
                 autoCapitalize="sentences"
               />
               <View style={styles.composerExpandHint} pointerEvents="none">
-                <Feather name="maximize-2" size={14} color="#999" />
+                <Feather name="maximize-2" size={14} color={colors.placeholder} />
               </View>
             </View>
             <View style={styles.composerActions}>
@@ -327,7 +331,7 @@ function BoardColumnInner({
           </View>
         ) : (
           <TouchableOpacity activeOpacity={0.8} onPress={handleAddCard} style={styles.addCard}>
-            <Feather name="plus" size={18} color="#666" />
+            <Feather name="plus" size={18} color={colors.iconChevron} />
             <Text style={styles.addCardText}>Add card</Text>
           </TouchableOpacity>
         )}
@@ -338,114 +342,117 @@ function BoardColumnInner({
 
 export const BoardColumn = memo(BoardColumnInner);
 
-const styles = StyleSheet.create({
-  wrap: {
-    position: 'relative',
-    width: 280,
-    marginRight: 16,
-    flexShrink: 0,
-  },
-  wrapDraggingSource: {
-    width: 0,
-    minWidth: 0,
-    marginRight: 0,
-    opacity: 0,
-    overflow: 'hidden',
-  },
-  shadow: {
-    position: 'absolute',
-    left: COLUMN_SHIFT,
-    top: COLUMN_SHIFT,
-    right: -COLUMN_SHIFT,
-    bottom: -COLUMN_SHIFT,
-    backgroundColor: '#000',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  column: {
-    position: 'relative',
-    zIndex: 1,
-    backgroundColor: '#e8e8e8',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    maxHeight: 520,
-  },
-  cardScroll: {
-    maxHeight: 420,
-  },
-  cardList: {
-    flexGrow: 1,
-    paddingBottom: 4,
-  },
-  addCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 8,
-    marginTop: 4,
-  },
-  addCardText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  composer: {
-    marginTop: 4,
-    gap: 10,
-  },
-  composerCard: {
-    position: 'relative',
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#000',
-    minHeight: 88,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 28,
-    paddingRight: 28,
-  },
-  composerInput: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0a0a0a',
-    lineHeight: 18,
-    minHeight: 48,
-    textAlignVertical: 'top',
-  },
-  composerExpandHint: {
-    position: 'absolute',
-    right: 8,
-    bottom: 8,
-    opacity: 0.85,
-  },
-  composerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-  },
-  composerActionHit: {
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-  },
-  composerActionCancel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0c66e4',
-  },
-  composerActionAdd: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0c66e4',
-  },
-  composerActionAddDisabled: {
-    color: '#a8c8f0',
-  },
-});
+function createBoardColumnStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      position: 'relative',
+      width: 280,
+      marginRight: 16,
+      flexShrink: 0,
+    },
+    wrapDraggingSource: {
+      width: 0,
+      minWidth: 0,
+      marginRight: 0,
+      opacity: 0,
+      overflow: 'hidden',
+    },
+    shadow: {
+      position: 'absolute',
+      left: COLUMN_SHIFT,
+      top: COLUMN_SHIFT,
+      right: -COLUMN_SHIFT,
+      bottom: -COLUMN_SHIFT,
+      backgroundColor: colors.shadowFillColumn,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    column: {
+      position: 'relative',
+      zIndex: 1,
+      backgroundColor: colors.columnSurface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      maxHeight: 520,
+    },
+    cardScroll: {
+      maxHeight: 420,
+    },
+    cardList: {
+      flexGrow: 1,
+      paddingBottom: 4,
+    },
+    addCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      gap: 8,
+      marginTop: 4,
+    },
+    addCardText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    composer: {
+      marginTop: 4,
+      gap: 10,
+    },
+    composerCard: {
+      position: 'relative',
+      backgroundColor: colors.cardFaceOnColumn,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      minHeight: 88,
+      paddingHorizontal: 12,
+      paddingTop: 10,
+      paddingBottom: 28,
+      paddingRight: 28,
+    },
+    composerInput: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      lineHeight: 18,
+      minHeight: 48,
+      textAlignVertical: 'top',
+    },
+    composerExpandHint: {
+      position: 'absolute',
+      right: 8,
+      bottom: 8,
+      opacity: 0.85,
+    },
+    composerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 4,
+    },
+    composerActionHit: {
+      paddingVertical: 6,
+      paddingHorizontal: 4,
+    },
+    composerActionCancel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.boardLink,
+    },
+    composerActionAdd: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.boardLink,
+    },
+    composerActionAddDisabled: {
+      color: colors.boardLink,
+      opacity: 0.35,
+    },
+  });
+}

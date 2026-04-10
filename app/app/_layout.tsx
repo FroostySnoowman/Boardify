@@ -2,7 +2,7 @@ import 'react-native-reanimated';
 import 'react-native-gesture-handler';
 import '../global.css';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, View, StyleSheet, Text, Pressable } from 'react-native';
 
 if (Platform.OS === 'web' && (StyleSheet as any).setFlag) {
@@ -21,50 +21,14 @@ import { BoardSortProvider } from '../src/contexts/BoardSortContext';
 import { MessageFilterProvider } from '../src/contexts/MessageFilterContext';
 import { useRouter } from 'expo-router';
 import { registerPushNotificationDeepLinks } from '../src/notifications/notificationDeepLink';
-
-const BACKGROUND_COLOR = '#f5f0e8';
-const MODAL_BACKGROUND = '#020617';
+import { ThemeProvider, useTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
-
-const modalScreenOptions = {
-  presentation: Platform.OS === 'ios' ? 'pageSheet' : 'modal',
-  headerShown: true,
-  headerTransparent: Platform.OS === 'ios',
-  headerBlurEffect: Platform.OS === 'ios' ? 'dark' : undefined,
-  headerStyle: (Platform.OS === 'android' || Platform.OS === 'web')
-    ? { backgroundColor: MODAL_BACKGROUND }
-    : undefined,
-  headerShadowVisible: false,
-  headerTintColor: '#ffffff',
-  headerBackVisible: Platform.OS === 'web' ? true : undefined,
-  contentStyle: { backgroundColor: MODAL_BACKGROUND },
-  gestureEnabled: true,
-  headerTitle: '',
-  animation: Platform.OS === 'android' ? 'slide_from_bottom' : 'default',
-} as const;
-
-const createBoardModalOptions = {
-  presentation: Platform.OS === 'ios' ? 'pageSheet' : 'modal',
-  headerShown: true,
-  headerTransparent: Platform.OS === 'ios',
-  headerBlurEffect: Platform.OS === 'ios' ? 'systemChromeMaterialLight' : undefined,
-  headerStyle:
-    Platform.OS === 'android' || Platform.OS === 'web'
-      ? { backgroundColor: BACKGROUND_COLOR }
-      : undefined,
-  headerShadowVisible: false,
-  headerTintColor: '#0a0a0a',
-  headerBackVisible: Platform.OS === 'web' ? true : undefined,
-  contentStyle: { backgroundColor: BACKGROUND_COLOR },
-  gestureEnabled: true,
-  headerTitle: '',
-  animation: Platform.OS === 'android' ? 'slide_from_bottom' : 'default',
-} as const;
 
 function OfflineBanner() {
   const insets = useSafeAreaInsets();
   const { isOnline } = useNetwork();
+  const { colors } = useTheme();
   if (isOnline) return null;
   return (
     <View
@@ -74,7 +38,7 @@ function OfflineBanner() {
         left: 0,
         right: 0,
         zIndex: 9999,
-        backgroundColor: '#475569',
+        backgroundColor: colors.offlineBanner,
         paddingVertical: 10,
         paddingHorizontal: 16,
         alignItems: 'center',
@@ -82,7 +46,14 @@ function OfflineBanner() {
       }}
       pointerEvents="none"
     >
-      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
+      <Text
+        style={{
+          color: colors.offlineBannerText,
+          fontSize: 13,
+          fontWeight: '600',
+          textAlign: 'center',
+        }}
+      >
         You're offline — some features may be unavailable.
       </Text>
     </View>
@@ -91,11 +62,55 @@ function OfflineBanner() {
 
 function AppContent() {
   const { loading } = useAuth();
+  const { colors, resolvedScheme } = useTheme();
   const navState = useRootNavigationState();
   const router = useRouter();
   const ready = !loading && !!navState?.key;
   const [appReady, setAppReady] = useState(false);
   const [splashHidden, setSplashHidden] = useState(false);
+
+  const modalScreenOptions = useMemo(
+    () => ({
+      presentation: Platform.OS === 'ios' ? ('pageSheet' as const) : ('modal' as const),
+      headerShown: true,
+      headerTransparent: Platform.OS === 'ios',
+      headerBlurEffect: Platform.OS === 'ios' ? ('dark' as const) : undefined,
+      headerStyle:
+        Platform.OS === 'android' || Platform.OS === 'web'
+          ? { backgroundColor: colors.modalNavyCanvas }
+          : undefined,
+      headerShadowVisible: false,
+      headerTintColor: colors.modalNavyHeaderTint,
+      headerBackVisible: Platform.OS === 'web' ? true : undefined,
+      contentStyle: { backgroundColor: colors.modalNavyCanvas },
+      gestureEnabled: true,
+      headerTitle: '',
+      animation: Platform.OS === 'android' ? ('slide_from_bottom' as const) : ('default' as const),
+    }),
+    [colors]
+  );
+
+  const createBoardModalOptions = useMemo(
+    () => ({
+      presentation: Platform.OS === 'ios' ? ('pageSheet' as const) : ('modal' as const),
+      headerShown: true,
+      headerTransparent: Platform.OS === 'ios',
+      headerBlurEffect:
+        Platform.OS === 'ios' ? (colors.headerBlurMaterial as 'systemChromeMaterialLight') : undefined,
+      headerStyle:
+        Platform.OS === 'android' || Platform.OS === 'web'
+          ? { backgroundColor: colors.modalCreamCanvas }
+          : undefined,
+      headerShadowVisible: false,
+      headerTintColor: colors.modalCreamHeaderTint,
+      headerBackVisible: Platform.OS === 'web' ? true : undefined,
+      contentStyle: { backgroundColor: colors.modalCreamCanvas },
+      gestureEnabled: true,
+      headerTitle: '',
+      animation: Platform.OS === 'android' ? ('slide_from_bottom' as const) : ('default' as const),
+    }),
+    [colors]
+  );
 
   useEffect(() => {
     if (ready && !appReady) {
@@ -121,17 +136,19 @@ function AppContent() {
     return null;
   }
 
+  const statusBarStyle = resolvedScheme === 'dark' ? 'light' : 'dark';
+
   return (
     <View
-      style={{ flex: 1, backgroundColor: BACKGROUND_COLOR }}
+      style={{ flex: 1, backgroundColor: colors.canvas }}
       onLayout={onLayoutRootView}
     >
-      <StatusBar style="dark" backgroundColor="#f5f0e8" />
+      <StatusBar style={statusBarStyle} backgroundColor={colors.canvas} />
       <OfflineBanner />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: BACKGROUND_COLOR },
+          contentStyle: { backgroundColor: colors.canvas },
           headerLeft: ({ canGoBack, tintColor }) => {
             if (Platform.OS !== 'web') return undefined;
             return (
@@ -157,7 +174,7 @@ function AppContent() {
                 <Feather
                   name={canGoBack ? 'arrow-left' : 'home'}
                   size={24}
-                  color={tintColor || '#ffffff'}
+                  color={tintColor || colors.iconPrimary}
                 />
               </Pressable>
             );
@@ -188,20 +205,28 @@ function AppContent() {
   );
 }
 
+function AppRoot() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <BoardSortProvider>
+          <MessageFilterProvider>
+            <NetworkProvider>
+              <AppContent />
+            </NetworkProvider>
+          </MessageFilterProvider>
+        </BoardSortProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
         <SafeAreaProvider>
-          <AuthProvider>
-            <BoardSortProvider>
-              <MessageFilterProvider>
-                <NetworkProvider>
-                  <AppContent />
-                </NetworkProvider>
-              </MessageFilterProvider>
-            </BoardSortProvider>
-          </AuthProvider>
+          <AppRoot />
         </SafeAreaProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

@@ -255,8 +255,15 @@ function createLoginStyles(colors: ThemeColors) {
 }
 
 export default function LoginScreen() {
-  const { colors } = useTheme();
+  const { colors, resolvedScheme } = useTheme();
   const styles = useMemo(() => createLoginStyles(colors), [colors]);
+  const appleIconSource = useMemo(
+    () =>
+      resolvedScheme === 'dark'
+        ? require('../../assets/apple-white.png')
+        : require('../../assets/apple-black.png'),
+    [resolvedScheme]
+  );
   const { setUserContext } = useAuth();
   const { isOnline } = useNetwork();
   const headerHeight = useHeaderHeight();
@@ -736,7 +743,7 @@ export default function LoginScreen() {
                 <BoardStyleActionButton
                   layout="stack"
                   leading={
-                    <Image source={require('../../assets/apple.png')} style={styles.socialIcon} />
+                    <Image source={appleIconSource} style={styles.socialIcon} />
                   }
                   shadowColor={colors.surfaceMuted}
                   onPress={handleApple}

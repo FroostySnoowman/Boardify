@@ -9,6 +9,8 @@ if (Platform.OS === 'web' && (StyleSheet as any).setFlag) {
   (StyleSheet as any).setFlag('darkMode', 'class');
 }
 import { Stack, useRootNavigationState } from 'expo-router';
+import { ThemeProvider as NavigationThemeProvider } from '@react-navigation/core';
+import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -132,6 +134,18 @@ function AppContent() {
     return registerPushNotificationDeepLinks(router);
   }, [router]);
 
+  const navigationTheme = useMemo(() => {
+    const base = resolvedScheme === 'dark' ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        background: colors.canvas,
+        card: colors.surfaceElevated,
+      },
+    };
+  }, [resolvedScheme, colors.canvas, colors.surfaceElevated]);
+
   if (!appReady) {
     return null;
   }
@@ -139,69 +153,71 @@ function AppContent() {
   const statusBarStyle = resolvedScheme === 'dark' ? 'light' : 'dark';
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: colors.canvas }}
-      onLayout={onLayoutRootView}
-    >
-      <StatusBar style={statusBarStyle} backgroundColor={colors.canvas} />
-      <OfflineBanner />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.canvas },
-          headerLeft: ({ canGoBack, tintColor }) => {
-            if (Platform.OS !== 'web') return undefined;
-            return (
-              <Pressable
-                onPress={() => {
-                  if (canGoBack) {
-                    router.back();
-                  } else {
-                    router.replace('/');
-                  }
-                }}
-                style={{
-                  marginLeft: 10,
-                  width: 36,
-                  height: 36,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={canGoBack ? 'Go back' : 'Go home'}
-              >
-                <Feather
-                  name={canGoBack ? 'arrow-left' : 'home'}
-                  size={24}
-                  color={tintColor || colors.iconPrimary}
-                />
-              </Pressable>
-            );
-          },
-        }}
+    <NavigationThemeProvider value={navigationTheme}>
+      <View
+        style={{ flex: 1, backgroundColor: colors.canvas }}
+        onLayout={onLayoutRootView}
       >
-        <Stack.Screen
-          name="(tabs)"
-          options={{
+        <StatusBar style={statusBarStyle} backgroundColor={colors.canvas} />
+        <OfflineBanner />
+        <Stack
+          screenOptions={{
             headerShown: false,
-            animation: 'fade',
+            contentStyle: { backgroundColor: colors.canvas },
+            headerLeft: ({ canGoBack, tintColor }) => {
+              if (Platform.OS !== 'web') return undefined;
+              return (
+                <Pressable
+                  onPress={() => {
+                    if (canGoBack) {
+                      router.back();
+                    } else {
+                      router.replace('/');
+                    }
+                  }}
+                  style={{
+                    marginLeft: 10,
+                    width: 36,
+                    height: 36,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={canGoBack ? 'Go back' : 'Go home'}
+                >
+                  <Feather
+                    name={canGoBack ? 'arrow-left' : 'home'}
+                    size={24}
+                    color={tintColor || colors.iconPrimary}
+                  />
+                </Pressable>
+              );
+            },
           }}
-        />
-        <Stack.Screen name="profile" options={createBoardModalOptions} />
-        <Stack.Screen name="login" options={createBoardModalOptions} />
-        <Stack.Screen name="verify-email" options={createBoardModalOptions} />
-        <Stack.Screen name="create-board" options={createBoardModalOptions} />
-        <Stack.Screen name="board-settings" options={createBoardModalOptions} />
-        <Stack.Screen name="board-notifications" options={createBoardModalOptions} />
-        <Stack.Screen name="board-archive" options={createBoardModalOptions} />
-        <Stack.Screen name="board-audit" options={createBoardModalOptions} />
-        <Stack.Screen name="add-dashboard-tile" options={createBoardModalOptions} />
-        <Stack.Screen name="default-board" options={createBoardModalOptions} />
-        <Stack.Screen name="board" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" options={{ headerShown: false }} />
-      </Stack>
-    </View>
+        >
+          <Stack.Screen
+            name="(tabs)"
+            options={{
+              headerShown: false,
+              animation: 'fade',
+            }}
+          />
+          <Stack.Screen name="profile" options={createBoardModalOptions} />
+          <Stack.Screen name="login" options={createBoardModalOptions} />
+          <Stack.Screen name="verify-email" options={createBoardModalOptions} />
+          <Stack.Screen name="create-board" options={createBoardModalOptions} />
+          <Stack.Screen name="board-settings" options={createBoardModalOptions} />
+          <Stack.Screen name="board-notifications" options={createBoardModalOptions} />
+          <Stack.Screen name="board-archive" options={createBoardModalOptions} />
+          <Stack.Screen name="board-audit" options={createBoardModalOptions} />
+          <Stack.Screen name="add-dashboard-tile" options={createBoardModalOptions} />
+          <Stack.Screen name="default-board" options={createBoardModalOptions} />
+          <Stack.Screen name="board" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" options={{ headerShown: false }} />
+        </Stack>
+      </View>
+    </NavigationThemeProvider>
   );
 }
 

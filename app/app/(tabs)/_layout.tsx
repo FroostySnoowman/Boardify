@@ -26,6 +26,8 @@ export default function TabsLayout() {
 
   const tabBarTintColor = colors.bottomBarIcon;
   const tabBarLabelColor = colors.bottomBarIconMuted;
+  const tabScreenBg = useMemo(() => ({ backgroundColor: colors.canvas }), [colors.canvas]);
+  const tabNativeContainer = useMemo(() => ({ backgroundColor: colors.canvas }), [colors.canvas]);
 
   const layoutStyles = useMemo(
     () =>
@@ -84,9 +86,11 @@ export default function TabsLayout() {
           blurEffect="none"
           backgroundColor="transparent"
           shadowColor="transparent"
+          // @ts-expect-error nativeContainerStyle → RN Screens Tabs.Host (expo-router patch in patches/)
+          nativeContainerStyle={tabNativeContainer}
         >
           {TAB_ITEMS.map((item) => (
-            <NativeTabs.Trigger key={item.name} name={item.name}>
+            <NativeTabs.Trigger key={item.name} name={item.name} contentStyle={tabScreenBg}>
               <TabLabel>{item.label}</TabLabel>
               <TabIcon
                 src={item.iconSrc}

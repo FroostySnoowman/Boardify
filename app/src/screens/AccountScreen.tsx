@@ -60,17 +60,20 @@ export default function AccountScreen() {
         },
         hero: {
           marginBottom: 28,
+          ...(isWeb ? { alignItems: 'center' as const } : {}),
         },
         title: {
           fontSize: 28,
           fontWeight: '800',
           color: colors.textPrimary,
+          ...(isWeb ? { textAlign: 'center' as const, alignSelf: 'stretch', width: '100%' as const } : {}),
         },
         subtitle: {
           fontSize: 15,
           color: colors.subtitle,
           marginTop: 6,
           fontWeight: '500',
+          ...(isWeb ? { textAlign: 'center' as const, alignSelf: 'stretch', width: '100%' as const } : {}),
         },
         signInBlock: {
           marginBottom: 24,
@@ -140,7 +143,7 @@ export default function AccountScreen() {
           alignSelf: 'stretch',
         },
       }),
-    [colors]
+    [colors, isWeb]
   );
 
   useFocusEffect(

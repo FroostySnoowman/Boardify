@@ -74,22 +74,42 @@ function SignInHeroCta({ onPress }: { onPress: () => void }) {
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { user, loading, invalidateLocalAuth } = useAuth();
+  const { sortMode } = useBoardSort();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [boards, setBoards] = useState<BoardListItem[]>([]);
+  const [boardsError, setBoardsError] = useState<string | null>(null);
+  const isWeb = Platform.OS === 'web';
+
+  /** Web: center hero copy. Mobile: center only for signed-out welcome (signed-in keeps left-aligned lists). */
+  const heroHeadlineCentered = isWeb || !user;
+
   const homeStyles = useMemo(
     () =>
       StyleSheet.create({
         hero: {
           marginBottom: 28,
+          ...(heroHeadlineCentered ? { alignItems: 'center' as const } : {}),
         },
         title: {
           fontSize: 28,
           fontWeight: '800',
           color: colors.textPrimary,
+          ...(heroHeadlineCentered
+            ? { textAlign: 'center' as const, alignSelf: 'stretch', width: '100%' as const }
+            : {}),
         },
         subtitle: {
           fontSize: 15,
           color: colors.subtitle,
           marginTop: 6,
           fontWeight: '500',
+          ...(heroHeadlineCentered
+            ? { textAlign: 'center' as const, alignSelf: 'stretch', width: '100%' as const }
+            : {}),
         },
         section: {
           marginBottom: 24,
@@ -129,18 +149,8 @@ export default function HomeScreen() {
           color: colors.textSecondary,
         },
       }),
-    [colors]
+    [colors, heroHeadlineCentered]
   );
-
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { user, loading, invalidateLocalAuth } = useAuth();
-  const { sortMode } = useBoardSort();
-  const scrollViewRef = useRef<ScrollView>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [boards, setBoards] = useState<BoardListItem[]>([]);
-  const [boardsError, setBoardsError] = useState<string | null>(null);
-  const isWeb = Platform.OS === 'web';
 
   const loadBoards = useCallback(async () => {
     try {

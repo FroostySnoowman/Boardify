@@ -245,6 +245,7 @@ function NotificationRow({
 
 export default function MessagesScreen() {
   const { colors } = useTheme();
+  const isWeb = Platform.OS === 'web';
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -252,10 +253,15 @@ export default function MessagesScreen() {
           flex: 1,
           backgroundColor: colors.canvas,
         },
+        heroIntro: {
+          alignSelf: 'stretch',
+          ...(isWeb ? { alignItems: 'center' as const } : {}),
+        },
         title: {
           fontSize: 28,
           fontWeight: '800',
           color: colors.textPrimary,
+          ...(isWeb ? { textAlign: 'center' as const, width: '100%' as const } : {}),
         },
         subtitle: {
           fontSize: 15,
@@ -263,7 +269,8 @@ export default function MessagesScreen() {
           marginTop: 8,
           fontWeight: '500',
           lineHeight: 22,
-          maxWidth: 520,
+          maxWidth: isWeb ? 560 : 520,
+          ...(isWeb ? { textAlign: 'center' as const, alignSelf: 'center' as const } : {}),
         },
         sectionLabelWrap: {
           marginTop: 28,
@@ -358,11 +365,10 @@ export default function MessagesScreen() {
           fontWeight: '500',
         },
       }),
-    [colors]
+    [colors, isWeb]
   );
 
   const insets = useSafeAreaInsets();
-  const isWeb = Platform.OS === 'web';
   const ipadPad = Platform.OS === 'ios' && Platform.isPad ? IPAD_TAB_CONTENT_TOP_PADDING : 0;
   const contentPaddingTop = (isWeb ? 24 : 12) + ipadPad;
 
@@ -553,11 +559,13 @@ export default function MessagesScreen() {
         ) : undefined
       }
     >
-      <Text style={styles.title}>Messages</Text>
-      <Text style={styles.subtitle}>
-        Notifications when teammates mention you, move cards, comment, or invite you to boards and
-        workspaces.
-      </Text>
+      <View style={styles.heroIntro}>
+        <Text style={styles.title}>Messages</Text>
+        <Text style={styles.subtitle}>
+          Notifications when teammates mention you, move cards, comment, or invite you to boards and
+          workspaces.
+        </Text>
+      </View>
 
       <View style={styles.sectionLabelWrap}>
         <Text style={styles.sectionLabel}>Recent</Text>

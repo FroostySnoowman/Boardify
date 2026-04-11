@@ -7,6 +7,7 @@ import {
   syncPushRegistrationFromAccountPrefs,
   unregisterExpoPushFromApi,
 } from '../notifications/expoPush';
+import { clearInboxMemoryCache } from '../storage/messagesInboxCache';
 
 type AuthContextType = {
   user: User | null;
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const invalidateLocalAuth = useCallback(async () => {
+    clearInboxMemoryCache();
     await clearSessionToken();
     setUser(null);
     await AsyncStorage.removeItem(AUTH_USER_KEY);
@@ -53,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .toLowerCase()
           .includes('unauthorized');
       if (isAuthError) {
+        clearInboxMemoryCache();
         setUser(null);
         await AsyncStorage.removeItem(AUTH_USER_KEY);
         await clearSessionToken();
@@ -70,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Logout error:', err);
     } finally {
       await unregisterExpoPushFromApi();
+      clearInboxMemoryCache();
       setUser(null);
       await AsyncStorage.removeItem(AUTH_USER_KEY);
       setLoading(false);
@@ -109,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!token) {
           if (mounted) {
+            clearInboxMemoryCache();
             setUser(null);
             await AsyncStorage.removeItem(AUTH_USER_KEY);
           }
@@ -118,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await refreshUser({ silent: true });
       } catch {
         if (mounted) {
+          clearInboxMemoryCache();
           setUser(null);
           await AsyncStorage.removeItem(AUTH_USER_KEY);
           await clearSessionToken();

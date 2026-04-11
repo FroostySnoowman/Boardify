@@ -18,6 +18,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import { InboxPrefetchOnLaunch } from '../src/components/InboxPrefetchOnLaunch';
 import { NetworkProvider, useNetwork } from '../src/contexts/NetworkContext';
 import { BoardSortProvider } from '../src/contexts/BoardSortContext';
 import { MessageFilterProvider } from '../src/contexts/MessageFilterContext';
@@ -230,6 +231,7 @@ function AppRoot() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <InboxPrefetchOnLaunch />
         <BoardSortProvider>
           <MessageFilterProvider>
             <NetworkProvider>

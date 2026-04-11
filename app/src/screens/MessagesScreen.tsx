@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
+import { router } from 'expo-router';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 import { TabScreenChrome } from '../components/TabScreenChrome';
 import { ActivitiesHeader, MOBILE_NAV_HEIGHT } from '../components/ActivitiesHeader';
@@ -32,6 +33,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { getUserMessages, type ApiInboxMessage } from '../api/user';
 import { formatRelativeTimeShort } from '../utils/formatRelativeTime';
 import { loadReadMessageIds, markMessageRead } from '../storage/messageReadIds';
+import {
+  getMemoryInboxMessages,
+  loadPersistedInboxMessages,
+  persistInboxMessages,
+} from '../storage/messagesInboxCache';
 import { MessagesScreenSkeleton } from '../components/skeletons';
 import { useTheme } from '../theme';
 
@@ -383,6 +389,12 @@ export default function MessagesScreen() {
   const [rawMessages, setRawMessages] = useState<ApiInboxMessage[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
+  const [bootstrapped, setBootstrapped] = useState(false);
+  const rawMessagesRef = useRef<ApiInboxMessage[]>([]);
+  rawMessagesRef.current = rawMessages;
+  /** True once we have a persisted inbox snapshot (including an empty list) or a successful fetch. */
+  const inboxDiskCachePresentRef = useRef(false);
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     void loadReadMessageIds().then((s) => {
@@ -391,27 +403,69 @@ export default function MessagesScreen() {
     });
   }, []);
 
-  const loadMessages = useCallback(async () => {
-    if (!user) return;
-    setLoadError(null);
-    setFetching(true);
-    try {
-      const { messages } = await getUserMessages({ limit: 80 });
-      setRawMessages(messages);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Could not load messages';
-      setLoadError(msg);
-    } finally {
-      setFetching(false);
+  useEffect(() => {
+    if (!user?.id) {
+      inboxDiskCachePresentRef.current = false;
+      setRawMessages([]);
+      setBootstrapped(true);
+      return;
     }
-  }, [user]);
+    inboxDiskCachePresentRef.current = false;
+    setBootstrapped(false);
+    let cancelled = false;
+    const mem = getMemoryInboxMessages(user.id);
+    if (mem.length > 0) {
+      setRawMessages(mem);
+    }
+    void (async () => {
+      const disk = await loadPersistedInboxMessages(user.id);
+      if (cancelled) return;
+      if (disk != null) {
+        inboxDiskCachePresentRef.current = true;
+        setRawMessages(disk);
+      }
+      setBootstrapped(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!user || !readIdsReady) return;
-      void loadMessages();
-    }, [user, readIdsReady, loadMessages])
+  const loadMessages = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!user?.id) return;
+      const silent = opts?.silent === true;
+      if (!silent) {
+        setLoadError(null);
+        setFetching(true);
+      }
+      try {
+        const { messages } = await getUserMessages({ limit: 80 });
+        setRawMessages(messages);
+        await persistInboxMessages(user.id, messages);
+        inboxDiskCachePresentRef.current = true;
+      } catch (e: unknown) {
+        if (!silent) {
+          const msg = e instanceof Error ? e.message : 'Could not load messages';
+          setLoadError(msg);
+        }
+      } finally {
+        if (!silent) {
+          setFetching(false);
+        }
+      }
+    },
+    [user]
   );
+
+  useEffect(() => {
+    if (!isFocused || !user?.id || !readIdsReady || !bootstrapped) return;
+    const silent =
+      rawMessagesRef.current.length > 0 ||
+      getMemoryInboxMessages(user.id).length > 0 ||
+      inboxDiskCachePresentRef.current;
+    void loadMessages({ silent });
+  }, [isFocused, user?.id, readIdsReady, bootstrapped, loadMessages]);
 
   const items = useMemo(
     () => mapApiToItems(rawMessages, readIds),
@@ -468,8 +522,11 @@ export default function MessagesScreen() {
     if (!user) return;
     setRefreshing(true);
     hapticLight();
-    await loadMessages();
-    setRefreshing(false);
+    try {
+      await loadMessages({ silent: true });
+    } finally {
+      setRefreshing(false);
+    }
   }, [user, loadMessages]);
 
   const onOpenBoard = useCallback((p: { boardId: string; boardName?: string }) => {

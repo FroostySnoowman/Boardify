@@ -18,6 +18,7 @@ import { ContextMenu } from '../components/ContextMenu';
 import {
   BoardGlassBottomBar,
   BOARD_GLASS_BOTTOM_BAR_CLEARANCE,
+  BOARD_GLASS_FOCUS_DOTS_BASE_CLEARANCE,
   type BoardGlassBottomBarProps,
 } from '../components/BoardGlassBottomBar';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
@@ -103,6 +104,29 @@ const BOARD_STRIP_COLUMN_WIDTH = 280;
 
 const FOCUS_LIST_CARD_WIDTH_RATIO = 0.86;
 const FOCUS_LIST_CAROUSEL_GAP = 12;
+const FOCUS_PAGE_DOT_SLOTS = 10;
+
+/** Visual sizes for the fixed 10-slot focus pager (8th–10th slots shrink like the reference). */
+function focusPagerDotVisual(
+  slotIndex: number,
+  isActive: boolean,
+  isGhost: boolean
+): { diameter: number; opacity: number } {
+  if (isGhost) {
+    return { diameter: 4, opacity: 0.14 };
+  }
+  if (isActive) {
+    return { diameter: 12, opacity: 1 };
+  }
+  if (slotIndex < 7) {
+    return { diameter: 7, opacity: 0.48 };
+  }
+  const tailStep = slotIndex - 7;
+  return {
+    diameter: Math.max(3, Math.round(7 * (1 - tailStep * 0.3))),
+    opacity: Math.max(0.16, 0.4 - tailStep * 0.12),
+  };
+}
 
 const BOARD_STRIP_COL_STRIDE = BOARD_STRIP_COLUMN_WIDTH + 16;
 
@@ -1305,6 +1329,32 @@ export default function BoardScreen({
     };
   }, [screenW]);
 
+  const focusPagerDotWindow = useMemo(() => {
+    const totalPages = columns.length + 1;
+    if (totalPages <= FOCUS_PAGE_DOT_SLOTS) {
+      return { windowStart: 0, totalPages };
+    }
+    const windowStart = Math.min(
+      Math.max(0, focusPageIndex - 4),
+      totalPages - FOCUS_PAGE_DOT_SLOTS
+    );
+    return { windowStart, totalPages };
+  }, [columns.length, focusPageIndex]);
+
+  const scrollToFocusPageIndex = useCallback(
+    (pageIndex: number) => {
+      if (!boardFocusMode) return;
+      const totalPages = columns.length + 1;
+      const clamped = Math.min(totalPages - 1, Math.max(0, pageIndex));
+      const sx = clamped * focusCarousel.snapInterval;
+      horizontalScrollRef.current?.scrollTo({ x: sx, animated: true });
+      horizontalScrollXRef.current = sx;
+      setFocusPageIndex(clamped);
+      hapticLight();
+    },
+    [boardFocusMode, columns.length, focusCarousel.snapInterval]
+  );
+
   const focusColumnMaxH = Math.min(580, Math.round(screenH * 0.58));
   const focusCardScrollMax = Math.max(300, focusColumnMaxH - 130);
 
@@ -1914,16 +1964,6 @@ export default function BoardScreen({
           </View>
         </GHScrollView>
           </Animated.View>
-          {boardFocusMode ? (
-            <View style={styles.focusDotsRow} pointerEvents="none">
-              {Array.from({ length: columns.length + 1 }, (_, i) => (
-                <View
-                  key={`dot-${i}`}
-                  style={[styles.focusDot, i === focusPageIndex && styles.focusDotActive]}
-                />
-              ))}
-            </View>
-          ) : null}
         </View>
       ) : viewMode === 'table' ? (
         <BoardTableView
@@ -2033,6 +2073,62 @@ export default function BoardScreen({
       ) : null}
 
       <BoardGlassBottomBar {...boardGlassBottomBarProps} />
+
+      {viewMode === 'board' && boardFocusMode ? (
+        <View
+          style={[
+            styles.focusDotsOverlay,
+            { paddingBottom: insets.bottom + BOARD_GLASS_FOCUS_DOTS_BASE_CLEARANCE },
+          ]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.focusDotsRowWrap}>
+            <View style={styles.focusDotsRow} accessibilityRole="tablist">
+              {Array.from({ length: FOCUS_PAGE_DOT_SLOTS }, (_, slot) => {
+                const { windowStart, totalPages } = focusPagerDotWindow;
+                const pageIndex = windowStart + slot;
+                const isGhost = pageIndex >= totalPages;
+                const isActive = !isGhost && pageIndex === focusPageIndex;
+                const { diameter, opacity } = focusPagerDotVisual(slot, isActive, isGhost);
+                const dotColor = isActive
+                  ? colors.textPrimary
+                  : isGhost
+                    ? colors.textTertiary
+                    : colors.textTertiary;
+                return (
+                  <Pressable
+                    key={`focus-dot-${slot}`}
+                    disabled={isGhost}
+                    onPress={() => scrollToFocusPageIndex(pageIndex)}
+                    hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive, disabled: isGhost }}
+                    accessibilityLabel={
+                      isGhost
+                        ? undefined
+                        : `List ${pageIndex + 1} of ${totalPages}${isActive ? ', current' : ''}`
+                    }
+                    style={styles.focusDotHit}
+                  >
+                    <View
+                      style={[
+                        styles.focusDotCore,
+                        {
+                          width: diameter,
+                          height: diameter,
+                          borderRadius: diameter / 2,
+                          opacity,
+                          backgroundColor: dotColor,
+                        },
+                      ]}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      ) : null}
 
       {viewMode === 'table' && tableRowDragging && draggingTableRowCard ? (
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -2245,25 +2341,36 @@ function createBoardScreenStyles(colors: ThemeColors) {
     paddingBottom: 24,
     alignItems: 'flex-start',
   },
+  focusDotsOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 20050,
+    elevation: 20050,
+    justifyContent: 'flex-end',
+    alignItems: 'stretch',
+    width: '100%',
+    pointerEvents: 'box-none',
+  },
+  focusDotsRowWrap: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   focusDotsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 7,
-    paddingBottom: 6,
-    paddingTop: 2,
+    gap: 8,
+    paddingVertical: 2,
+    flexShrink: 0,
   },
-  focusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.focusDotInactive,
+  focusDotHit: {
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 28,
   },
-  focusDotActive: {
-    backgroundColor: colors.textPrimary,
-    width: 9,
-    height: 9,
-    borderRadius: 4,
+  focusDotCore: {
+    alignSelf: 'center',
   },
   addListWrapCentered: {
     alignSelf: 'center',

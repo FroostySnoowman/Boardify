@@ -196,6 +196,9 @@ export type AuditEntryRow = {
   summary: string;
   actor_user_id: number | null;
   metadata_json: string | null;
+  actor_username?: string | null;
+  actor_email?: string | null;
+  actor_profile_picture_url?: string | null;
 };
 
 export async function getDashboardTiles(boardId: string): Promise<{

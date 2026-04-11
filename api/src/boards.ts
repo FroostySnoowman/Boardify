@@ -30,6 +30,106 @@ function parseJson<T>(raw: string | null, fallback: T): T {
   }
 }
 
+const BOARD_SETTING_LABELS: Record<string, string> = {
+  boardDisplayTitle: 'title on board',
+  boardDescription: 'description',
+  defaultView: 'default view',
+  hapticsEnabled: 'haptics',
+  confirmBeforeDestructive: 'destructive confirmations',
+  weekStartsOn: 'week start',
+  compactCardDensity: 'compact layout',
+  showAssigneeAvatars: 'assignee avatars',
+  dailyDigestReminder: 'daily digest',
+  autoOpenCardDetails: 'open card details',
+  focusModeByDefault: 'focus mode',
+};
+
+function summarizeBoardSettingsChange(prevJson: string | null, nextJsonStr: string): string[] {
+  const prev = parseJson<Record<string, unknown>>(prevJson, {});
+  let next: Record<string, unknown>;
+  try {
+    next = JSON.parse(nextJsonStr) as Record<string, unknown>;
+  } catch {
+    return ['settings'];
+  }
+  const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+  const out: string[] = [];
+  for (const k of keys) {
+    if (k === 'version') continue;
+    const a = JSON.stringify(prev[k] ?? null);
+    const b = JSON.stringify(next[k] ?? null);
+    if (a !== b) {
+      out.push(BOARD_SETTING_LABELS[k] ?? k.replace(/([A-Z])/g, ' $1').trim().toLowerCase());
+    }
+  }
+  return out;
+}
+
+function buildBoardPatchSummary(prev: BoardRow, body: Record<string, unknown>): string {
+  const parts: string[] = [];
+  if (typeof body.name === 'string' && body.name.trim() !== prev.name) {
+    parts.push(`Renamed to “${body.name.trim()}”`);
+  }
+  if (body.color !== undefined && body.color !== prev.color) {
+    parts.push('Accent color updated');
+  }
+  if (typeof body.sort_order === 'number' && body.sort_order !== prev.sort_order) {
+    parts.push('Order in your board list changed');
+  }
+  if (body.archived_at !== undefined && body.archived_at !== prev.archived_at) {
+    parts.push(body.archived_at ? 'Board archived' : 'Board unarchived');
+  }
+  if (body.settings_json !== undefined) {
+    const nextStr =
+      typeof body.settings_json === 'object'
+        ? JSON.stringify(body.settings_json)
+        : String(body.settings_json);
+    const settingChanges = summarizeBoardSettingsChange(prev.settings_json, nextStr);
+    if (settingChanges.length) {
+      parts.push(`Settings: ${settingChanges.join(', ')}`);
+    }
+  }
+  if (parts.length === 0) return 'Board updated';
+  let s = parts.join(' · ');
+  if (s.length > 280) s = `${s.slice(0, 277)}…`;
+  return s;
+}
+
+function buildCardUpdateSummary(
+  card: Parameters<typeof cardRowToApi>[0] & { title: string },
+  body: Record<string, unknown>,
+  title: string,
+  otherPayloadChanged: boolean
+): string {
+  const labels: string[] = [];
+  if (typeof body.title === 'string' && body.title !== card.title) labels.push('title');
+  if (body.subtitle !== undefined && body.subtitle !== card.subtitle) labels.push('subtitle');
+  if (body.description !== undefined && body.description !== card.description) labels.push('description');
+  if (body.labelColor !== undefined && body.labelColor !== card.label_color) labels.push('label color');
+  if (body.startDate !== undefined && body.startDate !== card.start_date) labels.push('start date');
+  if (body.dueDate !== undefined && body.dueDate !== card.due_date) labels.push('due date');
+  if (typeof body.position === 'number' && body.position !== card.position) labels.push('position');
+  if (body.workTimerAccumMs !== undefined && body.workTimerAccumMs !== card.work_timer_accum_ms) {
+    labels.push('time tracked');
+  }
+  if (
+    body.workTimerRunStartedAtMs !== undefined &&
+    body.workTimerRunStartedAtMs !== card.work_timer_run_started_at_ms
+  ) {
+    labels.push('timer');
+  }
+  let base: string;
+  if (labels.length > 0) {
+    base = `Card “${title}” — ${labels.join(', ')}`;
+    if (otherPayloadChanged) base += ', and more';
+  } else if (otherPayloadChanged) {
+    base = `Card “${title}” — updated nested fields (checklist, links, etc.)`;
+  } else {
+    base = `Card “${title}” updated`;
+  }
+  return base.length > 280 ? `${base.slice(0, 277)}…` : base;
+}
+
 function numericAssigneeUserIds(assignees: unknown): number[] {
   if (!Array.isArray(assignees)) return [];
   const out: number[] = [];
@@ -211,6 +311,8 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     if (!roleAtLeast(r.role, 'admin')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
     }
+    const prev = await env.DB.prepare('SELECT * FROM boards WHERE id = ?').bind(boardId).first<BoardRow>();
+    if (!prev) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
     let body: Record<string, unknown> = {};
     try {
       body = await request.json();
@@ -250,7 +352,8 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     vals.push(nowIso());
     vals.push(boardId);
     await env.DB.prepare(`UPDATE boards SET ${updates.join(', ')} WHERE id = ?`).bind(...vals).run();
-    await appendAudit(env, boardId, 'board_updated', `Board updated`, r.userId, { boardId });
+    const auditSummary = buildBoardPatchSummary(prev, body);
+    await appendAudit(env, boardId, 'board_updated', auditSummary, r.userId, { boardId });
     await broadcastBoardEvent(env, boardId, { type: 'board_updated', boardId, actorUserId: r.userId });
     const row = await env.DB.prepare('SELECT * FROM boards WHERE id = ?').bind(boardId).first<BoardRow>();
     return jsonResponse(request, { board: row });
@@ -651,7 +754,13 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '50', 10)));
     const offset = Math.max(0, parseInt(url.searchParams.get('offset') ?? '0', 10));
     const { results } = await env.DB.prepare(
-      'SELECT * FROM board_audit_log WHERE board_id = ? ORDER BY at_iso DESC LIMIT ? OFFSET ?'
+      `SELECT a.id, a.board_id, a.at_iso, a.kind, a.summary, a.actor_user_id, a.metadata_json,
+              u.username AS actor_username, u.email AS actor_email, u.profile_picture_url AS actor_profile_picture_url
+       FROM board_audit_log a
+       LEFT JOIN users u ON u.id = a.actor_user_id
+       WHERE a.board_id = ?
+       ORDER BY a.at_iso DESC
+       LIMIT ? OFFSET ?`
     )
       .bind(boardId, limit, offset)
       .all();
@@ -1027,7 +1136,8 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
 
     const structuralForUpdated = coreChanged || otherPayloadChanged;
     if (structuralForUpdated && !onlyAssignees) {
-      await appendAudit(env, card.board_id, 'card_updated', `Card “${title}” updated`, r.userId, { cardId });
+      const cardUpdateSummary = buildCardUpdateSummary(card, body, title, otherPayloadChanged);
+      await appendAudit(env, card.board_id, 'card_updated', cardUpdateSummary, r.userId, { cardId });
     }
 
     await broadcastBoardEvent(env, card.board_id, {

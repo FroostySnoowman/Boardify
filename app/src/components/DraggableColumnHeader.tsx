@@ -4,6 +4,32 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { hapticMedium } from '../utils/haptics';
+import { useTheme } from '../theme';
+import type { ThemeColors } from '../theme/colors';
+
+function createHeaderStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+      paddingHorizontal: 4,
+      paddingVertical: 4,
+    },
+    title: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      flex: 1,
+    },
+    count: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '600',
+    },
+  });
+}
 
 type Props = {
   title: string;
@@ -40,6 +66,8 @@ export function DraggableColumnHeader({
   onDragMove,
   onDragEnd,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createHeaderStyles(colors), [colors]);
   const measureRef = useRef<View | null>(null);
   const latestRef = useRef<LatestRef>({
     onDragBegin,

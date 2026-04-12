@@ -1,9 +1,18 @@
 import type { Env } from './bindings';
 import { jsonResponse } from './http';
-import { getCurrentUserFromSession } from './auth';
+import { getCurrentUserFromSession, getAppUrl, getSmtp } from './auth';
 import { getBoardMembership } from './boardAccess';
 import { broadcastBoardEvent } from './boardSync';
 import { notifyBoardDeletedExpoPush } from './boardExpoPush';
+import { validateEmail } from './lib/auth/password';
+import { sendEmail, boardInviteEmailHtml, emailLogoAbsoluteUrl } from './lib/email';
+import {
+  normalizeInviteEmail,
+  sha256TokenHex,
+  acceptBoardInviteForUser,
+  inviteIsActionable,
+  type BoardInviteRow,
+} from './boardInvitations';
 
 type BoardRow = {
   id: string;
@@ -368,6 +377,230 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     await notifyBoardDeletedExpoPush(env, boardId, r.userId);
     await env.DB.prepare('DELETE FROM boards WHERE id = ?').bind(boardId).run();
     await broadcastBoardEvent(env, boardId, { type: 'board_deleted', boardId, actorUserId: r.userId });
+    return jsonResponse(request, { ok: true });
+  }
+
+  if (segments.length === 3 && segments[2] === 'members' && method === 'GET') {
+    const r = await requireBoardAccess(request, env, boardId);
+    if (r instanceof Response) return r;
+    const { results } = await env.DB.prepare(
+      `SELECT m.user_id AS user_id, m.role AS role, m.created_at AS joined_at,
+              u.username AS username, u.email AS email
+       FROM board_members m
+       INNER JOIN users u ON u.id = m.user_id
+       WHERE m.board_id = ?
+       ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
+                lower(COALESCE(NULLIF(TRIM(u.username), ''), u.email))`
+    )
+      .bind(boardId)
+      .all<{
+        user_id: number;
+        role: string;
+        joined_at: string;
+        username: string | null;
+        email: string;
+      }>();
+    const members = (results ?? []).map((row) => ({
+      userId: row.user_id,
+      role: row.role,
+      username: row.username?.trim() || null,
+      email: row.email,
+      joinedAt: row.joined_at,
+    }));
+    return jsonResponse(request, { members });
+  }
+
+  const INVITE_ROLE = 'member';
+  const INVITE_DAYS = 14;
+
+  if (segments.length === 3 && segments[2] === 'invitations' && method === 'GET') {
+    const r = await requireBoardAccess(request, env, boardId);
+    if (r instanceof Response) return r;
+    if (!roleAtLeast(r.role, 'admin')) {
+      return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
+    }
+    const { results } = await env.DB.prepare(
+      `SELECT id, board_id, inviter_user_id, invited_email_normalized, role, created_at, expires_at, accepted_at, declined_at
+       FROM board_invitations WHERE board_id = ? ORDER BY created_at DESC`
+    )
+      .bind(boardId)
+      .all<{
+        id: string;
+        board_id: string;
+        inviter_user_id: number;
+        invited_email_normalized: string;
+        role: string;
+        created_at: string;
+        expires_at: string;
+        accepted_at: string | null;
+        declined_at: string | null;
+      }>();
+    return jsonResponse(request, { invitations: results ?? [] });
+  }
+
+  if (segments.length === 3 && segments[2] === 'invitations' && method === 'POST') {
+    const r = await requireBoardAccess(request, env, boardId);
+    if (r instanceof Response) return r;
+    if (!roleAtLeast(r.role, 'admin')) {
+      return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
+    }
+    const board = await env.DB.prepare('SELECT * FROM boards WHERE id = ?').bind(boardId).first<BoardRow>();
+    if (!board || board.archived_at != null) {
+      return jsonResponse(request, { error: 'Not found' }, { status: 404 });
+    }
+    let body: { email?: string } = {};
+    try {
+      body = (await request.json()) as { email?: string };
+    } catch {
+      body = {};
+    }
+    const rawEmail = typeof body.email === 'string' ? body.email.trim() : '';
+    if (!rawEmail || !validateEmail(rawEmail)) {
+      return jsonResponse(request, { error: 'Valid email is required' }, { status: 400 });
+    }
+    const invitedNorm = normalizeInviteEmail(rawEmail);
+    const inviterRow = await env.DB.prepare('SELECT email FROM users WHERE id = ?')
+      .bind(r.userId)
+      .first<{ email: string }>();
+    if (inviterRow && normalizeInviteEmail(inviterRow.email) === invitedNorm) {
+      return jsonResponse(request, { error: 'You cannot invite yourself' }, { status: 400 });
+    }
+    const existingMember = await env.DB.prepare(
+      `SELECT 1 FROM board_members m JOIN users u ON u.id = m.user_id
+       WHERE m.board_id = ? AND lower(trim(u.email)) = ?`
+    )
+      .bind(boardId, invitedNorm)
+      .first<{ 1: number }>();
+    if (existingMember) {
+      return jsonResponse(request, { error: 'That person is already on this board' }, { status: 409 });
+    }
+    const rawTokenBytes = new Uint8Array(32);
+    crypto.getRandomValues(rawTokenBytes);
+    const rawToken = [...rawTokenBytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const tokenHash = await sha256TokenHex(rawToken);
+    const t = nowIso();
+    const exp = new Date(Date.now() + INVITE_DAYS * 864e5).toISOString();
+    const inviteId = crypto.randomUUID();
+    try {
+      await env.DB.prepare(
+        `INSERT INTO board_invitations (id, board_id, inviter_user_id, invited_email_normalized, role, token_hash, created_at, expires_at, accepted_at, declined_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`
+      )
+        .bind(inviteId, boardId, r.userId, invitedNorm, INVITE_ROLE, tokenHash, t, exp)
+        .run();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/UNIQUE|constraint|unique/i.test(msg)) {
+        return jsonResponse(
+          request,
+          { error: 'An invitation is already pending for that email' },
+          { status: 409 }
+        );
+      }
+      throw e;
+    }
+    const inviterName =
+      (
+        await env.DB.prepare('SELECT username, email FROM users WHERE id = ?')
+          .bind(r.userId)
+          .first<{ username: string | null; email: string }>()
+      )?.username?.trim() ||
+      inviterRow?.email?.split('@')[0] ||
+      'Someone';
+    const appOrigin = getAppUrl(request, env);
+    const acceptHttpsUrl = `${appOrigin}/invite/${encodeURIComponent(rawToken)}`;
+    const boardifyDeepLink = `boardify://invite/${rawToken}`;
+    const logoUrl = emailLogoAbsoluteUrl(appOrigin);
+    const html = boardInviteEmailHtml(inviterName, board.name, acceptHttpsUrl, boardifyDeepLink, logoUrl);
+    const smtp = getSmtp(env);
+    const emailResult = await sendEmail(
+      {
+        to: rawEmail,
+        subject: `${inviterName} invited you to “${board.name}” on Boardify`,
+        text: `You're invited to collaborate on "${board.name}" on Boardify.\n\nOpen: ${acceptHttpsUrl}\n\nOr in the app: ${boardifyDeepLink}\n`,
+        html,
+      },
+      smtp
+    );
+    await appendAudit(env, boardId, 'board_invite_sent', `Invited ${invitedNorm} to the board`, r.userId, {
+      boardId,
+      invitationId: inviteId,
+    });
+    return jsonResponse(
+      request,
+      {
+        invitation: {
+          id: inviteId,
+          boardId,
+          invitedEmailNormalized: invitedNorm,
+          createdAt: t,
+          expiresAt: exp,
+        },
+        emailSent: emailResult.success,
+        emailError: emailResult.success ? undefined : emailResult.error,
+      },
+      { status: 201 }
+    );
+  }
+
+  if (
+    segments.length === 5 &&
+    segments[2] === 'invitations' &&
+    segments[4] === 'accept' &&
+    method === 'POST'
+  ) {
+    const invitationId = segments[3];
+    if (!invitationId) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
+    const user = await getCurrentUserFromSession(request, env);
+    if (!user?.email) return jsonResponse(request, { error: 'Unauthorized' }, { status: 401 });
+    const row = await env.DB.prepare(
+      `SELECT * FROM board_invitations WHERE id = ? AND board_id = ?`
+    )
+      .bind(invitationId, boardId)
+      .first<BoardInviteRow>();
+    if (!row) return jsonResponse(request, { error: 'Invitation not found' }, { status: 404 });
+    const now = nowIso();
+    const result = await acceptBoardInviteForUser(
+      env,
+      row,
+      Number(user.id),
+      normalizeInviteEmail(user.email),
+      now
+    );
+    if (!result.ok) {
+      return jsonResponse(request, { error: result.error }, { status: result.status });
+    }
+    return jsonResponse(request, { ok: true, boardId: result.boardId, boardName: result.boardName });
+  }
+
+  if (
+    segments.length === 5 &&
+    segments[2] === 'invitations' &&
+    segments[4] === 'decline' &&
+    method === 'POST'
+  ) {
+    const invitationId = segments[3];
+    if (!invitationId) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
+    const user = await getCurrentUserFromSession(request, env);
+    if (!user?.email) return jsonResponse(request, { error: 'Unauthorized' }, { status: 401 });
+    const row = await env.DB.prepare(
+      `SELECT * FROM board_invitations WHERE id = ? AND board_id = ?`
+    )
+      .bind(invitationId, boardId)
+      .first<BoardInviteRow>();
+    if (!row) return jsonResponse(request, { error: 'Invitation not found' }, { status: 404 });
+    const now = nowIso();
+    if (!inviteIsActionable(row, now)) {
+      return jsonResponse(request, { error: 'Invitation is no longer valid' }, { status: 410 });
+    }
+    if (normalizeInviteEmail(user.email) !== row.invited_email_normalized) {
+      return jsonResponse(
+        request,
+        { error: 'This invitation was sent to a different email address' },
+        { status: 403 }
+      );
+    }
+    await env.DB.prepare(`UPDATE board_invitations SET declined_at = ? WHERE id = ?`).bind(now, row.id).run();
     return jsonResponse(request, { ok: true });
   }
 

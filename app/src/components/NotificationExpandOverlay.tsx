@@ -57,6 +57,7 @@ export type ExpandedNotificationData = {
   boardId?: string;
   boardName?: string;
   cardId?: string;
+  invitationId?: string;
 };
 
 type Props = {
@@ -64,6 +65,7 @@ type Props = {
   onClose: () => void;
   onMeasureSource?: (callback: (layout: CardLayout) => void) => void;
   onOpenBoard?: (p: { boardId: string; boardName?: string; cardId?: string }) => void;
+  onInviteRespond?: (action: 'accept' | 'decline', data: ExpandedNotificationData) => void;
 };
 
 function kindBadgeLabel(kind: NotificationKind): string {
@@ -98,7 +100,13 @@ function iconForKind(kind: NotificationKind): keyof typeof Feather.glyphMap {
   }
 }
 
-export function NotificationExpandOverlay({ data, onClose, onMeasureSource, onOpenBoard }: Props) {
+export function NotificationExpandOverlay({
+  data,
+  onClose,
+  onMeasureSource,
+  onOpenBoard,
+  onInviteRespond,
+}: Props) {
   const { colors } = useTheme();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -395,7 +403,42 @@ export function NotificationExpandOverlay({ data, onClose, onMeasureSource, onOp
                   ) : null}
                   <Text style={styles.timeInBody}>{data.timeLabel}</Text>
                   <Animated.View style={detailPlaceholderWrapStyle}>
-                    {data.boardId && onOpenBoard ? (
+                    {data.kind === 'invite' &&
+                    data.invitationId &&
+                    data.boardId &&
+                    onInviteRespond ? (
+                      <View style={styles.inviteActionsRow}>
+                        <Pressable
+                          onPress={() => {
+                            hapticLight();
+                            onInviteRespond('decline', data);
+                          }}
+                          style={[
+                            styles.inviteSecondaryBtn,
+                            { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel="Decline invitation"
+                        >
+                          <Text style={[styles.openBoardBtnText, { color: colors.textPrimary }]}>Decline</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => {
+                            hapticLight();
+                            onInviteRespond('accept', data);
+                          }}
+                          style={[
+                            styles.openBoardBtn,
+                            { backgroundColor: colors.canvas, borderColor: colors.border },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel="Accept invitation"
+                        >
+                          <Text style={[styles.openBoardBtnText, { color: colors.textPrimary }]}>Accept</Text>
+                          <Feather name="check" size={18} color="#0a0a0a" />
+                        </Pressable>
+                      </View>
+                    ) : data.boardId && onOpenBoard ? (
                       <Pressable
                         onPress={() => {
                           hapticLight();
@@ -545,6 +588,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     lineHeight: 20,
+  },
+  inviteActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+    alignSelf: 'stretch',
+  },
+  inviteSecondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   openBoardBtn: {
     flexDirection: 'row',

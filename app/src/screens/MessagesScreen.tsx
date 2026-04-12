@@ -8,6 +8,7 @@ import {
   Platform,
   StyleSheet,
   Pressable,
+  Alert,
   type View as RNView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +32,7 @@ import {
 } from '../contexts/MessageFilterContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserMessages, type ApiInboxMessage } from '../api/user';
+import { acceptBoardInvitationSession, declineBoardInvitationSession } from '../api/boards';
 import { formatRelativeTimeShort } from '../utils/formatRelativeTime';
 import { loadReadMessageIds, markMessageRead } from '../storage/messageReadIds';
 import {
@@ -53,6 +55,7 @@ type InboxListItem = {
   boardId?: string;
   boardName?: string;
   cardId?: string;
+  invitationId?: string;
 };
 
 function iconForKind(kind: NotificationKind): keyof typeof Feather.glyphMap {
@@ -84,6 +87,7 @@ function mapApiToItems(messages: ApiInboxMessage[], readIds: Set<string>): Inbox
     boardId: m.boardId,
     boardName: m.boardName,
     cardId: m.cardId ?? undefined,
+    invitationId: m.invitationId,
   }));
 }
 
@@ -206,6 +210,7 @@ function NotificationRow({
             boardId: item.boardId,
             boardName: item.boardName,
             cardId: item.cardId,
+            invitationId: item.invitationId,
           });
         });
       });
@@ -537,6 +542,33 @@ export default function MessagesScreen() {
     });
   }, []);
 
+  const onInviteRespond = useCallback(
+    async (action: 'accept' | 'decline', data: ExpandedNotificationData) => {
+      if (!data.boardId || !data.invitationId) return;
+      hapticLight();
+      try {
+        if (action === 'accept') {
+          const r = await acceptBoardInvitationSession(data.boardId, data.invitationId);
+          setExpanded(null);
+          router.push({
+            pathname: '/board',
+            params: { boardId: r.boardId, boardName: r.boardName ?? 'Board' },
+          });
+        } else {
+          await declineBoardInvitationSession(data.boardId, data.invitationId);
+          setExpanded(null);
+          await loadMessages({ silent: true });
+        }
+      } catch (e) {
+        hapticLight();
+        const msg =
+          e instanceof Error ? e.message : action === 'accept' ? 'Could not accept invite.' : 'Could not decline invite.';
+        Alert.alert('Invite', msg);
+      }
+    },
+    [loadMessages]
+  );
+
   const androidRefreshOffset = MOBILE_NAV_HEIGHT + insets.top;
 
   const showRecentLabel =
@@ -646,6 +678,7 @@ export default function MessagesScreen() {
         onClose={() => setExpanded(null)}
         onMeasureSource={onMeasureSource}
         onOpenBoard={onOpenBoard}
+        onInviteRespond={onInviteRespond}
       />
     ) : null;
 

@@ -426,6 +426,64 @@ export function emailVerificationHtml(verifyUrl: string, logoUrl: string): strin
   );
 }
 
+export function boardInviteEmailHtml(
+  inviterLabel: string,
+  boardName: string,
+  acceptHttpsUrl: string,
+  boardifyDeepLink: string,
+  logoUrl: string
+): string {
+  const INFO_BG = INNER;
+  return emailLayout(`
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${CARD}" style="${bg(CARD)};">
+      <tr><td align="center" bgcolor="${CARD}" style="padding-bottom:16px;${bg(CARD)};">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="${CARD}" style="${bg(CARD)};">
+          <tr><td align="center" valign="middle" width="56" height="56" bgcolor="${INNER}" style="width:56px;height:56px;border-radius:28px;border:2px solid ${BORDER};${bg(INNER)};font-size:26px;line-height:56px;">
+            &#128188;
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td align="center" bgcolor="${CARD}" style="font-family:${F};font-size:24px;font-weight:800;padding-bottom:10px;letter-spacing:-0.3px;color:${TEXT};${bg(CARD)};">
+        You&rsquo;re invited to a board
+      </td></tr>
+      <tr><td align="center" bgcolor="${CARD}" style="font-family:${F};font-size:15px;line-height:1.65;color:${BODY};padding-bottom:8px;${bg(CARD)};">
+        <strong style="color:${TEXT};">${escapeHtml(inviterLabel)}</strong> invited you to collaborate on
+        <strong style="color:${TEXT};">${escapeHtml(boardName)}</strong>.
+      </td></tr>
+      <tr><td align="center" bgcolor="${CARD}" style="font-family:${F};font-size:14px;line-height:1.6;color:${MUTED};padding-bottom:24px;${bg(CARD)};">
+        Open the link on your phone to accept or decline in the Boardify app.
+      </td></tr>
+      <tr><td align="center" bgcolor="${CARD}" style="padding-bottom:16px;${bg(CARD)};">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="${CARD}" style="${bg(CARD)};">
+          <tr><td align="center" style="background:linear-gradient(90deg,${GRADIENT_START},${GRADIENT_END});border:2px solid ${BORDER};border-radius:8px;">
+            <a href="${acceptHttpsUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:14px 36px;color:#ffffff;font-family:${F};font-size:15px;font-weight:600;text-decoration:none;letter-spacing:0.2px;">Open invitation</a>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td bgcolor="${CARD}" style="padding-bottom:20px;${bg(CARD)};" align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="${INFO_BG}" style="${bg(INFO_BG)};border:2px solid ${BORDER};border-radius:8px;max-width:100%;">
+          <tr><td bgcolor="${INFO_BG}" style="padding:12px 18px;font-family:${MONO};font-size:11px;color:${BODY};word-break:break-all;text-align:left;${bg(INFO_BG)};">
+            App link (copy if the button doesn&rsquo;t open):<br/>
+            <span style="user-select:all;-webkit-user-select:all;">${escapeHtml(boardifyDeepLink)}</span>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td bgcolor="${CARD}" style="border-top:1px solid ${BORDER};padding-top:20px;${bg(CARD)};" align="center">
+        <span style="font-family:${F};color:${DIM};font-size:13px;line-height:1.55;">If you didn&rsquo;t expect this, you can ignore this email. The invitation expires in 14 days.</span>
+      </td></tr>
+    </table>`,
+    logoUrl
+  );
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export function parentalConsentEmailHtml(confirmUrl: string, logoUrl: string): string {
   const CHECK_BG = '#ede9fe';
 

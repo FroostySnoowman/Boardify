@@ -24,6 +24,7 @@ import { BoardSortProvider } from '../src/contexts/BoardSortContext';
 import { MessageFilterProvider } from '../src/contexts/MessageFilterContext';
 import { useRouter } from 'expo-router';
 import { registerPushNotificationDeepLinks } from '../src/notifications/notificationDeepLink';
+import { registerInviteDeepLinks } from '../src/notifications/inviteDeepLink';
 import { ThemeProvider, useTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -135,6 +136,11 @@ function AppContent() {
     return registerPushNotificationDeepLinks(router);
   }, [router]);
 
+  useEffect(() => {
+    if (Platform.OS === 'web') return undefined;
+    return registerInviteDeepLinks(router);
+  }, [router]);
+
   const navigationTheme = useMemo(() => {
     const base = resolvedScheme === 'dark' ? DarkTheme : DefaultTheme;
     return {
@@ -213,6 +219,7 @@ function AppContent() {
           <Stack.Screen name="terms" options={createBoardModalOptions} />
           <Stack.Screen name="verify-email" options={createBoardModalOptions} />
           <Stack.Screen name="create-board" options={createBoardModalOptions} />
+          <Stack.Screen name="invite/[token]" options={createBoardModalOptions} />
           <Stack.Screen name="board-settings" options={createBoardModalOptions} />
           <Stack.Screen name="board-notifications" options={createBoardModalOptions} />
           <Stack.Screen name="board-archive" options={createBoardModalOptions} />

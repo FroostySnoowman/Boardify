@@ -250,7 +250,15 @@ module.exports = {
         {
           action: 'VIEW',
           autoVerify: true,
-          data: [{ scheme: 'https', host: 'app.mybreakpoint.boardify', pathPrefix: '/' }],
+          data: [
+            { scheme: 'https', host: 'app.mybreakpoint.boardify', pathPrefix: '/' },
+            { scheme: 'https', host: 'app.mybreakpoint.boardify', pathPrefix: '/invite' },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+        {
+          action: 'VIEW',
+          data: [{ scheme: 'boardify', host: 'invite', pathPrefix: '/' }],
           category: ['BROWSABLE', 'DEFAULT'],
         },
       ],

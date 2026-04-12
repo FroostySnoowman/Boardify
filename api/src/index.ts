@@ -4,6 +4,7 @@ import { handleAuth } from './auth';
 import { handleUser } from './user';
 import { handleImages } from './images';
 import { handleBoards } from './boards';
+import { handlePublicInvitationRoutes } from './boardInvitations';
 import { handleBoardWebSocket } from './wsBoard';
 import { handleLegal } from './legal';
 
@@ -64,6 +65,9 @@ async function routeRequest(request: Request, env: Env, pathname: string): Promi
   }
 
   const boardPath = stripApiPrefix(pathname);
+  const inviteResp = await handlePublicInvitationRoutes(request, env, boardPath);
+  if (inviteResp) return inviteResp;
+
   const boardResp = await handleBoards(request, env, boardPath);
   if (boardResp) return boardResp;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
 import { BoardStyleActionButton } from '../components/BoardStyleActionButton';
@@ -286,10 +286,20 @@ export default function LoginScreen() {
   const { isOnline } = useNetwork();
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
+  const inviteParams = useLocalSearchParams<{ inviteToken?: string | string[] }>();
+  const inviteTokenParam = useMemo(() => {
+    const t = inviteParams.inviteToken;
+    const s = Array.isArray(t) ? t[0] : t;
+    return s?.trim() ?? '';
+  }, [inviteParams.inviteToken]);
 
-  const navigateToHome = () => {
-    router.replace('/');
-  };
+  const goAfterVerifiedSignIn = useCallback(() => {
+    if (inviteTokenParam.length >= 32) {
+      router.replace({ pathname: '/invite/[token]', params: { token: inviteTokenParam } });
+    } else {
+      router.replace('/');
+    }
+  }, [inviteTokenParam]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -377,7 +387,7 @@ export default function LoginScreen() {
           }
           router.replace('/verify-email');
         } else {
-          navigateToHome();
+          goAfterVerifiedSignIn();
         }
       }
     } catch (err: unknown) {
@@ -400,7 +410,7 @@ export default function LoginScreen() {
       }
       const user = await fetchCurrentUser();
       setUserContext(user);
-      navigateToHome();
+      goAfterVerifiedSignIn();
     } catch (err: unknown) {
       const message = isNetworkError(err)
         ? "You're offline. Sign in when you're back online."
@@ -421,7 +431,7 @@ export default function LoginScreen() {
       }
       const user = await fetchCurrentUser();
       setUserContext(user);
-      navigateToHome();
+      goAfterVerifiedSignIn();
     } catch (err: unknown) {
       const message = isNetworkError(err)
         ? "You're offline. Sign in when you're back online."

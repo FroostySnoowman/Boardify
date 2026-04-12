@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -24,7 +25,15 @@ import {
   resolveBoardDisplayTitle,
   type BoardSettings,
 } from '../src/storage/boardSettings';
-import { getBoard, patchBoard } from '../src/api/boards';
+import {
+  getBoard,
+  patchBoard,
+  listBoardMembers,
+  listBoardInvitations,
+  createBoardInvitation,
+  type ApiBoardInvitationRow,
+  type ApiBoardMemberRow,
+} from '../src/api/boards';
 import { useTheme } from '../src/theme';
 import type { ThemeColors } from '../src/theme/colors';
 
@@ -295,6 +304,78 @@ function createBoardSettingsStyles(colors: ThemeColors) {
       marginTop: 4,
       lineHeight: 18,
     },
+    memberRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      gap: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.divider,
+    },
+    memberRowLast: {
+      borderBottomWidth: 0,
+    },
+    memberAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.avatarBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    memberTextCol: {
+      flex: 1,
+      minWidth: 0,
+    },
+    memberPrimary: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    memberSecondary: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+      fontWeight: '500',
+    },
+    rolePill: {
+      alignSelf: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceMuted,
+    },
+    rolePillText: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textSecondary,
+      textTransform: 'capitalize',
+    },
+    membersHint: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 12,
+      lineHeight: 18,
+    },
+    membersDisclosureTitle: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      letterSpacing: 0.3,
+    },
+    membersDisclosureSub: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 4,
+      fontWeight: '600',
+    },
+    memberListWrap: {
+      marginTop: 4,
+    },
     actions: {
       marginTop: 8,
       marginBottom: 4,
@@ -382,6 +463,12 @@ function resolveBoardName(raw: string | string[] | undefined): string {
   return s?.trim() ? s.trim() : 'My Board';
 }
 
+function collaboratorRoleLabel(role: string): string {
+  if (role === 'owner') return 'Owner';
+  if (role === 'admin') return 'Admin';
+  return 'Member';
+}
+
 function SettingsSection({
   sheet,
   title,
@@ -450,6 +537,21 @@ export default function BoardSettingsScreen() {
   const [descDraft, setDescDraft] = useState('');
   const [ready, setReady] = useState(false);
 
+  const [canManageInvites, setCanManageInvites] = useState(false);
+  const [invitations, setInvitations] = useState<ApiBoardInvitationRow[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteBanner, setInviteBanner] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
+
+  const [boardMembers, setBoardMembers] = useState<ApiBoardMemberRow[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersLoadFailed, setMembersLoadFailed] = useState(false);
+  const [membersListExpanded, setMembersListExpanded] = useState(false);
+
+  useEffect(() => {
+    setMembersListExpanded(false);
+  }, [boardId]);
+
   useEffect(() => {
     let alive = true;
     if (!boardId) {
@@ -474,6 +576,72 @@ export default function BoardSettingsScreen() {
       alive = false;
     };
   }, [boardId, boardName]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!boardId) {
+      setBoardMembers([]);
+      setMembersLoadFailed(false);
+      setMembersLoading(false);
+      return () => {
+        alive = false;
+      };
+    }
+    setMembersLoading(true);
+    setMembersLoadFailed(false);
+    listBoardMembers(boardId)
+      .then(({ members }) => {
+        if (!alive) return;
+        setBoardMembers(members);
+      })
+      .catch(() => {
+        if (alive) {
+          setBoardMembers([]);
+          setMembersLoadFailed(true);
+        }
+      })
+      .finally(() => {
+        if (alive) setMembersLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [boardId]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!boardId) {
+      setCanManageInvites(false);
+      setInvitations([]);
+      return () => {
+        alive = false;
+      };
+    }
+    listBoardInvitations(boardId)
+      .then(({ invitations: rows }) => {
+        if (!alive) return;
+        const pending = rows.filter((r) => !r.accepted_at && !r.declined_at);
+        setInvitations(pending);
+        setCanManageInvites(true);
+      })
+      .catch((e: unknown) => {
+        const status = typeof e === 'object' && e && 'status' in e ? (e as { status?: number }).status : undefined;
+        if (status === 403) {
+          if (alive) {
+            setCanManageInvites(false);
+            setInvitations([]);
+          }
+          return;
+        }
+        if (alive) {
+          setCanManageInvites(true);
+          setInvitations([]);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [boardId]);
 
   const patch = useCallback(
     async (partial: Partial<BoardSettings>) => {
@@ -591,6 +759,189 @@ export default function BoardSettingsScreen() {
                 autoCorrect
               />
             </SettingsSection>
+
+            {boardId ? (
+              <SettingsSection sheet={styles} title="Collaborators">
+                <Text style={styles.membersHint}>Everyone who can open this board.</Text>
+                {membersLoading ? (
+                  <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                    <ActivityIndicator color={colors.iconPrimary} />
+                  </View>
+                ) : membersLoadFailed ? (
+                  <Text style={[styles.sublabel, { color: colors.dangerText }]}>
+                    Could not load people on this board.
+                  </Text>
+                ) : boardMembers.length === 0 ? (
+                  <Text style={styles.sublabel}>No collaborators listed.</Text>
+                ) : (
+                  <View style={{ marginBottom: canManageInvites ? 8 : 0 }}>
+                    <Pressable
+                      onPress={() => {
+                        hapticLight();
+                        setMembersListExpanded((v) => !v);
+                      }}
+                      style={({ pressed }) => [styles.navLinkCell, pressed && styles.navLinkRowPressed]}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: membersListExpanded }}
+                      accessibilityLabel={
+                        membersListExpanded
+                          ? 'Hide people on this board'
+                          : `Show people on this board, ${boardMembers.length} total`
+                      }
+                    >
+                      <View style={styles.navLinkTitleRow}>
+                        <View style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
+                          <Text style={styles.membersDisclosureTitle}>People on this board</Text>
+                          <Text style={styles.membersDisclosureSub}>
+                            {boardMembers.length} {boardMembers.length === 1 ? 'person' : 'people'}
+                          </Text>
+                        </View>
+                        <View style={styles.navLinkChevron} pointerEvents="none">
+                          <Feather
+                            name={membersListExpanded ? 'chevron-up' : 'chevron-down'}
+                            size={22}
+                            color={colors.iconMuted}
+                          />
+                        </View>
+                      </View>
+                    </Pressable>
+                    {membersListExpanded ? (
+                      <View style={styles.memberListWrap}>
+                        {boardMembers.map((m, index) => {
+                          const primary = m.username?.trim() || m.email;
+                          const showEmailSub = Boolean(m.username?.trim());
+                          return (
+                            <View
+                              key={m.userId}
+                              style={[styles.memberRow, index === boardMembers.length - 1 && styles.memberRowLast]}
+                            >
+                              <View style={styles.memberAvatar}>
+                                <Feather name="user" size={20} color={colors.iconPrimary} />
+                              </View>
+                              <View style={styles.memberTextCol}>
+                                <Text style={styles.memberPrimary} numberOfLines={1}>
+                                  {primary}
+                                </Text>
+                                {showEmailSub ? (
+                                  <Text style={styles.memberSecondary} numberOfLines={1}>
+                                    {m.email}
+                                  </Text>
+                                ) : null}
+                              </View>
+                              <View style={styles.rolePill}>
+                                <Text style={styles.rolePillText}>{collaboratorRoleLabel(m.role)}</Text>
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ) : null}
+                  </View>
+                )}
+
+                {canManageInvites ? (
+                  <>
+                    <View style={[styles.divider, { marginVertical: 16 }]} />
+                    <Text style={styles.sublabel}>
+                      Invite someone by email. They get a link to join; pending invites appear in their Messages
+                      tab.
+                    </Text>
+                    <Text style={[styles.metaLabel, styles.gapTop]}>Email address</Text>
+                    <TextInput
+                      value={inviteEmail}
+                      onChangeText={(t) => {
+                        setInviteEmail(t);
+                        setInviteBanner(null);
+                      }}
+                      editable={!inviteBusy}
+                      placeholder="colleague@example.com"
+                      placeholderTextColor={colors.placeholder}
+                      style={styles.inputSingle}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      returnKeyType="done"
+                    />
+                    {inviteBanner ? (
+                      <Text
+                        style={[
+                          styles.sublabelTiny,
+                          { marginTop: 8, color: inviteBanner.tone === 'ok' ? colors.successEmphasis : colors.dangerText },
+                        ]}
+                      >
+                        {inviteBanner.text}
+                      </Text>
+                    ) : null}
+                    <View style={[styles.actions, { marginTop: 14 }]}>
+                      <BoardStyleActionButton
+                        shadowColor={inviteBusy ? colors.shadowFill : colors.success}
+                        onPress={() => {
+                          if (inviteBusy) return;
+                          const em = inviteEmail.trim();
+                          if (!em.includes('@')) {
+                            setInviteBanner({ tone: 'err', text: 'Enter a valid email address.' });
+                            return;
+                          }
+                          hapticLight();
+                          setInviteBusy(true);
+                          setInviteBanner(null);
+                          void createBoardInvitation(boardId, em)
+                            .then(async (res) => {
+                              setInviteEmail('');
+                              const emailLine = res.emailSent
+                                ? 'Invitation sent.'
+                                : `Saved, but email did not send${res.emailError ? `: ${res.emailError}` : '.'}`;
+                              setInviteBanner({ tone: res.emailSent ? 'ok' : 'err', text: emailLine });
+                              try {
+                                const { invitations: rows } = await listBoardInvitations(boardId);
+                                const pending = rows.filter((r) => !r.accepted_at && !r.declined_at);
+                                setInvitations(pending);
+                              } catch {
+                                setInvitations((prev) => [
+                                  ...prev.filter((p) => p.id !== res.invitation.id),
+                                  {
+                                    id: res.invitation.id,
+                                    board_id: boardId,
+                                    inviter_user_id: 0,
+                                    invited_email_normalized: res.invitation.invitedEmailNormalized,
+                                    role: 'member',
+                                    created_at: res.invitation.createdAt,
+                                    expires_at: res.invitation.expiresAt,
+                                    accepted_at: null,
+                                    declined_at: null,
+                                  },
+                                ]);
+                              }
+                            })
+                            .catch((e: unknown) => {
+                              const msg = e instanceof Error ? e.message : 'Could not send invite.';
+                              setInviteBanner({ tone: 'err', text: msg });
+                            })
+                            .finally(() => setInviteBusy(false));
+                        }}
+                        disabled={inviteBusy}
+                        label={inviteBusy ? 'Sending…' : 'Send invite'}
+                        labelStyle={{ color: colors.textPrimary }}
+                      />
+                    </View>
+                    {invitations.length > 0 ? (
+                      <View style={{ marginTop: 18 }}>
+                        <Text style={styles.metaLabel}>Pending invites</Text>
+                        {invitations.map((inv) => (
+                          <Text key={inv.id} style={[styles.sublabel, { marginTop: 6 }]} numberOfLines={2}>
+                            {inv.invited_email_normalized}
+                            <Text style={{ color: colors.textTertiary, fontWeight: '500' }}>
+                              {' '}
+                              · expires {inv.expires_at.slice(0, 10)}
+                            </Text>
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                  </>
+                ) : null}
+              </SettingsSection>
+            ) : null}
 
             <SettingsSection sheet={styles} title="Default view">
               <Text style={styles.sublabel}>When you open this board from the home list, start here.</Text>

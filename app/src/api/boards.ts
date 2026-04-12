@@ -253,3 +253,86 @@ export async function patchNotificationSettings(
   });
   return res.data as { prefs: Record<string, unknown> };
 }
+
+export type ApiBoardMemberRow = {
+  userId: number;
+  role: string;
+  username: string | null;
+  email: string;
+  joinedAt: string;
+};
+
+export async function listBoardMembers(boardId: string): Promise<{ members: ApiBoardMemberRow[] }> {
+  const res = await nativeFetch(`/api/boards/${encodeURIComponent(boardId)}/members`, { method: 'GET' });
+  return res.data as { members: ApiBoardMemberRow[] };
+}
+
+export type ApiBoardInvitationRow = {
+  id: string;
+  board_id: string;
+  inviter_user_id: number;
+  invited_email_normalized: string;
+  role: string;
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+  declined_at: string | null;
+};
+
+export async function listBoardInvitations(boardId: string): Promise<{ invitations: ApiBoardInvitationRow[] }> {
+  const res = await nativeFetch(`/api/boards/${encodeURIComponent(boardId)}/invitations`, { method: 'GET' });
+  return res.data as { invitations: ApiBoardInvitationRow[] };
+}
+
+export async function createBoardInvitation(
+  boardId: string,
+  email: string
+): Promise<{
+  invitation: {
+    id: string;
+    boardId: string;
+    invitedEmailNormalized: string;
+    createdAt: string;
+    expiresAt: string;
+  };
+  emailSent: boolean;
+  emailError?: string;
+}> {
+  const res = await nativeFetch(`/api/boards/${encodeURIComponent(boardId)}/invitations`, {
+    method: 'POST',
+    data: { email },
+  });
+  return res.data as {
+    invitation: {
+      id: string;
+      boardId: string;
+      invitedEmailNormalized: string;
+      createdAt: string;
+      expiresAt: string;
+    };
+    emailSent: boolean;
+    emailError?: string;
+  };
+}
+
+export async function acceptBoardInvitationSession(
+  boardId: string,
+  invitationId: string
+): Promise<{ ok: boolean; boardId: string; boardName: string }> {
+  const res = await nativeFetch(
+    `/api/boards/${encodeURIComponent(boardId)}/invitations/${encodeURIComponent(invitationId)}/accept`,
+    { method: 'POST', data: {} }
+  );
+  return res.data as { ok: boolean; boardId: string; boardName: string };
+}
+
+export async function declineBoardInvitationSession(
+  boardId: string,
+  invitationId: string
+): Promise<{ ok: boolean }> {
+  const res = await nativeFetch(
+    `/api/boards/${encodeURIComponent(boardId)}/invitations/${encodeURIComponent(invitationId)}/decline`,
+    { method: 'POST', data: {} }
+  );
+  return res.data as { ok: boolean };
+}

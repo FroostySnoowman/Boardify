@@ -920,7 +920,7 @@ async function me(request: Request, env: Env): Promise<Response> {
   return jsonResponse(request, { user }, { status: 200 })
 }
 
-function smtpFromHeader(env: Env): string | undefined {
+export function smtpFromHeader(env: Env): string | undefined {
   const custom = env.SMTP_FROM?.trim()
   if (custom) {
     if (custom.includes('<')) return custom
@@ -932,7 +932,7 @@ function smtpFromHeader(env: Env): string | undefined {
   return undefined
 }
 
-function getSmtp(env: Env): SmtpConfig | undefined {
+export function getSmtp(env: Env): SmtpConfig | undefined {
   if (!env.SMTP_HOST) return undefined
   const parsed = parseInt(env.SMTP_PORT || '587', 10)
   const port = Number.isFinite(parsed) && parsed > 0 && parsed <= 65535 ? parsed : 587
@@ -945,7 +945,7 @@ function getSmtp(env: Env): SmtpConfig | undefined {
   }
 }
 
-function getAppUrl(request: Request, env: Env): string {
+export function getAppUrl(request: Request, env: Env): string {
   if (env.WEB_APP_URL) return env.WEB_APP_URL.replace(/\/$/, '')
   const url = new URL(request.url)
   return url.origin.replace('api.', '')

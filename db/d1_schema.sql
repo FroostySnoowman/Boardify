@@ -81,6 +81,25 @@ CREATE TABLE IF NOT EXISTS board_members (
 );
 CREATE INDEX IF NOT EXISTS idx_board_members_user ON board_members(user_id);
 
+CREATE TABLE IF NOT EXISTS board_invitations (
+  id TEXT PRIMARY KEY,
+  board_id TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+  inviter_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  invited_email_normalized TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member',
+  token_hash TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  accepted_at TEXT,
+  declined_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_board_invites_email ON board_invitations(invited_email_normalized);
+CREATE INDEX IF NOT EXISTS idx_board_invites_board ON board_invitations(board_id);
+CREATE INDEX IF NOT EXISTS idx_board_invites_expires ON board_invitations(expires_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_board_invites_pending_unique
+  ON board_invitations(board_id, invited_email_normalized)
+  WHERE accepted_at IS NULL AND declined_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS lists (
   id TEXT PRIMARY KEY,
   board_id TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,

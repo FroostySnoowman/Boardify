@@ -3,6 +3,7 @@ import { jsonResponse } from './http';
 import { getCurrentUserFromSession } from './auth';
 import { hashPassword, verifyPassword, formatPasswordHash } from './lib/auth/password';
 import { auditRowToInboxItem, type AuditRow } from './inboxMap';
+import { normalizeInviteEmail } from './boardInvitations';
 
 export async function handleUser(
   request: Request,
@@ -233,6 +234,7 @@ export async function handleUser(
     const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '50', 10)));
     const offset = Math.max(0, parseInt(url.searchParams.get('offset') ?? '0', 10));
 
+    const fetchCap = Math.min(500, offset + limit + 80);
     const { results } = await env.DB.prepare(
       `SELECT a.id, a.board_id, a.at_iso, a.kind, a.summary, a.actor_user_id, a.metadata_json,
               b.name as board_name, u.username as actor_username, u.email as actor_email
@@ -242,14 +244,68 @@ export async function handleUser(
        LEFT JOIN users u ON u.id = a.actor_user_id
        WHERE (a.actor_user_id IS NULL OR a.actor_user_id != ?)
        ORDER BY a.at_iso DESC
-       LIMIT ? OFFSET ?`
+       LIMIT ? OFFSET 0`
     )
-      .bind(userId, userId, limit, offset)
+      .bind(userId, userId, fetchCap)
       .all<AuditRow>();
 
-    const messages = (results ?? [])
+    const auditMessages = (results ?? [])
       .map((row) => auditRowToInboxItem(row, userId))
       .filter((item): item is NonNullable<typeof item> => item != null);
+
+    const emailNorm = currentUser.email ? normalizeInviteEmail(currentUser.email) : '';
+    type InboxOut = NonNullable<ReturnType<typeof auditRowToInboxItem>>;
+    let inviteMessages: InboxOut[] = [];
+    if (emailNorm) {
+      const nowIso = new Date().toISOString();
+      const { results: invRows } = await env.DB.prepare(
+        `SELECT i.id, i.board_id, i.created_at as at_iso, b.name as board_name,
+                u.username as inviter_username, u.email as inviter_email
+         FROM board_invitations i
+         JOIN boards b ON b.id = i.board_id AND b.archived_at IS NULL
+         JOIN users u ON u.id = i.inviter_user_id
+         WHERE i.invited_email_normalized = ?
+           AND i.expires_at > ?
+           AND i.accepted_at IS NULL AND i.declined_at IS NULL`
+      )
+        .bind(emailNorm, nowIso)
+        .all<{
+          id: string;
+          board_id: string;
+          at_iso: string;
+          board_name: string;
+          inviter_username: string | null;
+          inviter_email: string;
+        }>();
+      inviteMessages = (invRows ?? []).map((row) => {
+        const u = row.inviter_username?.trim();
+        const actorName =
+          u ||
+          (row.inviter_email?.includes('@')
+            ? row.inviter_email.split('@')[0]!
+            : row.inviter_email) ||
+          'Someone';
+        const boardName = row.board_name.trim() || 'Board';
+        return {
+          id: `inv_${row.id}`,
+          boardId: row.board_id,
+          boardName,
+          cardId: null,
+          atIso: row.at_iso,
+          actorName,
+          messageKind: 'invite' as const,
+          headline: 'invited you to a board',
+          detail: boardName,
+          accentColor: '#86efac',
+          invitationId: row.id,
+        };
+      });
+    }
+
+    const merged = [...auditMessages, ...inviteMessages].sort((a, b) =>
+      a.atIso < b.atIso ? 1 : a.atIso > b.atIso ? -1 : 0
+    );
+    const messages = merged.slice(offset, offset + limit);
 
     return jsonResponse(request, { messages });
   }

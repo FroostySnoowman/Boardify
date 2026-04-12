@@ -335,7 +335,9 @@ export default function BoardScreen({
   const hoverRafRef = useRef<number | null>(null);
   const listDraggingRef = useRef<ListDraggingState | null>(null);
   const listHoverInsertRef = useRef<number | null>(null);
-  const columnWrapLayoutsRef = useRef<Array<{ x: number; width: number } | null>>([]);
+  const columnWrapLayoutsRef = useRef<
+    Array<{ x: number; y: number; width: number; height: number } | null>
+  >([]);
   const dragOverArchiveRef = useRef(false);
   const dragOverArchivePrevRef = useRef(false);
   const [dragOverArchive, setDragOverArchive] = useState(false);
@@ -1026,7 +1028,7 @@ export default function BoardScreen({
       while (arr.length <= colIndex) {
         arr.push(null);
       }
-      arr[colIndex] = { x: rect.x, width: rect.width };
+      arr[colIndex] = { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
     },
     []
   );
@@ -1038,18 +1040,41 @@ export default function BoardScreen({
   const computeHover = useCallback(
     (absX: number, absY: number) => {
       const layouts = columnLayoutsRef.current;
+      const wraps = columnWrapLayoutsRef.current;
       const scrollYs = columnScrollYRef.current;
       const dragId = draggingRef.current?.cardId;
       for (let i = 0; i < columns.length; i++) {
         const L = layouts[i];
-        if (!L) continue;
-        if (absX >= L.x && absX <= L.x + L.width && absY >= L.y && absY <= L.y + L.height) {
+        const wrap = wraps[i];
+        const virtualCount = columns[i].cards.filter((c) => c.id !== dragId).length;
+
+        const inColumn =
+          wrap &&
+          wrap.width > 0 &&
+          wrap.height > 0 &&
+          absX >= wrap.x &&
+          absX <= wrap.x + wrap.width &&
+          absY >= wrap.y &&
+          absY <= wrap.y + wrap.height
+            ? true
+            : L &&
+                absX >= L.x &&
+                absX <= L.x + L.width &&
+                absY >= L.y &&
+                absY <= L.y + L.height;
+
+        if (!inColumn) continue;
+
+        if (L && absY >= L.y && absY <= L.y + L.height) {
           const scrollY = scrollYs[i] ?? 0;
           const localY = absY - L.y + scrollY;
-          const virtualCount = columns[i].cards.filter((c) => c.id !== dragId).length;
           const insertIndex = computeHoverInsertIndex(localY, virtualCount);
           return { col: i, insertIndex };
         }
+        if (!L || absY < L.y) {
+          return { col: i, insertIndex: 0 };
+        }
+        return { col: i, insertIndex: virtualCount };
       }
       return null;
     },

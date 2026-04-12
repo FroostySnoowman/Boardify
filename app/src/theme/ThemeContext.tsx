@@ -32,7 +32,11 @@ function resolveScheme(
   system: ResolvedScheme | null | undefined
 ): ResolvedScheme {
   if (preference === 'light' || preference === 'dark') return preference;
-  return system === 'dark' ? 'dark' : 'light';
+  const s =
+    system === 'dark' || system === 'light'
+      ? system
+      : ((Appearance.getColorScheme() === 'dark' ? 'dark' : 'light') as ResolvedScheme);
+  return s;
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -56,8 +60,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const resolvedScheme = useMemo(() => {
     void appearanceTick;
-    const sys = (systemScheme === 'dark' ? 'dark' : 'light') as ResolvedScheme;
-    return resolveScheme(preference, sys);
+    const fromHook =
+      systemScheme === 'dark' || systemScheme === 'light'
+        ? (systemScheme as ResolvedScheme)
+        : null;
+    return resolveScheme(preference, fromHook);
   }, [preference, systemScheme, appearanceTick]);
 
   const colors = useMemo(() => getThemeColors(resolvedScheme), [resolvedScheme]);

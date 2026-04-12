@@ -1,7 +1,0 @@
-{
-  "scripts": {
-    "dev": "wrangler dev --remote",
-    "deploy": "wrangler deploy",
-    "deploy:prod": "wrangler deploy --env production"
-  }
-}

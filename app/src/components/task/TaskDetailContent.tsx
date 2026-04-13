@@ -1199,10 +1199,6 @@ export function TaskDetailContent({ task, onChange, availableMembers = [] }: Pro
                       </Pressable>
                     ))}
                   </View>
-                ) : memberPickerOpen ? (
-                  <View style={[styles.memberPickerInset, styles.memberPickerInsetFlush]}>
-                    {renderMemberPickerBody()}
-                  </View>
                 ) : (
                   <View style={styles.memberRowLead}>
                     <Text style={styles.memberHintInRow} numberOfLines={2}>
@@ -1227,7 +1223,7 @@ export function TaskDetailContent({ task, onChange, availableMembers = [] }: Pro
                 />
               </Pressable>
             </View>
-            {memberPickerOpen && assignees.length > 0 ? (
+            {memberPickerOpen ? (
               <View style={styles.memberPickerInset}>{renderMemberPickerBody()}</View>
             ) : null}
             {memberPickerOpen ? (

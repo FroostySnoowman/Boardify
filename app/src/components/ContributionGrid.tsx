@@ -29,24 +29,21 @@ interface ContributionGridProps {
   gap?: number;
 }
 
-const MOCK_DATA: number[] = [
-  0, 1, 2, 1, 0, 1, 2, 1, 2, 3, 2, 1, 2, 1, 0, 2, 1, 2, 3, 2, 1, 0, 1, 2, 1, 0, 1, 0, 2, 1, 2, 3, 2, 1, 2,
-];
-
 export function ContributionGrid({
   theme,
-  data = MOCK_DATA,
+  data,
   cellSize = 10,
   gap = 3,
 }: ContributionGridProps) {
   const colors = theme === 'reading' ? readingColors : runningColors;
+  const values = data ?? [];
 
   return (
     <View style={styles.container}>
       {Array.from({ length: ROWS }, (_, row) => (
         <View key={row} style={[styles.row, { gap }]}>
           {Array.from({ length: COLS }, (_, col) => {
-            const value = data[row * COLS + col] ?? 0;
+            const value = values[row * COLS + col] ?? 0;
             const bg = colors[Math.min(value, 4)] ?? colors[0];
             return (
               <View

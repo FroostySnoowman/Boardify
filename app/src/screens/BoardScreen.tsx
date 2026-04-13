@@ -51,7 +51,7 @@ import {
   type ExpandedCardLayout,
 } from '../components/BoardCardExpandOverlay';
 import { BoardCard } from '../components/BoardCard';
-import type { BoardCardData, BoardColumnData, BoardViewMode, TaskLabel } from '../types/board';
+import type { BoardCardData, BoardColumnData, BoardViewMode, TaskLabel, TaskMember } from '../types/board';
 import {
   mergeBoardSettingsFromRemoteJson,
   resolveBoardDisplayTitle,
@@ -61,6 +61,7 @@ import {
   createCard,
   createList,
   patchCard,
+  listBoardMembers,
   getDashboardTiles,
   putDashboardTiles,
 } from '../api/boards';
@@ -227,6 +228,35 @@ export default function BoardScreen({
   const [viewMode, setViewMode] = useState<BoardViewMode>('board');
   const [boardFocusMode, setBoardFocusMode] = useState(false);
   const [displayBoardTitle, setDisplayBoardTitle] = useState(boardName);
+  const [availableMembers, setAvailableMembers] = useState<TaskMember[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { members } = await listBoardMembers(boardId);
+        if (cancelled) return;
+        const mapped = (members ?? []).map((m) => {
+          const fallbackName = m.email.split('@')[0] || 'Member';
+          const name = (m.username?.trim() || fallbackName).trim();
+          const initialsSource = name.replace(/[^A-Za-z0-9 ]/g, ' ').trim();
+          const parts = initialsSource.split(/\s+/).filter(Boolean);
+          const initials = (
+            (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? parts[0]?.[1] ?? '')
+          )
+            .toUpperCase()
+            .slice(0, 2) || 'U';
+          return { id: String(m.userId), name, initials };
+        });
+        setAvailableMembers(mapped);
+      } catch {
+        if (!cancelled) setAvailableMembers([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [boardId]);
 
   useEffect(() => {
     if (!boardRow) {
@@ -2069,7 +2099,10 @@ export default function BoardScreen({
             <BoardCard
               title={draggingCard.title}
               subtitle={draggingCard.subtitle}
+              description={draggingCard.description}
               labelColor={draggingCard.labelColor}
+              priorities={draggingCard.priorities}
+              assignees={draggingCard.assignees}
               suppressPress
             />
           </Animated.View>
@@ -2201,6 +2234,7 @@ export default function BoardScreen({
         <BoardCardExpandOverlay
           layoutInfo={expanded}
           card={expandedCardResolved.card}
+          availableMembers={availableMembers}
           onUpdateCard={handleUpdateExpandedCard}
           onClose={handleCloseExpandedCard}
         />

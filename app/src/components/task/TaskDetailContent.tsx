@@ -41,13 +41,6 @@ const PRIORITY_PRESETS: TaskLabel[] = [
   { id: 'pp-4', name: 'Critical', color: '#fca5a5' },
 ];
 
-const MEMBER_POOL: TaskMember[] = [
-  { id: 'm-1', name: 'Alex Kim', initials: 'AK' },
-  { id: 'm-2', name: 'Jordan Lee', initials: 'JL' },
-  { id: 'm-3', name: 'Sam Rivera', initials: 'SR' },
-  { id: 'm-4', name: 'Taylor Chen', initials: 'TC' },
-];
-
 function uid() {
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -142,10 +135,12 @@ function createTaskDetailStyles(colors: ThemeColors) {
   memberPickerRowInner: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     width: '100%',
     minHeight: 48,
     paddingVertical: 10,
-    paddingHorizontal: 4,
+    paddingLeft: 4,
+    paddingRight: 0,
   },
   memberPickerRowPressed: {
     backgroundColor: colors.tableRowAlt,
@@ -757,9 +752,10 @@ function ChecklistBlock({
 type Props = {
   task: BoardCardData;
   onChange: (next: BoardCardData) => void;
+  availableMembers?: TaskMember[];
 };
 
-export function TaskDetailContent({ task, onChange }: Props) {
+export function TaskDetailContent({ task, onChange, availableMembers = [] }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createTaskDetailStyles(colors), [colors]);
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
@@ -861,18 +857,23 @@ export function TaskDetailContent({ task, onChange }: Props) {
     onChange({ ...task, attachments: [...attachments, att] });
   }, [task, attachments, onChange]);
 
-  const availableMembers = useMemo(
-    () => MEMBER_POOL.filter((m) => !assignees.some((a) => a.id === m.id)),
-    [assignees]
-  );
+  const pickerMembers = useMemo(() => {
+    const source = availableMembers.length > 0 ? availableMembers : assignees;
+    const map = new Map<string, TaskMember>();
+    for (const m of source) {
+      if (!m?.id) continue;
+      map.set(m.id, m);
+    }
+    return [...map.values()].filter((m) => !assignees.some((a) => a.id === m.id));
+  }, [availableMembers, assignees]);
 
   const renderMemberPickerBody = useCallback(
     () => (
       <>
         <Text style={styles.memberPickerTitle}>Choose someone to add</Text>
         <Text style={styles.memberPickerSubtitle}>Tap a row — no extra button needed</Text>
-        {availableMembers.length > 0 ? (
-          availableMembers.map((m, i) => (
+        {pickerMembers.length > 0 ? (
+          pickerMembers.map((m, i) => (
             <Pressable
               key={m.id}
               onPress={() => addMember(m)}
@@ -880,7 +881,7 @@ export function TaskDetailContent({ task, onChange }: Props) {
               accessibilityLabel={`Add ${m.name}`}
               style={({ pressed }) => [
                 styles.memberPickerRow,
-                i < availableMembers.length - 1 && styles.memberPickerRowBorder,
+                i < pickerMembers.length - 1 && styles.memberPickerRowBorder,
                 pressed && styles.memberPickerRowPressed,
               ]}
             >
@@ -902,7 +903,7 @@ export function TaskDetailContent({ task, onChange }: Props) {
         )}
       </>
     ),
-    [addMember, availableMembers, colors.iconMuted, styles]
+    [addMember, pickerMembers, colors.iconMuted, styles]
   );
 
   const toggleMemberPickerFromQuickAdd = useCallback(() => {

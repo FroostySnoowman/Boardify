@@ -159,7 +159,10 @@ export const DraggableBoardCard = forwardRef<View, DraggableBoardCardProps>(func
         <BoardCard
           title={card.title}
           subtitle={card.subtitle}
+          description={card.description}
           labelColor={card.labelColor}
+          priorities={card.priorities}
+          assignees={card.assignees}
           suppressPress
           hidden={hidden}
         />

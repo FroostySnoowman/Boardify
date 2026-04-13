@@ -11,6 +11,7 @@ import {
   Keyboard,
   Pressable,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -263,7 +264,6 @@ function createBoardSettingsStyles(colors: ThemeColors) {
       paddingVertical: 10,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.divider,
-      gap: 10,
     },
     tagEditorTop: {
       flexDirection: 'row',
@@ -302,24 +302,65 @@ function createBoardSettingsStyles(colors: ThemeColors) {
       backgroundColor: colors.surfaceElevated,
       flexShrink: 0,
     },
-    colorPickerRow: {
-      flexDirection: 'row',
+    colorModalRoot: {
+      flex: 1,
+      justifyContent: 'center',
       alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 8,
-      paddingLeft: 38,
-      paddingRight: 4,
-      paddingBottom: 2,
+      padding: 24,
     },
-    colorChoice: {
-      width: 22,
-      height: 22,
-      borderRadius: 7,
+    colorModalBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+    },
+    colorModalCard: {
+      width: '100%',
+      maxWidth: 300,
+      backgroundColor: colors.surfaceElevated,
+      borderRadius: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      padding: 18,
+      shadowColor: '#000',
+      shadowOffset: { width: 4, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 0,
+      elevation: 8,
+    },
+    colorModalTitle: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginBottom: 14,
+      letterSpacing: 0.2,
+    },
+    colorModalGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: 10,
+    },
+    colorModalSwatch: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
       borderWidth: 2,
       borderColor: colors.border,
     },
-    colorChoiceOn: {
+    colorModalSwatchSelected: {
       borderColor: colors.textPrimary,
+      borderWidth: 3,
+    },
+    colorModalCancel: {
+      marginTop: 16,
+      alignSelf: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+    },
+    colorModalCancelText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.textSecondary,
     },
     addTagBtn: {
       marginTop: 10,
@@ -615,87 +656,124 @@ function EditableTagList({
   idPrefix: 'lb' | 'pr';
   onChange: (next: TaskLabel[]) => void;
 }) {
+  const [colorMenuTagId, setColorMenuTagId] = useState<string | null>(null);
+
+  const closeColorMenu = useCallback(() => setColorMenuTagId(null), []);
+
+  const pickColor = useCallback(
+    (c: string) => {
+      if (!colorMenuTagId) return;
+      hapticLight();
+      onChange(tags.map((t) => (t.id === colorMenuTagId ? { ...t, color: c } : t)));
+      setColorMenuTagId(null);
+    },
+    [colorMenuTagId, onChange, tags]
+  );
+
   return (
-    <SettingsInsetChoiceList sheet={sheet} hint={hint}>
-      {tags.map((tag, index) => (
-        <View key={tag.id} style={[sheet.tagEditorRow, index === tags.length - 1 && { borderBottomWidth: 0 }]}>
-          <View style={sheet.tagEditorTop}>
-            <Pressable
-              onPress={() => {
-                const current = TAG_COLOR_OPTIONS.indexOf(tag.color as (typeof TAG_COLOR_OPTIONS)[number]);
-                const nextColor = TAG_COLOR_OPTIONS[(current + 1 + TAG_COLOR_OPTIONS.length) % TAG_COLOR_OPTIONS.length];
-                onChange(tags.map((t) => (t.id === tag.id ? { ...t, color: nextColor } : t)));
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={`Change color for ${tag.name}`}
-              style={[sheet.tagSwatchButton, { backgroundColor: tag.color }]}
-            />
-            <TextInput
-              value={tag.name}
-              onChangeText={(text) => {
-                onChange(tags.map((t) => (t.id === tag.id ? { ...t, name: text } : t)));
-              }}
-              onBlur={() => {
-                const trimmed = tag.name.trim();
-                if (!trimmed) {
-                  onChange(tags.filter((t) => t.id !== tag.id));
-                  return;
-                }
-                if (trimmed !== tag.name) {
-                  onChange(tags.map((t) => (t.id === tag.id ? { ...t, name: trimmed } : t)));
-                }
-              }}
-              placeholder={`${title} name`}
-              placeholderTextColor={colors.placeholder}
-              style={sheet.tagNameInput}
-              maxLength={24}
-              autoCorrect={false}
-              autoCapitalize="words"
-            />
-            <Pressable
-              onPress={() => onChange(tags.filter((t) => t.id !== tag.id))}
-              accessibilityRole="button"
-              accessibilityLabel={`Delete ${tag.name}`}
-              style={({ pressed }) => [sheet.tagDeleteBtn, pressed && { opacity: 0.75 }]}
-            >
-              <Feather name="trash-2" size={15} color={colors.danger} />
+    <>
+      <SettingsInsetChoiceList sheet={sheet} hint={hint}>
+        {tags.map((tag, index) => (
+          <View key={tag.id} style={[sheet.tagEditorRow, index === tags.length - 1 && { borderBottomWidth: 0 }]}>
+            <View style={sheet.tagEditorTop}>
+              <TextInput
+                value={tag.name}
+                onChangeText={(text) => {
+                  onChange(tags.map((t) => (t.id === tag.id ? { ...t, name: text } : t)));
+                }}
+                onBlur={() => {
+                  const trimmed = tag.name.trim();
+                  if (!trimmed) {
+                    onChange(tags.filter((t) => t.id !== tag.id));
+                    return;
+                  }
+                  if (trimmed !== tag.name) {
+                    onChange(tags.map((t) => (t.id === tag.id ? { ...t, name: trimmed } : t)));
+                  }
+                }}
+                placeholder={`${title} name`}
+                placeholderTextColor={colors.placeholder}
+                style={sheet.tagNameInput}
+                maxLength={24}
+                autoCorrect={false}
+                autoCapitalize="words"
+              />
+              <Pressable
+                onPress={() => {
+                  hapticLight();
+                  setColorMenuTagId(tag.id);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Choose color for ${tag.name}`}
+                style={[sheet.tagSwatchButton, { backgroundColor: tag.color }]}
+              />
+              <Pressable
+                onPress={() => onChange(tags.filter((t) => t.id !== tag.id))}
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${tag.name}`}
+                style={({ pressed }) => [sheet.tagDeleteBtn, pressed && { opacity: 0.75 }]}
+              >
+                <Feather name="trash-2" size={15} color={colors.danger} />
+              </Pressable>
+            </View>
+          </View>
+        ))}
+        <Pressable
+          onPress={() => {
+            const nextColor = TAG_COLOR_OPTIONS[tags.length % TAG_COLOR_OPTIONS.length];
+            onChange([
+              ...tags,
+              {
+                id: makeTagId(idPrefix),
+                name: emptyLabel,
+                color: nextColor,
+              },
+            ]);
+          }}
+          style={({ pressed }) => [sheet.addTagBtn, pressed && { opacity: 0.75 }]}
+        >
+          <Feather name="plus" size={16} color={colors.iconPrimary} />
+          <Text style={sheet.addTagText}>{addLabel}</Text>
+        </Pressable>
+      </SettingsInsetChoiceList>
+
+      <Modal
+        visible={colorMenuTagId != null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeColorMenu}
+      >
+        <View style={sheet.colorModalRoot}>
+          <Pressable style={sheet.colorModalBackdrop} onPress={closeColorMenu} accessibilityLabel="Dismiss" />
+          <View style={sheet.colorModalCard} pointerEvents="box-none">
+            <Text style={sheet.colorModalTitle}>Choose color</Text>
+            <View style={sheet.colorModalGrid}>
+              {TAG_COLOR_OPTIONS.map((c) => {
+                const active = tags.find((t) => t.id === colorMenuTagId);
+                const selected = active?.color === c;
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => pickColor(c)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`Color ${c}`}
+                    style={[
+                      sheet.colorModalSwatch,
+                      selected && sheet.colorModalSwatchSelected,
+                      { backgroundColor: c },
+                    ]}
+                  />
+                );
+              })}
+            </View>
+            <Pressable onPress={closeColorMenu} style={sheet.colorModalCancel} accessibilityRole="button">
+              <Text style={sheet.colorModalCancelText}>Cancel</Text>
             </Pressable>
           </View>
-          <View style={sheet.colorPickerRow}>
-            {TAG_COLOR_OPTIONS.map((c) => {
-              const selected = c === tag.color;
-              return (
-                <Pressable
-                  key={`${tag.id}-${c}`}
-                  onPress={() => onChange(tags.map((t) => (t.id === tag.id ? { ...t, color: c } : t)))}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`${tag.name} color`}
-                  style={[sheet.colorChoice, selected && sheet.colorChoiceOn, { backgroundColor: c }]}
-                />
-              );
-            })}
-          </View>
         </View>
-      ))}
-      <Pressable
-        onPress={() => {
-          const nextColor = TAG_COLOR_OPTIONS[tags.length % TAG_COLOR_OPTIONS.length];
-          onChange([
-            ...tags,
-            {
-              id: makeTagId(idPrefix),
-              name: emptyLabel,
-              color: nextColor,
-            },
-          ]);
-        }}
-        style={({ pressed }) => [sheet.addTagBtn, pressed && { opacity: 0.75 }]}
-      >
-        <Feather name="plus" size={16} color={colors.iconPrimary} />
-        <Text style={sheet.addTagText}>{addLabel}</Text>
-      </Pressable>
-    </SettingsInsetChoiceList>
+      </Modal>
+    </>
   );
 }
 

@@ -229,6 +229,10 @@ export default function BoardScreen({
   const [boardFocusMode, setBoardFocusMode] = useState(false);
   const [displayBoardTitle, setDisplayBoardTitle] = useState(boardName);
   const [availableMembers, setAvailableMembers] = useState<TaskMember[]>([]);
+  const cardTaxonomy = useMemo(
+    () => mergeBoardSettingsFromRemoteJson(boardRow?.settings_json),
+    [boardRow?.settings_json]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -2235,6 +2239,8 @@ export default function BoardScreen({
           layoutInfo={expanded}
           card={expandedCardResolved.card}
           availableMembers={availableMembers}
+          labelPresets={cardTaxonomy.boardLabels}
+          priorityPresets={cardTaxonomy.boardPriorities}
           onUpdateCard={handleUpdateExpandedCard}
           onClose={handleCloseExpandedCard}
         />

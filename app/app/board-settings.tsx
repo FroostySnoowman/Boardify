@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../src/utils/haptics';
 import { BoardStyleActionButton } from '../src/components/BoardStyleActionButton';
-import type { BoardViewMode } from '../src/types/board';
+import type { BoardViewMode, TaskLabel } from '../src/types/board';
 import {
   BOARD_SETTINGS_DEFAULTS,
   mergeBoardSettingsFromRemoteJson,
@@ -53,6 +53,23 @@ const WEEK_START_OPTIONS: { label: string; value: 'monday' | 'sunday'; swatchCol
   { label: 'Monday', value: 'monday', swatchColor: '#c7d2fe' },
   { label: 'Sunday', value: 'sunday', swatchColor: '#fde047' },
 ];
+
+const TAG_COLOR_OPTIONS = [
+  '#F3D9B1',
+  '#a5d6a5',
+  '#fca5a5',
+  '#b8c5ff',
+  '#fbbf24',
+  '#c7d2fe',
+  '#fde68a',
+  '#fdba74',
+  '#86efac',
+  '#f9a8d4',
+] as const;
+
+function makeTagId(prefix: 'lb' | 'pr') {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 function createBoardSettingsStyles(colors: ThemeColors) {
   return StyleSheet.create({
@@ -241,6 +258,82 @@ function createBoardSettingsStyles(colors: ThemeColors) {
     choiceRowToggleOn: {
       borderColor: colors.successEmphasis,
       backgroundColor: colors.successTrack,
+    },
+    tagEditorRow: {
+      paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.divider,
+      gap: 10,
+    },
+    tagEditorTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    tagSwatchButton: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      borderWidth: 2,
+      borderColor: colors.border,
+      flexShrink: 0,
+    },
+    tagNameInput: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      borderWidth: 1,
+      borderColor: colors.divider,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      backgroundColor: colors.modalCreamCanvas,
+    },
+    tagDeleteBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.divider,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceElevated,
+      flexShrink: 0,
+    },
+    colorPickerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 8,
+      paddingLeft: 38,
+      paddingRight: 4,
+      paddingBottom: 2,
+    },
+    colorChoice: {
+      width: 22,
+      height: 22,
+      borderRadius: 7,
+      borderWidth: 2,
+      borderColor: colors.border,
+    },
+    colorChoiceOn: {
+      borderColor: colors.textPrimary,
+    },
+    addTagBtn: {
+      marginTop: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+    },
+    addTagText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.textPrimary,
     },
     toggleRow: {
       flexDirection: 'row',
@@ -455,6 +548,111 @@ function SettingsChoiceRow({
         </View>
       </View>
     </Pressable>
+  );
+}
+
+function EditableTagList({
+  sheet,
+  colors,
+  title,
+  hint,
+  addLabel,
+  emptyLabel,
+  tags,
+  idPrefix,
+  onChange,
+}: {
+  sheet: BoardSettingsSheet;
+  colors: ThemeColors;
+  title: string;
+  hint: string;
+  addLabel: string;
+  emptyLabel: string;
+  tags: TaskLabel[];
+  idPrefix: 'lb' | 'pr';
+  onChange: (next: TaskLabel[]) => void;
+}) {
+  return (
+    <SettingsInsetChoiceList sheet={sheet} hint={hint}>
+      {tags.map((tag, index) => (
+        <View key={tag.id} style={[sheet.tagEditorRow, index === tags.length - 1 && { borderBottomWidth: 0 }]}>
+          <View style={sheet.tagEditorTop}>
+            <Pressable
+              onPress={() => {
+                const current = TAG_COLOR_OPTIONS.indexOf(tag.color as (typeof TAG_COLOR_OPTIONS)[number]);
+                const nextColor = TAG_COLOR_OPTIONS[(current + 1 + TAG_COLOR_OPTIONS.length) % TAG_COLOR_OPTIONS.length];
+                onChange(tags.map((t) => (t.id === tag.id ? { ...t, color: nextColor } : t)));
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Change color for ${tag.name}`}
+              style={[sheet.tagSwatchButton, { backgroundColor: tag.color }]}
+            />
+            <TextInput
+              value={tag.name}
+              onChangeText={(text) => {
+                onChange(tags.map((t) => (t.id === tag.id ? { ...t, name: text } : t)));
+              }}
+              onBlur={() => {
+                const trimmed = tag.name.trim();
+                if (!trimmed) {
+                  onChange(tags.filter((t) => t.id !== tag.id));
+                  return;
+                }
+                if (trimmed !== tag.name) {
+                  onChange(tags.map((t) => (t.id === tag.id ? { ...t, name: trimmed } : t)));
+                }
+              }}
+              placeholder={`${title} name`}
+              placeholderTextColor={colors.placeholder}
+              style={sheet.tagNameInput}
+              maxLength={24}
+              autoCorrect={false}
+              autoCapitalize="words"
+            />
+            <Pressable
+              onPress={() => onChange(tags.filter((t) => t.id !== tag.id))}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${tag.name}`}
+              style={({ pressed }) => [sheet.tagDeleteBtn, pressed && { opacity: 0.75 }]}
+            >
+              <Feather name="trash-2" size={15} color={colors.danger} />
+            </Pressable>
+          </View>
+          <View style={sheet.colorPickerRow}>
+            {TAG_COLOR_OPTIONS.map((c) => {
+              const selected = c === tag.color;
+              return (
+                <Pressable
+                  key={`${tag.id}-${c}`}
+                  onPress={() => onChange(tags.map((t) => (t.id === tag.id ? { ...t, color: c } : t)))}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`${tag.name} color`}
+                  style={[sheet.colorChoice, selected && sheet.colorChoiceOn, { backgroundColor: c }]}
+                />
+              );
+            })}
+          </View>
+        </View>
+      ))}
+      <Pressable
+        onPress={() => {
+          const nextColor = TAG_COLOR_OPTIONS[tags.length % TAG_COLOR_OPTIONS.length];
+          onChange([
+            ...tags,
+            {
+              id: makeTagId(idPrefix),
+              name: emptyLabel,
+              color: nextColor,
+            },
+          ]);
+        }}
+        style={({ pressed }) => [sheet.addTagBtn, pressed && { opacity: 0.75 }]}
+      >
+        <Feather name="plus" size={16} color={colors.iconPrimary} />
+        <Text style={sheet.addTagText}>{addLabel}</Text>
+      </Pressable>
+    </SettingsInsetChoiceList>
   );
 }
 
@@ -972,6 +1170,36 @@ export default function BoardSettingsScreen() {
                   );
                 })}
               </SettingsInsetChoiceList>
+            </SettingsSection>
+
+            <SettingsSection sheet={styles} title="Card taxonomy">
+              <Text style={styles.sublabel}>
+                Customize selectable labels and priorities for cards across this board.
+              </Text>
+              <Text style={styles.metaLabel}>Labels</Text>
+              <EditableTagList
+                sheet={styles}
+                colors={colors}
+                title="Labels"
+                hint="Rename, recolor, delete, or add labels."
+                addLabel="Add label"
+                emptyLabel="New label"
+                idPrefix="lb"
+                tags={settings.boardLabels}
+                onChange={(next) => patch({ boardLabels: next })}
+              />
+              <Text style={[styles.metaLabel, styles.gapTop]}>Priorities</Text>
+              <EditableTagList
+                sheet={styles}
+                colors={colors}
+                title="Priorities"
+                hint="Rename, recolor, delete, or add priorities."
+                addLabel="Add priority"
+                emptyLabel="New priority"
+                idPrefix="pr"
+                tags={settings.boardPriorities}
+                onChange={(next) => patch({ boardPriorities: next })}
+              />
             </SettingsSection>
 
             <SettingsSection sheet={styles} title="Productivity">

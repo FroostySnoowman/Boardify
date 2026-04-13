@@ -21,7 +21,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
-import type { BoardCardData, TaskMember } from '../types/board';
+import type { BoardCardData, TaskLabel, TaskMember } from '../types/board';
 import { TaskDetailContent } from './task/TaskDetailContent';
 import { useTheme, type ThemeColors } from '../theme';
 
@@ -53,6 +53,8 @@ type Props = {
   layoutInfo: ExpandedCardLayout;
   card: BoardCardData;
   availableMembers?: TaskMember[];
+  labelPresets?: TaskLabel[];
+  priorityPresets?: TaskLabel[];
   onUpdateCard: (next: BoardCardData) => void;
   onClose: () => void;
 };
@@ -61,6 +63,8 @@ export function BoardCardExpandOverlay({
   layoutInfo,
   card,
   availableMembers = [],
+  labelPresets,
+  priorityPresets,
   onUpdateCard,
   onClose,
 }: Props) {
@@ -275,6 +279,8 @@ export function BoardCardExpandOverlay({
                     task={card}
                     onChange={onUpdateCard}
                     availableMembers={availableMembers}
+                    labelPresets={labelPresets}
+                    priorityPresets={priorityPresets}
                   />
                 </Animated.View>
               </View>

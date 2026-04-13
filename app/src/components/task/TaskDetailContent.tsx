@@ -22,24 +22,13 @@ import type {
 import { TaskDatetimeField, type TaskDatetimeFieldKey } from './TaskDatetimeField';
 import { TaskWorkTimeSection } from './TaskWorkTimeSection';
 import { useTheme, type ThemeColors } from '../../theme';
+import {
+  DEFAULT_BOARD_LABELS,
+  DEFAULT_BOARD_PRIORITIES,
+} from '../../storage/boardSettings';
 
 const SHIFT = 5;
 const MEMBERS_SCROLL_PADDING = 12;
-
-const LABEL_PRESETS: TaskLabel[] = [
-  { id: 'lp-1', name: 'Design', color: '#F3D9B1' },
-  { id: 'lp-2', name: 'Engineering', color: '#a5d6a5' },
-  { id: 'lp-3', name: 'Bug', color: '#fca5a5' },
-  { id: 'lp-4', name: 'Docs', color: '#b8c5ff' },
-  { id: 'lp-5', name: 'Urgent', color: '#fbbf24' },
-];
-
-const PRIORITY_PRESETS: TaskLabel[] = [
-  { id: 'pp-1', name: 'Low', color: '#c7d2fe' },
-  { id: 'pp-2', name: 'Medium', color: '#fde68a' },
-  { id: 'pp-3', name: 'High', color: '#fdba74' },
-  { id: 'pp-4', name: 'Critical', color: '#fca5a5' },
-];
 
 function uid() {
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -351,6 +340,21 @@ function createTaskDetailStyles(colors: ThemeColors) {
   labelRowToggleOn: {
     borderColor: colors.border,
     backgroundColor: colors.surfaceElevated,
+  },
+  priorityRowToggle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: colors.iconMuted,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  priorityRowToggleOn: {
+    borderColor: colors.successEmphasis,
+    backgroundColor: colors.successTrack,
   },
   memberRowShell: {
     flexDirection: 'row',
@@ -753,9 +757,17 @@ type Props = {
   task: BoardCardData;
   onChange: (next: BoardCardData) => void;
   availableMembers?: TaskMember[];
+  labelPresets?: TaskLabel[];
+  priorityPresets?: TaskLabel[];
 };
 
-export function TaskDetailContent({ task, onChange, availableMembers = [] }: Props) {
+export function TaskDetailContent({
+  task,
+  onChange,
+  availableMembers = [],
+  labelPresets = DEFAULT_BOARD_LABELS,
+  priorityPresets = DEFAULT_BOARD_PRIORITIES,
+}: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createTaskDetailStyles(colors), [colors]);
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
@@ -798,11 +810,11 @@ export function TaskDetailContent({ task, onChange, availableMembers = [] }: Pro
   const togglePriority = useCallback(
     (p: TaskLabel) => {
       hapticLight();
-      const has = priorities.some((x) => x.id === p.id);
-      const nextPriorities = has ? priorities.filter((x) => x.id !== p.id) : [...priorities, p];
+      const current = priorities[0];
+      const nextPriorities = current?.id === p.id ? [] : [p];
       onChange({
         ...task,
-        priorities: nextPriorities,
+        priorities: nextPriorities.length ? nextPriorities : undefined,
       });
     },
     [task, priorities, onChange]
@@ -1063,7 +1075,7 @@ export function TaskDetailContent({ task, onChange, availableMembers = [] }: Pro
               <View style={styles.sectionCard}>
                 <Text style={styles.labelHint}>Tap a row to turn a label on or off.</Text>
                 <View style={styles.labelList}>
-                  {LABEL_PRESETS.map((l, index) => {
+                  {labelPresets.map((l, index) => {
                     const on = labels.some((x) => x.id === l.id);
                     return (
                       <Pressable
@@ -1074,7 +1086,7 @@ export function TaskDetailContent({ task, onChange, availableMembers = [] }: Pro
                         accessibilityLabel={`${l.name} label${on ? ', selected' : ', not selected'}`}
                         style={({ pressed }) => [
                           styles.labelRowOuter,
-                          index < LABEL_PRESETS.length - 1 && styles.labelRowBorder,
+                          index < labelPresets.length - 1 && styles.labelRowBorder,
                           on && styles.labelRowSelected,
                           pressed && styles.labelRowPressed,
                         ]}
@@ -1134,18 +1146,18 @@ export function TaskDetailContent({ task, onChange, availableMembers = [] }: Pro
               <View style={styles.sectionCard}>
                 <Text style={styles.labelHint}>Tap a row to turn a priority on or off.</Text>
                 <View style={styles.labelList}>
-                  {PRIORITY_PRESETS.map((p, index) => {
-                    const on = priorities.some((x) => x.id === p.id);
+                  {priorityPresets.map((p, index) => {
+                    const on = priorities[0]?.id === p.id;
                     return (
                       <Pressable
                         key={p.id}
                         onPress={() => togglePriority(p)}
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: on }}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: on }}
                         accessibilityLabel={`${p.name} priority${on ? ', selected' : ', not selected'}`}
                         style={({ pressed }) => [
                           styles.labelRowOuter,
-                          index < PRIORITY_PRESETS.length - 1 && styles.labelRowBorder,
+                          index < priorityPresets.length - 1 && styles.labelRowBorder,
                           on && styles.labelRowSelected,
                           pressed && styles.labelRowPressed,
                         ]}
@@ -1158,7 +1170,7 @@ export function TaskDetailContent({ task, onChange, availableMembers = [] }: Pro
                           >
                             {p.name}
                           </Text>
-                          <View style={[styles.labelRowToggle, on && styles.labelRowToggleOn]}>
+                          <View style={[styles.priorityRowToggle, on && styles.priorityRowToggleOn]}>
                             {on ? <Feather name="check" size={18} color={colors.iconPrimary} /> : null}
                           </View>
                         </View>

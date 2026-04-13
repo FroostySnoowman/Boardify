@@ -34,6 +34,13 @@ const LABEL_PRESETS: TaskLabel[] = [
   { id: 'lp-5', name: 'Urgent', color: '#fbbf24' },
 ];
 
+const PRIORITY_PRESETS: TaskLabel[] = [
+  { id: 'pp-1', name: 'Low', color: '#c7d2fe' },
+  { id: 'pp-2', name: 'Medium', color: '#fde68a' },
+  { id: 'pp-3', name: 'High', color: '#fdba74' },
+  { id: 'pp-4', name: 'Critical', color: '#fca5a5' },
+];
+
 const MEMBER_POOL: TaskMember[] = [
   { id: 'm-1', name: 'Alex Kim', initials: 'AK' },
   { id: 'm-2', name: 'Jordan Lee', initials: 'JL' },
@@ -757,6 +764,7 @@ export function TaskDetailContent({ task, onChange }: Props) {
   const styles = useMemo(() => createTaskDetailStyles(colors), [colors]);
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [labelsSectionOpen, setLabelsSectionOpen] = useState(true);
+  const [prioritiesSectionOpen, setPrioritiesSectionOpen] = useState(true);
   const [activeDateField, setActiveDateField] = useState<TaskDatetimeFieldKey | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const membersSectionYRef = useRef(0);
@@ -764,6 +772,7 @@ export function TaskDetailContent({ task, onChange }: Props) {
   const attachmentsSectionYRef = useRef(0);
 
   const labels = task.labels ?? [];
+  const priorities = task.priorities ?? [];
   const assignees = task.assignees ?? [];
   const checklists = task.checklists ?? [];
   const attachments = task.attachments ?? [];
@@ -788,6 +797,19 @@ export function TaskDetailContent({ task, onChange }: Props) {
       });
     },
     [task, labels, onChange]
+  );
+
+  const togglePriority = useCallback(
+    (p: TaskLabel) => {
+      hapticLight();
+      const has = priorities.some((x) => x.id === p.id);
+      const nextPriorities = has ? priorities.filter((x) => x.id !== p.id) : [...priorities, p];
+      onChange({
+        ...task,
+        priorities: nextPriorities,
+      });
+    },
+    [task, priorities, onChange]
   );
 
   const addMember = useCallback(
@@ -1063,6 +1085,77 @@ export function TaskDetailContent({ task, onChange }: Props) {
                             numberOfLines={1}
                           >
                             {l.name}
+                          </Text>
+                          <View style={[styles.labelRowToggle, on && styles.labelRowToggleOn]}>
+                            {on ? <Feather name="check" size={18} color={colors.iconPrimary} /> : null}
+                          </View>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.section}>
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              setPrioritiesSectionOpen((o) => !o);
+            }}
+            style={({ pressed }) => [
+              styles.labelsCollapsibleHead,
+              pressed && styles.labelsCollapsibleHeadPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: prioritiesSectionOpen }}
+            accessibilityLabel={`Priorities, ${prioritiesSectionOpen ? 'expanded' : 'collapsed'}`}
+          >
+            <View style={styles.labelsCollapsibleHeadInner}>
+              <View style={styles.labelsCollapsibleHeadLeft}>
+                <Feather name="flag" size={16} color={colors.iconMuted} />
+                <Text style={styles.sectionTitle}>Priorities</Text>
+              </View>
+              <View style={styles.labelsCollapsibleChevron} pointerEvents="none">
+                <Feather
+                  name={prioritiesSectionOpen ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </View>
+            </View>
+          </Pressable>
+          {prioritiesSectionOpen ? (
+            <View style={styles.sectionCardWrap}>
+              <View style={styles.sectionCardShadow} />
+              <View style={styles.sectionCard}>
+                <Text style={styles.labelHint}>Tap a row to turn a priority on or off.</Text>
+                <View style={styles.labelList}>
+                  {PRIORITY_PRESETS.map((p, index) => {
+                    const on = priorities.some((x) => x.id === p.id);
+                    return (
+                      <Pressable
+                        key={p.id}
+                        onPress={() => togglePriority(p)}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: on }}
+                        accessibilityLabel={`${p.name} priority${on ? ', selected' : ', not selected'}`}
+                        style={({ pressed }) => [
+                          styles.labelRowOuter,
+                          index < PRIORITY_PRESETS.length - 1 && styles.labelRowBorder,
+                          on && styles.labelRowSelected,
+                          pressed && styles.labelRowPressed,
+                        ]}
+                      >
+                        <View style={styles.labelRow}>
+                          <View style={[styles.labelSwatch, { backgroundColor: p.color }]} />
+                          <Text
+                            style={[styles.labelRowName, on && styles.labelRowNameOn]}
+                            numberOfLines={1}
+                          >
+                            {p.name}
                           </Text>
                           <View style={[styles.labelRowToggle, on && styles.labelRowToggleOn]}>
                             {on ? <Feather name="check" size={18} color={colors.iconPrimary} /> : null}

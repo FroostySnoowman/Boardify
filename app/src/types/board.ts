@@ -53,6 +53,7 @@ export type BoardCardData = {
   startDate?: string;
   dueDate?: string;
   labels?: TaskLabel[];
+  priorities?: TaskLabel[];
   assignees?: TaskMember[];
   checklists?: TaskChecklist[];
   attachments?: TaskAttachment[];

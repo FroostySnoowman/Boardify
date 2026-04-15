@@ -11,6 +11,7 @@ import {
   Linking,
   Alert,
   ActivityIndicator,
+  InteractionManager,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
@@ -47,6 +48,18 @@ function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** SwiftUI / RN bottom sheets must finish dismissing before another modal (camera, library, document picker) can present. */
+function runAfterBottomSheetCloses(onReady: () => void) {
+  InteractionManager.runAfterInteractions(() => {
+    const delay = Platform.OS === 'ios' ? 480 : Platform.OS === 'android' ? 320 : 0;
+    if (delay > 0) {
+      setTimeout(onReady, delay);
+    } else {
+      onReady();
+    }
+  });
 }
 
 function filenameFromImageAsset(asset: {
@@ -925,24 +938,32 @@ export function TaskDetailContent({
     [onChange]
   );
 
-  const handlePickFiles = useCallback(async () => {
+  const handlePickFiles = useCallback(() => {
     setAttachmentSheetOpen(false);
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-      if (result.canceled) return;
-      const asset = result.assets[0];
-      if (!asset?.uri) return;
-      const res = await fetch(asset.uri);
-      const blob = await res.blob();
-      const mime = asset.mimeType || blob.type || 'application/octet-stream';
-      const body = blob.type ? blob : new Blob([await blob.arrayBuffer()], { type: mime });
-      const filename = asset.name?.trim() || 'file';
-      await uploadPickedBlob(body, filename);
-    } catch (e) {
-      Alert.alert('Upload failed', e instanceof Error ? e.message : 'Could not upload file');
+    const run = async () => {
+      try {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: '*/*',
+          copyToCacheDirectory: true,
+          multiple: false,
+        });
+        if (result.canceled) return;
+        const asset = result.assets?.[0];
+        if (!asset?.uri) return;
+        const res = await fetch(asset.uri);
+        const blob = await res.blob();
+        const mime = asset.mimeType || blob.type || 'application/octet-stream';
+        const body = blob.type ? blob : new Blob([await blob.arrayBuffer()], { type: mime });
+        const filename = asset.name?.trim() || 'file';
+        await uploadPickedBlob(body, filename);
+      } catch (e) {
+        Alert.alert('Upload failed', e instanceof Error ? e.message : 'Could not upload file');
+      }
+    };
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      runAfterBottomSheetCloses(() => void run());
+    } else {
+      void run();
     }
   }, [uploadPickedBlob]);
 
@@ -981,7 +1002,7 @@ export function TaskDetailContent({
       );
     };
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      setTimeout(openPicker, 320);
+      runAfterBottomSheetCloses(openPicker);
     } else {
       openPicker();
     }
@@ -1018,7 +1039,7 @@ export function TaskDetailContent({
       );
     };
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      setTimeout(openPicker, 320);
+      runAfterBottomSheetCloses(openPicker);
     } else {
       openPicker();
     }

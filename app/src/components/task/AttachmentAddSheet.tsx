@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   Platform,
   ScrollView,
   type ViewStyle,
-  type LayoutChangeEvent,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { PlatformBottomSheet } from '../PlatformBottomSheet';
@@ -84,15 +83,6 @@ export function AttachmentAddSheet({
 }: Props) {
   const { colors, resolvedScheme } = useTheme();
   const showMedia = Platform.OS !== 'web';
-  const [sheetBodyWidth, setSheetBodyWidth] = useState(0);
-  const onSheetBodyLayout = useCallback((e: LayoutChangeEvent) => {
-    /** Outer width minus `sheetBody` horizontal padding so the row matches the content box. */
-    const inner = Math.max(
-      0,
-      e.nativeEvent.layout.width - SHEET_BODY_HORIZONTAL_PADDING * 2
-    );
-    setSheetBodyWidth((prev) => (Math.abs(prev - inner) < 0.5 ? prev : inner));
-  }, []);
 
   const handleBarColor = useMemo(
     () =>
@@ -134,12 +124,12 @@ export function AttachmentAddSheet({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.sheetBody} onLayout={onSheetBodyLayout}>
+        <View style={styles.sheetBody}>
           <Text style={[styles.title, { color: colors.textPrimary }]} accessibilityRole="header">
             Add attachment
           </Text>
 
-          <View style={[styles.row, sheetBodyWidth > 0 && { minWidth: sheetBodyWidth }]}>
+          <View style={styles.row}>
             {showMedia ? (
               <>
                 <AttachmentTile

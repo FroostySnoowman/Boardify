@@ -3,7 +3,7 @@ const path = require('path');
 
 const isRelease = process.env.EXPO_PUBLIC_BUILD_ENV === 'production' || process.env.NODE_ENV === 'production';
 const appVersion = '0.0.1';
-const buildNumber = process.env.BUILD_NUMBER || '17';
+const buildNumber = process.env.BUILD_NUMBER || '18';
 
 function loadEnvFile(filename) {
   const envPath = path.join(__dirname, filename);

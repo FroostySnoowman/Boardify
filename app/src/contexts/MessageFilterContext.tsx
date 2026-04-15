@@ -82,7 +82,7 @@ export function notificationMatchesFilter(
     case 'comments':
       return kind === 'comment';
     case 'invites_boards':
-      return kind === 'invite' || kind === 'board';
+      return kind === 'invite' || kind === 'board' || kind === 'reminder' || kind === 'digest';
     default:
       return true;
   }

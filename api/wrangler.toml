@@ -23,6 +23,9 @@ class_name = "BoardRoom"
 tag = "board-room-v1"
 new_sqlite_classes = ["BoardRoom"]
 
+[ai]
+binding = "AI"
+
 [dev]
 port = 8787
 
@@ -45,6 +48,9 @@ bucket_name = "boardify-images-dev"
 name = "BOARD_ROOM"
 class_name = "BoardRoom"
 
+[env.dev.ai]
+binding = "AI"
+
 [env.production]
 name = "boardify-api"
 
@@ -63,3 +69,18 @@ bucket_name = "boardify-images"
 [[env.production.durable_objects.bindings]]
 name = "BOARD_ROOM"
 class_name = "BoardRoom"
+
+[env.production.ai]
+binding = "AI"
+
+[[env.production.queues.producers]]
+binding = "NOTIFICATION_QUEUE"
+queue = "boardify-notifications"
+
+[[env.production.queues.consumers]]
+queue = "boardify-notifications"
+max_batch_size = 20
+max_batch_timeout = 2
+
+[env.production.triggers]
+crons = ["*/20 * * * *", "10 14 * * *"]

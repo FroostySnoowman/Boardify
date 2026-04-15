@@ -1,7 +1,9 @@
 import type { Env } from './bindings';
 import { jsonResponse } from './http';
 import { getCurrentUserFromSession, getAppUrl, getSmtp } from './auth';
-import { getBoardMembership } from './boardAccess';
+import { getBoardMembership, requireBoardAccess } from './boardAccess';
+import { insertBoardAuditLog } from './auditLog';
+import { handleBoardAiPrioritize, handleBoardAiNextTask, handleCardAiSubtasks } from './aiAssist';
 import { broadcastBoardEvent } from './boardSync';
 import { notifyBoardDeletedExpoPush } from './boardExpoPush';
 import { validateEmail } from './lib/auth/password';
@@ -163,7 +165,7 @@ function buildCardUpdateSummary(
   return base.length > 280 ? `${base.slice(0, 277)}…` : base;
 }
 
-function numericAssigneeUserIds(assignees: unknown): number[] {
+export function numericAssigneeUserIds(assignees: unknown): number[] {
   if (!Array.isArray(assignees)) return [];
   const out: number[] = [];
   for (const m of assignees) {
@@ -173,23 +175,6 @@ function numericAssigneeUserIds(assignees: unknown): number[] {
     else if (typeof id === 'number' && Number.isFinite(id) && id > 0) out.push(Math.floor(id));
   }
   return out;
-}
-
-async function requireBoardAccess(
-  request: Request,
-  env: Env,
-  boardId: string
-): Promise<{ userId: number; role: string } | Response> {
-  const user = await getCurrentUserFromSession(request, env);
-  if (!user) {
-    return jsonResponse(request, { error: 'Unauthorized' }, { status: 401 });
-  }
-  const userId = Number(user.id);
-  const m = await getBoardMembership(env, boardId, userId);
-  if (!m) {
-    return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
-  }
-  return { userId, role: m.role };
 }
 
 function roleAtLeast(role: string, min: 'member' | 'admin' | 'owner'): boolean {
@@ -232,31 +217,6 @@ function cardRowToApi(row: {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-async function appendAudit(
-  env: Env,
-  boardId: string,
-  kind: string,
-  summary: string,
-  actorUserId: number | null,
-  metadata?: unknown
-) {
-  const id = crypto.randomUUID();
-  await env.DB.prepare(
-    `INSERT INTO board_audit_log (id, board_id, at_iso, kind, summary, actor_user_id, metadata_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  )
-    .bind(
-      id,
-      boardId,
-      nowIso(),
-      kind,
-      summary,
-      actorUserId,
-      metadata != null ? JSON.stringify(metadata) : null
-    )
-    .run();
 }
 
 export async function handleBoards(request: Request, env: Env, pathname: string): Promise<Response | null> {
@@ -318,7 +278,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
         `INSERT INTO board_members (board_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)`
       ).bind(id, uid, t),
     ]);
-    await appendAudit(env, id, 'board_created', `Board “${name}” created`, uid, { boardId: id });
+    await insertBoardAuditLog(env, id, 'board_created', `Board “${name}” created`, uid, { boardId: id });
     await broadcastBoardEvent(env, id, { type: 'board_created', boardId: id, actorUserId: uid });
     const row = await env.DB.prepare('SELECT * FROM boards WHERE id = ?').bind(id).first<BoardRow>();
     return jsonResponse(request, { board: row }, { status: 201 });
@@ -386,7 +346,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     vals.push(boardId);
     await env.DB.prepare(`UPDATE boards SET ${updates.join(', ')} WHERE id = ?`).bind(...vals).run();
     const auditSummary = buildBoardPatchSummary(prev, body);
-    await appendAudit(env, boardId, 'board_updated', auditSummary, r.userId, { boardId });
+    await insertBoardAuditLog(env, boardId, 'board_updated', auditSummary, r.userId, { boardId });
     await broadcastBoardEvent(env, boardId, { type: 'board_updated', boardId, actorUserId: r.userId });
     const row = await env.DB.prepare('SELECT * FROM boards WHERE id = ?').bind(boardId).first<BoardRow>();
     return jsonResponse(request, { board: row });
@@ -546,7 +506,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       },
       smtp
     );
-    await appendAudit(env, boardId, 'board_invite_sent', `Invited ${invitedNorm} to the board`, r.userId, {
+    await insertBoardAuditLog(env, boardId, 'board_invite_sent', `Invited ${invitedNorm} to the board`, r.userId, {
       boardId,
       invitationId: inviteId,
     });
@@ -710,7 +670,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     )
       .bind(id, boardId, title, position, t, t)
       .run();
-    await appendAudit(env, boardId, 'list_added', `List “${title}” added`, r.userId, { listId: id });
+    await insertBoardAuditLog(env, boardId, 'list_added', `List “${title}” added`, r.userId, { listId: id });
     await broadcastBoardEvent(env, boardId, { type: 'list_created', boardId, listId: id, actorUserId: r.userId });
     const list = await env.DB.prepare('SELECT * FROM lists WHERE id = ?').bind(id).first();
     return jsonResponse(request, { list }, { status: 201 });
@@ -797,7 +757,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     const archPayload = parseJson<Record<string, unknown>>(String(card.payload_json ?? ''), {});
     await deleteOrphanedAttachmentObjects(env, archPayload.attachments, []);
     await env.DB.prepare('DELETE FROM cards WHERE id = ?').bind(cardId).run();
-    await appendAudit(env, boardId, 'card_archived', `Card “${String(card.title || 'Card')}” archived`, r.userId, {
+    await insertBoardAuditLog(env, boardId, 'card_archived', `Card “${String(card.title || 'Card')}” archived`, r.userId, {
       cardId,
       archiveId,
     });
@@ -851,7 +811,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     }
     await env.DB.prepare('DELETE FROM cards WHERE list_id = ?').bind(listId).run();
     await env.DB.prepare('DELETE FROM lists WHERE id = ?').bind(listId).run();
-    await appendAudit(env, boardId, 'list_archived', `List “${list.title}” archived`, r.userId, {
+    await insertBoardAuditLog(env, boardId, 'list_archived', `List “${list.title}” archived`, r.userId, {
       listId,
       archiveId,
     });
@@ -936,7 +896,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
         )
         .run();
       await env.DB.prepare('DELETE FROM archived_cards WHERE id = ?').bind(body.archiveId).run();
-      await appendAudit(env, boardId, 'card_restored', `Card restored`, r.userId, { cardId });
+      await insertBoardAuditLog(env, boardId, 'card_restored', `Card restored`, r.userId, { cardId });
       await broadcastBoardEvent(env, boardId, {
         type: 'card_restored',
         boardId,
@@ -1003,7 +963,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
           .run();
       }
       await env.DB.prepare('DELETE FROM archived_lists WHERE id = ?').bind(body.archiveId).run();
-      await appendAudit(env, boardId, 'list_restored', `List “${listTitle}” restored`, r.userId, { listId });
+      await insertBoardAuditLog(env, boardId, 'list_restored', `List “${listTitle}” restored`, r.userId, { listId });
       await broadcastBoardEvent(env, boardId, { type: 'list_restored', boardId, listId, actorUserId: r.userId });
       return jsonResponse(request, { listId });
     }
@@ -1117,6 +1077,22 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     return jsonResponse(request, { prefs: merged });
   }
 
+  if (segments.length === 4 && segments[2] === 'ai' && segments[3] === 'prioritize' && method === 'POST') {
+    const resp = await handleBoardAiPrioritize(request, env, boardId);
+    if (resp) return resp;
+  }
+
+  if (segments.length === 4 && segments[2] === 'ai' && segments[3] === 'next-task' && method === 'POST') {
+    const resp = await handleBoardAiNextTask(request, env, boardId);
+    if (resp) return resp;
+  }
+
+  }
+
+  if (segments.length === 4 && segments[0] === 'cards' && segments[2] === 'ai' && segments[3] === 'subtasks' && method === 'POST') {
+    const cardId = segments[1];
+    const resp = await handleCardAiSubtasks(request, env, cardId);
+    if (resp) return resp;
   }
 
   if (segments.length === 2 && segments[0] === 'lists' && method === 'PATCH') {
@@ -1180,7 +1156,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     }
     await env.DB.prepare('DELETE FROM cards WHERE list_id = ?').bind(listId).run();
     await env.DB.prepare('DELETE FROM lists WHERE id = ?').bind(listId).run();
-    await appendAudit(env, list.board_id, 'list_archived', `List “${list.title}” deleted`, r.userId, { listId });
+    await insertBoardAuditLog(env, list.board_id, 'list_archived', `List “${list.title}” deleted`, r.userId, { listId });
     await broadcastBoardEvent(env, list.board_id, {
       type: 'list_deleted',
       boardId: list.board_id,
@@ -1256,7 +1232,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
         t
       )
       .run();
-    await appendAudit(env, list.board_id, 'card_added', `Card “${title}” added`, r.userId, { cardId: id, listId });
+    await insertBoardAuditLog(env, list.board_id, 'card_added', `Card “${title}” added`, r.userId, { cardId: id, listId });
     await broadcastBoardEvent(env, list.board_id, {
       type: 'card_created',
       boardId: list.board_id,
@@ -1355,7 +1331,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
         .bind(assigneeId)
         .first<{ username: string | null; email: string }>();
       const assigneeName = u?.username?.trim() || u?.email?.split('@')[0] || 'Teammate';
-      await appendAudit(
+      await insertBoardAuditLog(
         env,
         card.board_id,
         'user_assigned_to_card',
@@ -1399,7 +1375,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       const last = nextActivityRaw[nextAct - 1] as { text?: string };
       const snippet = typeof last?.text === 'string' ? last.text.trim() : 'New note';
       const clipped = snippet.slice(0, 200);
-      await appendAudit(env, card.board_id, 'card_comment', clipped, r.userId, {
+      await insertBoardAuditLog(env, card.board_id, 'card_comment', clipped, r.userId, {
         cardId,
         cardTitle: title,
         snippet: snippet.slice(0, 500),
@@ -1409,7 +1385,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     const structuralForUpdated = coreChanged || otherPayloadChanged;
     if (structuralForUpdated && !onlyAssignees) {
       const cardUpdateSummary = buildCardUpdateSummary(card, body, title, otherPayloadChanged);
-      await appendAudit(env, card.board_id, 'card_updated', cardUpdateSummary, r.userId, { cardId });
+      await insertBoardAuditLog(env, card.board_id, 'card_updated', cardUpdateSummary, r.userId, { cardId });
     }
 
     await broadcastBoardEvent(env, card.board_id, {
@@ -1438,7 +1414,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     const delPayload = parseJson<Record<string, unknown>>(card.payload_json, {});
     await deleteOrphanedAttachmentObjects(env, delPayload.attachments, []);
     await env.DB.prepare('DELETE FROM cards WHERE id = ?').bind(cardId).run();
-    await appendAudit(env, card.board_id, 'card_archived', `Card “${String(card.title || 'Card')}” removed`, r.userId, {
+    await insertBoardAuditLog(env, card.board_id, 'card_archived', `Card “${String(card.title || 'Card')}” removed`, r.userId, {
       cardId,
     });
     await broadcastBoardEvent(env, card.board_id, {
@@ -1492,7 +1468,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     const toList = await env.DB.prepare('SELECT title FROM lists WHERE id = ?')
       .bind(newListId)
       .first<{ title: string }>();
-    await appendAudit(env, card.board_id, 'card_moved', `Card “${card.title}” moved`, r.userId, {
+    await insertBoardAuditLog(env, card.board_id, 'card_moved', `Card “${card.title}” moved`, r.userId, {
       cardId,
       listId: newListId,
       listTitle: toList?.title ?? '',

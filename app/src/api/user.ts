@@ -81,7 +81,7 @@ export type ApiInboxMessage = {
   cardId: string | null;
   atIso: string;
   actorName: string;
-  messageKind: 'mention' | 'assign' | 'comment' | 'invite' | 'board';
+  messageKind: 'mention' | 'assign' | 'comment' | 'invite' | 'board' | 'reminder' | 'digest';
   headline: string;
   detail: string;
   accentColor: string | null;

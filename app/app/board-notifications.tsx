@@ -131,6 +131,13 @@ function createBoardNotificationStyles(colors: ThemeColors) {
       letterSpacing: 0.8,
       marginBottom: 12,
     },
+    sectionSubheading: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      marginBottom: 8,
+      marginTop: 2,
+    },
     quietSummary: {
       fontSize: 13,
       fontWeight: '500',
@@ -283,10 +290,33 @@ function SettingsToggleRow({
 function mergePrefsFromApi(prefs: Record<string, unknown> | null): BoardNotificationSettings {
   if (!prefs) return { ...BOARD_NOTIFICATION_DEFAULTS };
   const p = prefs as Partial<BoardNotificationSettings>;
+  const dailyDigestEmailResolved =
+    typeof p.dailyDigestEmail === 'boolean'
+      ? p.dailyDigestEmail
+      : p.emailDigest === true
+        ? true
+        : BOARD_NOTIFICATION_DEFAULTS.dailyDigestEmail;
   return {
     ...BOARD_NOTIFICATION_DEFAULTS,
     ...p,
     version: 1,
+    emailDigest:
+      typeof p.emailDigest === 'boolean' ? p.emailDigest : dailyDigestEmailResolved,
+    deadlineRemindPush:
+      typeof p.deadlineRemindPush === 'boolean' ? p.deadlineRemindPush : BOARD_NOTIFICATION_DEFAULTS.deadlineRemindPush,
+    deadlineRemindEmail:
+      typeof p.deadlineRemindEmail === 'boolean'
+        ? p.deadlineRemindEmail
+        : BOARD_NOTIFICATION_DEFAULTS.deadlineRemindEmail,
+    deadlineRemindInApp:
+      typeof p.deadlineRemindInApp === 'boolean'
+        ? p.deadlineRemindInApp
+        : BOARD_NOTIFICATION_DEFAULTS.deadlineRemindInApp,
+    dailyDigestPush:
+      typeof p.dailyDigestPush === 'boolean' ? p.dailyDigestPush : BOARD_NOTIFICATION_DEFAULTS.dailyDigestPush,
+    dailyDigestEmail: dailyDigestEmailResolved,
+    dailyDigestInApp:
+      typeof p.dailyDigestInApp === 'boolean' ? p.dailyDigestInApp : BOARD_NOTIFICATION_DEFAULTS.dailyDigestInApp,
     quietFromMinutes: clampDayMinutes(
       typeof p.quietFromMinutes === 'number' ? p.quietFromMinutes : BOARD_NOTIFICATION_DEFAULTS.quietFromMinutes
     ),
@@ -316,6 +346,11 @@ export default function BoardNotificationsScreen() {
   const [mentionYou, setMentionYou] = useState(true);
   const [assignedCard, setAssignedCard] = useState(true);
   const [dueSoon, setDueSoon] = useState(true);
+  const [deadlineRemindPush, setDeadlineRemindPush] = useState(true);
+  const [deadlineRemindEmail, setDeadlineRemindEmail] = useState(false);
+  const [deadlineRemindInApp, setDeadlineRemindInApp] = useState(true);
+  const [dailyDigestPush, setDailyDigestPush] = useState(true);
+  const [dailyDigestInApp, setDailyDigestInApp] = useState(true);
   const [commentsFollowed, setCommentsFollowed] = useState(false);
   const [quietHours, setQuietHours] = useState(false);
   const [quietFrom, setQuietFrom] = useState(() => timeOnReferenceDate(22, 0));
@@ -348,6 +383,11 @@ export default function BoardNotificationsScreen() {
           setMentionYou(s.mentionYou);
           setAssignedCard(s.assignedCard);
           setDueSoon(s.dueSoon);
+          setDeadlineRemindPush(s.deadlineRemindPush);
+          setDeadlineRemindEmail(s.deadlineRemindEmail);
+          setDeadlineRemindInApp(s.deadlineRemindInApp);
+          setDailyDigestPush(s.dailyDigestPush);
+          setDailyDigestInApp(s.dailyDigestInApp);
           setCommentsFollowed(s.commentsFollowed);
           setQuietHours(s.quietHours);
           setQuietFrom(notificationMinutesToDate(s.quietFromMinutes));
@@ -526,12 +566,36 @@ export default function BoardNotificationsScreen() {
                 <SettingsToggleRow
                   sheet={styles}
                   colors={colors}
-                  label="Email digest"
-                  sublabel="Once-a-day summary of board activity"
+                  label="Daily summary (email)"
+                  sublabel="AI digest sent to your account email once per day"
                   value={emailDigest}
                   onValueChange={(v) => {
                     setEmailDigest(v);
-                    if (boardId) void patchNotificationSettings(boardId, { emailDigest: v });
+                    if (boardId) void patchNotificationSettings(boardId, { emailDigest: v, dailyDigestEmail: v });
+                  }}
+                />
+                <View style={styles.divider} />
+                <SettingsToggleRow
+                  sheet={styles}
+                  colors={colors}
+                  label="Daily summary (push)"
+                  sublabel="Brief AI summary as a push notification"
+                  value={dailyDigestPush}
+                  onValueChange={(v) => {
+                    setDailyDigestPush(v);
+                    if (boardId) void patchNotificationSettings(boardId, { dailyDigestPush: v });
+                  }}
+                />
+                <View style={styles.divider} />
+                <SettingsToggleRow
+                  sheet={styles}
+                  colors={colors}
+                  label="Daily summary (in app)"
+                  sublabel="Shows in your Messages inbox"
+                  value={dailyDigestInApp}
+                  onValueChange={(v) => {
+                    setDailyDigestInApp(v);
+                    if (boardId) void patchNotificationSettings(boardId, { dailyDigestInApp: v });
                   }}
                 />
               </SettingsSection>
@@ -563,13 +627,51 @@ export default function BoardNotificationsScreen() {
                   sheet={styles}
                   colors={colors}
                   label="Due dates approaching"
-                  sublabel="Cards due in the next 24 hours"
+                  sublabel="Cards due in the next 48 hours"
                   value={dueSoon}
                   onValueChange={(v) => {
                     setDueSoon(v);
                     if (boardId) void patchNotificationSettings(boardId, { dueSoon: v });
                   }}
                 />
+                {dueSoon ? (
+                  <>
+                    <View style={styles.divider} />
+                    <Text style={styles.sectionSubheading}>Reminder channels</Text>
+                    <SettingsToggleRow
+                      sheet={styles}
+                      colors={colors}
+                      label="Push before due"
+                      value={deadlineRemindPush}
+                      onValueChange={(v) => {
+                        setDeadlineRemindPush(v);
+                        if (boardId) void patchNotificationSettings(boardId, { deadlineRemindPush: v });
+                      }}
+                    />
+                    <View style={styles.divider} />
+                    <SettingsToggleRow
+                      sheet={styles}
+                      colors={colors}
+                      label="Email before due"
+                      value={deadlineRemindEmail}
+                      onValueChange={(v) => {
+                        setDeadlineRemindEmail(v);
+                        if (boardId) void patchNotificationSettings(boardId, { deadlineRemindEmail: v });
+                      }}
+                    />
+                    <View style={styles.divider} />
+                    <SettingsToggleRow
+                      sheet={styles}
+                      colors={colors}
+                      label="In-app before due"
+                      value={deadlineRemindInApp}
+                      onValueChange={(v) => {
+                        setDeadlineRemindInApp(v);
+                        if (boardId) void patchNotificationSettings(boardId, { deadlineRemindInApp: v });
+                      }}
+                    />
+                  </>
+                ) : null}
                 <View style={styles.divider} />
                 <SettingsToggleRow
                   sheet={styles}

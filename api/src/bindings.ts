@@ -1,6 +1,8 @@
 export interface Env {
   DB: D1Database;
   IMAGES: R2Bucket;
+  AI?: Ai;
+  NOTIFICATION_QUEUE?: Queue;
   BOARD_ROOM?: DurableObjectNamespace;
   AUTH_SECRET?: string;
   AUTH_URL?: string;
@@ -17,6 +19,8 @@ export interface Env {
   SMTP_PASS?: string;
   SMTP_FROM?: string;
   EXPO_ACCESS_TOKEN?: string;
+  /** When `"1"`, reminder/digest skips push/email/in-app sends (logs only). */
+  DIGEST_DRY_RUN?: string;
 }
 
 export interface AuthenticatedUser {

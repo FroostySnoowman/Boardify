@@ -1,108 +1,49 @@
-# React Native (Expo) Template
+# Boardify (BetterBoardify)
 
-A production-ready React Native template built on **Expo 56**, **React 19**, and **TypeScript** — with full support for iOS, Android, and Web out of the box.
+Monorepo for **Boardify**: a collaborative board / task app built with **Expo (React Native)** for iOS, Android, and web, backed by a **Cloudflare Workers** API, **D1**, **R2**, and related Cloudflare primitives.
 
-## Highlights
+| Directory | Contents |
+|-----------|----------|
+| [`app/`](app/) | Expo app — Expo Router, NativeWind, auth, boards UI |
+| [`api/`](api/) | Worker API — auth, boards, images, WebSockets, Workers AI, notifications |
+| [`db/`](db/) | D1 schema and migrations |
 
-- **Expo Router** file-based navigation with native tabs (SF Symbols on iOS) and custom tab bars on Android/Web
-- **NativeWind + Tailwind CSS** for styling with a dark-mode-first design system
-- **Liquid Glass** support via `expo-glass-effect` for modern iOS UI
-- **Authentication** baked in — email/password, Google Sign-In, and Apple Sign-In with secure token storage
-- **Offline-aware** networking with `NetInfo`, cached auth state, and an offline banner
-- **Reanimated 4** animations with keyboard-aware animated hooks
-- **Platform-specific** top navigation (blur/glass on mobile, responsive nav on web)
-- **Jest** testing with TypeScript and path aliases
-- **Cloudflare Workers** web deployment ready (`public/_worker.js`)
+## Requirements
 
-## Tech Stack
+- **Node.js** 18+
+- **App:** see [`app/README.md`](app/README.md) for Expo run/build, env vars, and push setup
+- **API:** see [`api/README.md`](api/README.md) for Wrangler, D1, queues (production), and secrets
 
-| Layer | Technology |
-|---|---|
-| Runtime | Expo 56, React Native 0.84, React 19 |
-| Language | TypeScript (strict mode) |
-| Styling | NativeWind 4 + Tailwind CSS 3.4 |
-| Navigation | Expo Router (file-based) |
-| Auth | Google Sign-In, Apple Auth, email/password, Secure Store |
-| Networking | Custom fetch client with Bearer tokens, offline detection |
-| Animations | React Native Reanimated 4, Keyboard Controller |
-| Storage | AsyncStorage (cache), Expo Secure Store (tokens) |
-| Media | Expo Image, Camera, Video, Audio, Image Picker |
-| UI | Vector Icons (Feather), LinearGradient, BlurView, Glass Effect |
-| Testing | Jest 30, ts-jest |
-| Web | React Native Web, Cloudflare Workers |
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- [Expo CLI](https://docs.expo.dev/get-started/installation/)
-- iOS: Xcode 16+ / macOS
-- Android: Android Studio with SDK 35+
-
-### Install
+## Quick start
 
 ```bash
-cd app
-npm install
+# Install the mobile/web client
+cd app && npm install && npm start
+
+# API (from another terminal), remote dev D1 example:
+cd api && npm install && npm run dev
 ```
 
-### Environment Variables
+Point the app at your API base URL (see `app` README and `app.config.js` / `.env.development`).
 
-Create `.env.development` in the `app/` directory:
+## Contributing
 
-```env
-VITE_API_URL=http://localhost:8787
-VITE_APP_URL=http://localhost:8081
-GOOGLE_OAUTH_CLIENT_ID=your-google-client-id
-GOOGLE_OAUTH_CLIENT_ID_IOS=your-ios-client-id.apps.googleusercontent.com
-GOOGLE_OAUTH_CLIENT_ID_ANDROID=your-android-client-id
-```
-
-### Run
-
-```bash
-# Start dev server
-npm start
-
-# Run on platform
-npm run ios
-npm run android
-npm run web
-```
-
-### Build
-
-```bash
-# iOS
-npm run build:ios:dev        # Development prebuild
-npm run build:ios:prod       # Production prebuild
-
-# Android
-npm run build:android        # Release APK
-npm run build:android:debug  # Debug APK
-
-# Web
-npm run build:web            # Export for Cloudflare/static hosting
-```
-
-### Test
-
-```bash
-npm test                # Run tests
-npm run test:watch      # Watch mode
-npm run test:coverage   # Coverage report
-npm run typecheck       # TypeScript check
-```
-
-## Customization
-
-- **Colors** — Edit `tailwind.config.js` (`background: '#020617'`, `foreground: '#f8fafc'`)
-- **Tabs** — Add/remove tabs in `app/(tabs)/_layout.tsx` via the `TAB_ITEMS` array
-- **Screens** — Add routes as files in `app/` — Expo Router handles the rest
-- **API base URL** — Set `VITE_API_URL` in your `.env` file
-- **App identity** — Update `app.config.js` (name, slug, bundle ID, icons)
+Pull requests and issues are welcome. By contributing, you agree that your
+contribution is licensed to the project maintainer under the terms described in
+[`LICENSE`](LICENSE) (section 3).
 
 ## License
 
-Private — not for redistribution.
+**Source-available (not a permissive OSS license).**
+
+Copyright (c) 2026 Jacob Beal. All rights reserved.
+
+You may inspect and clone this code for **personal, non-commercial** use. You may
+**not** use it in production, commercially redistribute it, or copy it as a
+product or template **without prior written permission** from the copyright
+holder.
+
+See **[`LICENSE`](LICENSE)** for the full terms.
+
+If you need a commercial license, redistribution rights, or other arrangements,
+contact the copyright holder.

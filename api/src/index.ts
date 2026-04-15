@@ -7,6 +7,8 @@ import { handleBoards } from './boards';
 import { handlePublicInvitationRoutes } from './boardInvitations';
 import { handleBoardWebSocket } from './wsBoard';
 import { handleLegal } from './legal';
+import { handleScheduled } from './scheduled';
+import { handleNotificationQueue } from './notificationQueue';
 
 export { BoardRoom } from './board-room-do';
 
@@ -100,5 +102,13 @@ export default {
       return out;
     }
     return response;
+  },
+
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    await handleScheduled(event, env, ctx);
+  },
+
+  async queue(batch: MessageBatch<string>, env: Env, ctx: ExecutionContext): Promise<void> {
+    await handleNotificationQueue(batch, env, ctx);
   },
 };

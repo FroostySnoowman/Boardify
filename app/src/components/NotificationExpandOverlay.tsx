@@ -43,7 +43,7 @@ const closeConfig = {
   easing: Easing.out(Easing.cubic),
 };
 
-export type NotificationKind = 'mention' | 'assign' | 'comment' | 'invite' | 'board';
+export type NotificationKind = 'mention' | 'assign' | 'comment' | 'invite' | 'board' | 'reminder' | 'digest';
 
 export type ExpandedNotificationData = {
   id: string;
@@ -79,6 +79,11 @@ function kindBadgeLabel(kind: NotificationKind): string {
     case 'invite':
       return 'Invite';
     case 'board':
+      return 'Board';
+    case 'reminder':
+      return 'Reminder';
+    case 'digest':
+      return 'Summary';
     default:
       return 'Board';
   }
@@ -94,6 +99,10 @@ function iconForKind(kind: NotificationKind): keyof typeof Feather.glyphMap {
       return 'message-circle';
     case 'invite':
       return 'users';
+    case 'reminder':
+      return 'clock';
+    case 'digest':
+      return 'sunrise';
     case 'board':
     default:
       return 'layout';

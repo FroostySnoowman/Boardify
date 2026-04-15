@@ -68,6 +68,10 @@ function iconForKind(kind: NotificationKind): keyof typeof Feather.glyphMap {
       return 'message-circle';
     case 'invite':
       return 'users';
+    case 'reminder':
+      return 'clock';
+    case 'digest':
+      return 'sunrise';
     case 'board':
     default:
       return 'layout';

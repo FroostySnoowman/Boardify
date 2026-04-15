@@ -1,0 +1,57 @@
+Boardify Source-Available License
+
+Copyright (c) 2026 Jacob Beal. All rights reserved.
+
+This repository is published so others can **inspect and learn from** the source
+code. It is **not** offered under a permissive open-source license (such as
+MIT or Apache-2.0). **All rights not expressly granted below are reserved.**
+
+1. Permitted without asking first
+
+   You may:
+
+   - Clone and browse this repository for **personal, non-commercial** purposes
+     (e.g. learning, research, or evaluating whether you want a separate commercial
+     agreement with the copyright holder).
+   - Reference short excerpts in articles or talks with **attribution**, to the
+     extent allowed by fair use or similar law in your jurisdiction.
+
+2. Not permitted without prior written permission
+
+   Unless the copyright holder has given you **prior written permission**, you
+   may **not**:
+
+   - Use this software, or any derivative work based on it, in **production** or
+     for **commercial** purposes (including internal tools at a for-profit
+     entity, or any product or service offered for a fee or to support a business).
+   - **Copy, modify, merge, publish, distribute, sublicense, sell, or publicly
+     host** this software or substantial portions of it as your own product or
+     template (including “reskinning” or rebranding for distribution).
+   - Remove or alter copyright or license notices in copies you keep privately.
+
+   “Written permission” means an explicit agreement from the copyright holder
+   (e.g. a license grant or contract), not an informal chat or issue comment.
+
+3. Contributions
+
+   If you submit a patch, issue text, or other contribution to this repository,
+   you grant the copyright holder a **perpetual, worldwide, royalty-free,
+   irrevocable** license to use, modify, and incorporate that contribution into
+   this project on the same terms as this license, unless you and the copyright
+   holder agree otherwise in writing.
+
+4. No warranty
+
+   THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING
+   FROM OR IN CONNECTION WITH THE SOFTWARE OR THIS LICENSE.
+
+5. Trademarks
+
+   This license does not grant any rights in names, logos, or trademarks
+   associated with Boardify or related brands.
+
+For licensing inquiries (commercial use, redistribution, or custom terms),
+contact the copyright holder.

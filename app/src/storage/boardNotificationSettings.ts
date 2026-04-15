@@ -13,6 +13,13 @@ export type BoardNotificationSettings = {
   quietHours: boolean;
   quietFromMinutes: number;
   quietUntilMinutes: number;
+  deadlineRemindPush: boolean;
+  deadlineRemindEmail: boolean;
+  deadlineRemindInApp: boolean;
+  dailyDigestPush: boolean;
+  dailyDigestEmail: boolean;
+  dailyDigestInApp: boolean;
+  dailyDigestLocalMinutes?: number;
 };
 
 export const BOARD_NOTIFICATION_DEFAULTS: BoardNotificationSettings = {
@@ -26,6 +33,12 @@ export const BOARD_NOTIFICATION_DEFAULTS: BoardNotificationSettings = {
   quietHours: false,
   quietFromMinutes: 22 * 60,
   quietUntilMinutes: 8 * 60,
+  deadlineRemindPush: true,
+  deadlineRemindEmail: false,
+  deadlineRemindInApp: true,
+  dailyDigestPush: true,
+  dailyDigestEmail: false,
+  dailyDigestInApp: true,
 };
 
 function storageKey(boardName: string): string {
@@ -61,6 +74,32 @@ export async function loadBoardNotificationSettings(
       ...BOARD_NOTIFICATION_DEFAULTS,
       ...parsed,
       version: 1,
+      deadlineRemindPush:
+        typeof parsed.deadlineRemindPush === 'boolean'
+          ? parsed.deadlineRemindPush
+          : BOARD_NOTIFICATION_DEFAULTS.deadlineRemindPush,
+      deadlineRemindEmail:
+        typeof parsed.deadlineRemindEmail === 'boolean'
+          ? parsed.deadlineRemindEmail
+          : BOARD_NOTIFICATION_DEFAULTS.deadlineRemindEmail,
+      deadlineRemindInApp:
+        typeof parsed.deadlineRemindInApp === 'boolean'
+          ? parsed.deadlineRemindInApp
+          : BOARD_NOTIFICATION_DEFAULTS.deadlineRemindInApp,
+      dailyDigestPush:
+        typeof parsed.dailyDigestPush === 'boolean'
+          ? parsed.dailyDigestPush
+          : BOARD_NOTIFICATION_DEFAULTS.dailyDigestPush,
+      dailyDigestEmail:
+        typeof parsed.dailyDigestEmail === 'boolean'
+          ? parsed.dailyDigestEmail
+          : typeof parsed.emailDigest === 'boolean'
+            ? parsed.emailDigest
+            : BOARD_NOTIFICATION_DEFAULTS.dailyDigestEmail,
+      dailyDigestInApp:
+        typeof parsed.dailyDigestInApp === 'boolean'
+          ? parsed.dailyDigestInApp
+          : BOARD_NOTIFICATION_DEFAULTS.dailyDigestInApp,
       quietFromMinutes: clampDayMinutes(
         typeof parsed.quietFromMinutes === 'number'
           ? parsed.quietFromMinutes

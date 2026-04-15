@@ -1,4 +1,4 @@
-export type InboxMessageKind = 'mention' | 'assign' | 'comment' | 'invite' | 'board';
+export type InboxMessageKind = 'mention' | 'assign' | 'comment' | 'invite' | 'board' | 'reminder' | 'digest';
 
 export type AuditRow = {
   id: string;
@@ -55,6 +55,8 @@ const ACCENT = {
   mention: '#b39ddb',
   board: '#c4c4c4',
   invite: '#c4c4c4',
+  reminder: '#fca5a5',
+  digest: '#93c5fd',
 } as const;
 
 export function auditRowToInboxItem(
@@ -235,6 +237,45 @@ export function auditRowToInboxItem(
         detail: boardName,
         accentColor: ACCENT.board,
       };
+    case 'deadline_reminder': {
+      const nid = meta.notifyUserId;
+      if (typeof nid === 'number' && nid !== viewerUserId) return null;
+      const ct = typeof meta.cardTitle === 'string' ? meta.cardTitle : quoted || 'Card';
+      const due = typeof meta.dueIso === 'string' ? meta.dueIso.slice(0, 16).replace('T', ' ') : '';
+      return {
+        id: row.id,
+        boardId: row.board_id,
+        boardName,
+        cardId,
+        atIso: row.at_iso,
+        actorName: 'Boardify',
+        messageKind: 'reminder',
+        headline: 'Due soon',
+        detail: `“${ct}”${due ? ` · ${due}` : ''} · ${boardName}`,
+        accentColor: ACCENT.reminder,
+      };
+    }
+    case 'daily_digest': {
+      const did = meta.digestUserId;
+      if (typeof did !== 'number' || did !== viewerUserId) return null;
+      const full =
+        typeof meta.summaryFull === 'string' && meta.summaryFull.trim()
+          ? meta.summaryFull.trim()
+          : row.summary.trim();
+      const short = full.length > 200 ? `${full.slice(0, 198)}…` : full;
+      return {
+        id: row.id,
+        boardId: row.board_id,
+        boardName,
+        cardId: null,
+        atIso: row.at_iso,
+        actorName: 'Boardify',
+        messageKind: 'digest',
+        headline: 'Daily summary',
+        detail: short,
+        accentColor: ACCENT.digest,
+      };
+    }
     default:
       return null;
   }

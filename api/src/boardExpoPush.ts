@@ -77,7 +77,10 @@ function buildCopy(
   }
 }
 
-async function postExpoBatches(messages: ExpoPushMessage[], accessToken: string | undefined): Promise<void> {
+export async function postExpoPushMessages(
+  messages: ExpoPushMessage[],
+  accessToken: string | undefined
+): Promise<void> {
   if (!messages.length) return;
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -160,7 +163,7 @@ export async function notifyBoardMembersExpoPush(
     });
   }
 
-  await postExpoBatches(messages, env.EXPO_ACCESS_TOKEN);
+  await postExpoPushMessages(messages, env.EXPO_ACCESS_TOKEN);
 }
 
 export async function notifyBoardDeletedExpoPush(
@@ -210,5 +213,5 @@ export async function notifyBoardDeletedExpoPush(
     });
   }
 
-  await postExpoBatches(messages, env.EXPO_ACCESS_TOKEN);
+  await postExpoPushMessages(messages, env.EXPO_ACCESS_TOKEN);
 }

@@ -38,6 +38,20 @@ npx wrangler r2 bucket create boardify-images
 
 Bucket names are already wired in `wrangler.toml` (`boardify-images-dev`, `boardify-images`). If you used different names, update the TOML.
 
+### Step 2b — Queues (deadline reminders + daily digest) — production only
+
+Queues are **not** bound for `env.dev` because [`wrangler dev --remote` does not support Queues](https://developers.cloudflare.com/workers/development-testing/) (requests would return **503**). Production (`--env production`) binds `boardify-notifications`, cron triggers, and the queue consumer.
+
+Create the production queue (name must match `wrangler.toml`):
+
+```bash
+npx wrangler queues create boardify-notifications
+```
+
+The Worker uses **cron triggers** (`*/20 * * * *` scans due dates, `10 14 * * *` UTC enqueues daily digests) and a **queue consumer** on the same script to send Expo push, SMTP email, and `board_audit_log` inbox rows. Optional: set plain var `DIGEST_DRY_RUN=1` on the Worker to log without sending.
+
+To exercise queues locally, use **local** `wrangler dev` (without `--remote`) and local D1/queue bindings, or test against a deployed preview/staging Worker that uses the production-style config.
+
 ### Step 3 — Apply the SQL schema
 
 Schema file (repo root): [`../db/d1_schema.sql`](../db/d1_schema.sql). Run **dev first**, then production when ready.
@@ -68,6 +82,8 @@ CREATE TABLE IF NOT EXISTS user_expo_push_tokens (
 ```
 
 The mobile app registers an Expo token via `POST /user/expo-push-token` when the user enables Account → Notifications. After a successful board Durable Object broadcast (or if the DO is unavailable), the Worker sends pushes via the [Expo Push API](https://docs.expo.dev/push-notifications/sending-notifications/) using tokens from this table and per-board `pushEnabled` in `board_notification_settings`. Optional secret `EXPO_ACCESS_TOKEN` improves rate limits; see [`SECRETS.md`](SECRETS.md).
+
+**AI & scheduled notifications:** apply [`../db/migrations/20260215_ai_notifications.sql`](../db/migrations/20260215_ai_notifications.sql) to D1 (in addition to the main schema) for `notification_dedupe` and `ai_usage_daily`. The Worker exposes **Workers AI** (`[ai]` binding) for `POST /api/boards/:boardId/ai/prioritize`, `.../ai/next-task`, and `POST /api/cards/:cardId/ai/subtasks` (session auth, board membership required).
 
 ### Step 4 — Register the Durable Object (first time)
 

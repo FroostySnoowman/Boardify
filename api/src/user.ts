@@ -5,6 +5,8 @@ import { hashPassword, verifyPassword, formatPasswordHash } from './lib/auth/pas
 import { auditRowToInboxItem, type AuditRow } from './inboxMap';
 import { normalizeInviteEmail } from './boardInvitations';
 
+const AI_DAILY_LIMIT = 40;
+
 export async function handleUser(
   request: Request,
   env: Env,
@@ -226,6 +228,22 @@ export async function handleUser(
       .bind(Number(currentUser.id))
       .run();
     return jsonResponse(request, { ok: true });
+  }
+
+  if (pathname === '/user/ai-usage' && request.method === 'GET') {
+    const userId = Number(currentUser.id);
+    const day = new Date().toISOString().slice(0, 10);
+    const row = await env.DB.prepare('SELECT count FROM ai_usage_daily WHERE user_id = ? AND day = ?')
+      .bind(userId, day)
+      .first<{ count: number }>();
+    const used = Math.max(0, row?.count ?? 0);
+    const limit = AI_DAILY_LIMIT;
+    return jsonResponse(request, {
+      day,
+      used,
+      limit,
+      remaining: Math.max(0, limit - used),
+    });
   }
 
   if (pathname === '/user/messages' && request.method === 'GET') {

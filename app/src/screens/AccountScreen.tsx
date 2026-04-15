@@ -18,6 +18,7 @@ import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 import { TabScreenChrome } from '../components/TabScreenChrome';
 import { ContextMenu } from '../components/ContextMenu';
 import { listBoards } from '../api/boards';
+import { getAiUsageToday } from '../api/user';
 import {
   getStoredDefaultBoardId,
   loadAccountUiPrefs,
@@ -33,6 +34,12 @@ type LocalPrefs = {
   defaultBoardId: string | null;
 };
 
+type AiUsageState = {
+  used: number;
+  remaining: number;
+  limit: number;
+};
+
 const DEFAULT_LOCAL: LocalPrefs = {
   notificationsEnabled: true,
   defaultBoardId: null,
@@ -45,6 +52,7 @@ export default function AccountScreen() {
   const { colors, preference, setThemePreference, refreshThemeFromStorage } = useTheme();
   const [local, setLocal] = useState<LocalPrefs>(DEFAULT_LOCAL);
   const [defaultBoardLabel, setDefaultBoardLabel] = useState('None');
+  const [aiUsage, setAiUsage] = useState<AiUsageState | null>(null);
   const isWeb = Platform.OS === 'web';
 
   const styles = useMemo(
@@ -159,24 +167,38 @@ export default function AccountScreen() {
         void refreshThemeFromStorage();
         if (!id) {
           setDefaultBoardLabel('None');
-          return;
-        }
-        if (!user) {
+        } else if (!user) {
           setDefaultBoardLabel(id ?? 'None');
-          return;
-        }
-        try {
-          const { boards: rows } = await listBoards();
-          if (cancel) return;
-          const row = rows?.find((b) => b.id === id);
-          setDefaultBoardLabel(row?.name ?? id);
-        } catch (e: unknown) {
-          const status =
-            typeof e === 'object' && e !== null && 'status' in e ? (e as { status?: number }).status : undefined;
-          if (status === 401) {
-            await invalidateLocalAuth();
+        } else {
+          try {
+            const { boards: rows } = await listBoards();
+            if (cancel) return;
+            const row = rows?.find((b) => b.id === id);
+            setDefaultBoardLabel(row?.name ?? id);
+          } catch (e: unknown) {
+            const status =
+              typeof e === 'object' && e !== null && 'status' in e ? (e as { status?: number }).status : undefined;
+            if (status === 401) {
+              await invalidateLocalAuth();
+            }
+            if (!cancel) setDefaultBoardLabel(id);
           }
-          if (!cancel) setDefaultBoardLabel(id);
+        }
+        if (user) {
+          try {
+            const usage = await getAiUsageToday();
+            if (!cancel) {
+              setAiUsage({
+                used: usage.used,
+                remaining: usage.remaining,
+                limit: usage.limit,
+              });
+            }
+          } catch {
+            if (!cancel) setAiUsage(null);
+          }
+        } else if (!cancel) {
+          setAiUsage(null);
         }
       })();
       return () => {
@@ -344,6 +366,23 @@ export default function AccountScreen() {
                 showChevron
               />
             )}
+            {user ? (
+              <>
+                <ConfigRowDivider dividerStyle={styles.configDivider} />
+                <ConfigRow
+                  label="AI daily usage"
+                  sublabel={
+                    aiUsage
+                      ? `${aiUsage.used}/${aiUsage.limit} used · ${aiUsage.remaining} left`
+                      : 'Not available right now'
+                  }
+                  rowStyle={styles.configRow}
+                  labelStyle={styles.configLabel}
+                  sublabelStyle={styles.configSublabel}
+                  labelBlockStyle={styles.configLabelBlock}
+                />
+              </>
+            ) : null}
           </View>
         </View>
       </View>

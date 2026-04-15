@@ -74,6 +74,24 @@ export async function unregisterExpoPushToken(): Promise<void> {
   });
 }
 
+export async function getAiUsageToday(): Promise<{
+  day: string;
+  used: number;
+  limit: number;
+  remaining: number;
+}> {
+  const res = await nativeFetch('/user/ai-usage', {
+    method: 'GET',
+    params: {},
+  });
+  return res.data as {
+    day: string;
+    used: number;
+    limit: number;
+    remaining: number;
+  };
+}
+
 export type ApiInboxMessage = {
   id: string;
   boardId: string;

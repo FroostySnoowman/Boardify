@@ -32,6 +32,7 @@
     "expo-apple-authentication": "56.0.0-canary-20260305-5163746",
     "expo-blur": "56.0.0-canary-20260305-5163746",
     "expo-constants": "56.0.0-canary-20260305-5163746",
+    "expo-document-picker": "56.0.0-canary-20260305-5163746",
     "expo-font": "56.0.0-canary-20260305-5163746",
     "expo-glass-effect": "56.0.0-canary-20260305-5163746",
     "expo-haptics": "56.0.0-canary-20260305-5163746",

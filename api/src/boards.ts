@@ -39,6 +39,30 @@ function parseJson<T>(raw: string | null, fallback: T): T {
   }
 }
 
+async function deleteOrphanedAttachmentObjects(
+  env: Env,
+  prevAttachments: unknown,
+  nextAttachments: unknown
+): Promise<void> {
+  if (!env.IMAGES) return;
+  const prev = Array.isArray(prevAttachments) ? prevAttachments : [];
+  const next = Array.isArray(nextAttachments) ? nextAttachments : [];
+  const nextKeys = new Set(
+    next
+      .filter(
+        (x) => x && typeof x === 'object' && typeof (x as { storageKey?: unknown }).storageKey === 'string'
+      )
+      .map((x) => (x as { storageKey: string }).storageKey)
+  );
+  for (const item of prev) {
+    if (!item || typeof item !== 'object') continue;
+    const sk = (item as { storageKey?: string }).storageKey;
+    if (typeof sk === 'string' && !nextKeys.has(sk)) {
+      await env.IMAGES.delete(sk).catch((e: unknown) => console.error('R2 delete attachment', e));
+    }
+  }
+}
+
 const BOARD_SETTING_LABELS: Record<string, string> = {
   boardDisplayTitle: 'title on board',
   boardDescription: 'description',
@@ -770,6 +794,8 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     )
       .bind(archiveId, boardId, nowIso(), r.userId, sourceTitle, JSON.stringify(api))
       .run();
+    const archPayload = parseJson<Record<string, unknown>>(String(card.payload_json ?? ''), {});
+    await deleteOrphanedAttachmentObjects(env, archPayload.attachments, []);
     await env.DB.prepare('DELETE FROM cards WHERE id = ?').bind(cardId).run();
     await appendAudit(env, boardId, 'card_archived', `Card “${String(card.title || 'Card')}” archived`, r.userId, {
       cardId,
@@ -819,6 +845,10 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     )
       .bind(archiveId, boardId, nowIso(), r.userId, JSON.stringify(columnSnapshot))
       .run();
+    for (const c of cardRows ?? []) {
+      const p = parseJson<Record<string, unknown>>(c.payload_json, {});
+      await deleteOrphanedAttachmentObjects(env, p.attachments, []);
+    }
     await env.DB.prepare('DELETE FROM cards WHERE list_id = ?').bind(listId).run();
     await env.DB.prepare('DELETE FROM lists WHERE id = ?').bind(listId).run();
     await appendAudit(env, boardId, 'list_archived', `List “${list.title}” archived`, r.userId, {
@@ -1141,6 +1171,13 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     if (!roleAtLeast(r.role, 'admin')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
     }
+    const { results: cardsToDrop } = await env.DB.prepare('SELECT payload_json FROM cards WHERE list_id = ?')
+      .bind(listId)
+      .all<{ payload_json: string }>();
+    for (const row of cardsToDrop ?? []) {
+      const p = parseJson<Record<string, unknown>>(row.payload_json, {});
+      await deleteOrphanedAttachmentObjects(env, p.attachments, []);
+    }
     await env.DB.prepare('DELETE FROM cards WHERE list_id = ?').bind(listId).run();
     await env.DB.prepare('DELETE FROM lists WHERE id = ?').bind(listId).run();
     await appendAudit(env, list.board_id, 'list_archived', `List “${list.title}” deleted`, r.userId, { listId });
@@ -1305,6 +1342,8 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       )
       .run();
 
+    await deleteOrphanedAttachmentObjects(env, curPayload.attachments, nextPayload.attachments);
+
     const prevAssignees = numericAssigneeUserIds(curPayload.assignees);
     const nextAssignees =
       body.assignees !== undefined ? numericAssigneeUserIds(body.assignees) : prevAssignees;
@@ -1396,6 +1435,8 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
     }
+    const delPayload = parseJson<Record<string, unknown>>(card.payload_json, {});
+    await deleteOrphanedAttachmentObjects(env, delPayload.attachments, []);
     await env.DB.prepare('DELETE FROM cards WHERE id = ?').bind(cardId).run();
     await appendAudit(env, card.board_id, 'card_archived', `Card “${String(card.title || 'Card')}” removed`, r.userId, {
       cardId,

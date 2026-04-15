@@ -8,7 +8,12 @@ import {
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
+  Linking,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../../utils/haptics';
 import type {
@@ -26,12 +31,35 @@ import {
   DEFAULT_BOARD_LABELS,
   DEFAULT_BOARD_PRIORITIES,
 } from '../../storage/boardSettings';
+import { uploadCardAttachment } from '../../api/attachments';
+import { getImageUrl } from '../../utils/imageUrl';
+import { AttachmentAddSheet } from './AttachmentAddSheet';
 
 const SHIFT = 5;
 const MEMBERS_SCROLL_PADDING = 12;
 
 function uid() {
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return '';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function filenameFromImageAsset(asset: {
+  uri?: string;
+  fileName?: string | null;
+  type?: string | null;
+}): string {
+  const n = asset.fileName?.trim();
+  if (n) return n;
+  const fromUri = asset.uri?.split('/').pop()?.split('?')[0];
+  if (fromUri && /\.[a-zA-Z0-9]{2,8}$/.test(fromUri)) return fromUri;
+  const ext = asset.type?.includes('png') ? 'png' : 'jpg';
+  return `photo-${Date.now()}.${ext}`;
 }
 
 function createTaskDetailStyles(colors: ThemeColors) {
@@ -777,7 +805,8 @@ export function TaskDetailContent({
   const scrollRef = useRef<ScrollView>(null);
   const membersSectionYRef = useRef(0);
   const checklistsSectionYRef = useRef(0);
-  const attachmentsSectionYRef = useRef(0);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [attachmentSheetOpen, setAttachmentSheetOpen] = useState(false);
 
   const labels = task.labels ?? [];
   const priorities = task.priorities ?? [];
@@ -785,6 +814,11 @@ export function TaskDetailContent({
   const checklists = task.checklists ?? [];
   const attachments = task.attachments ?? [];
   const activity = task.activity ?? [];
+
+  const taskRef = useRef(task);
+  const attachmentsRef = useRef(attachments);
+  taskRef.current = task;
+  attachmentsRef.current = attachments;
 
   const setField = useCallback(
     <K extends keyof BoardCardData>(key: K, value: BoardCardData[K]) => {
@@ -858,16 +892,142 @@ export function TaskDetailContent({
     [task, checklists, onChange]
   );
 
-  const addAttachment = useCallback(() => {
-    hapticLight();
-    const names = ['Brief.pdf', 'Screenshot.png', 'Notes.md', 'Recording.m4a'];
-    const att: TaskAttachment = {
-      id: uid(),
-      name: names[attachments.length % names.length],
-      subtitle: 'Added just now',
+  const uploadPickedBlob = useCallback(
+    async (blob: Blob, filename: string) => {
+      setUploadingAttachment(true);
+      try {
+        const mime = blob.type || 'application/octet-stream';
+        const body =
+          blob.type || blob.size === 0
+            ? blob
+            : new Blob([await blob.arrayBuffer()], { type: mime });
+        const t = taskRef.current;
+        const prev = attachmentsRef.current ?? [];
+        const uploaded = await uploadCardAttachment(t.id, body, filename);
+        const subtitle = `${formatBytes(uploaded.size)} · ${uploaded.mimeType}`;
+        const att: TaskAttachment = {
+          id: uploaded.id,
+          name: uploaded.name,
+          url: uploaded.url,
+          storageKey: uploaded.storageKey,
+          size: uploaded.size,
+          mimeType: uploaded.mimeType,
+          subtitle,
+        };
+        onChange({ ...t, attachments: [...prev, att] });
+        hapticLight();
+      } catch (e) {
+        Alert.alert('Upload failed', e instanceof Error ? e.message : 'Could not upload file');
+      } finally {
+        setUploadingAttachment(false);
+      }
+    },
+    [onChange]
+  );
+
+  const handlePickFiles = useCallback(async () => {
+    setAttachmentSheetOpen(false);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset?.uri) return;
+      const res = await fetch(asset.uri);
+      const blob = await res.blob();
+      const mime = asset.mimeType || blob.type || 'application/octet-stream';
+      const body = blob.type ? blob : new Blob([await blob.arrayBuffer()], { type: mime });
+      const filename = asset.name?.trim() || 'file';
+      await uploadPickedBlob(body, filename);
+    } catch (e) {
+      Alert.alert('Upload failed', e instanceof Error ? e.message : 'Could not upload file');
+    }
+  }, [uploadPickedBlob]);
+
+  const handlePickPhotos = useCallback(() => {
+    setAttachmentSheetOpen(false);
+    const openPicker = () => {
+      launchImageLibrary(
+        {
+          mediaType: 'photo',
+          quality: 0.9,
+          selectionLimit: 1,
+          includeBase64: false,
+        },
+        async (response) => {
+          if (response.didCancel || response.errorCode || !response.assets?.[0]) {
+            if (response.errorCode === 'permission') {
+              Alert.alert(
+                'Permission needed',
+                'Please allow photo library access to attach images.'
+              );
+            }
+            return;
+          }
+          const asset = response.assets[0];
+          if (!asset.uri) return;
+          try {
+            const res = await fetch(asset.uri);
+            const blob = await res.blob();
+            const mime = asset.type || blob.type || 'image/jpeg';
+            const body = blob.type ? blob : new Blob([await blob.arrayBuffer()], { type: mime });
+            await uploadPickedBlob(body, filenameFromImageAsset(asset));
+          } catch (e) {
+            Alert.alert('Upload failed', e instanceof Error ? e.message : 'Could not upload file');
+          }
+        }
+      );
     };
-    onChange({ ...task, attachments: [...attachments, att] });
-  }, [task, attachments, onChange]);
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      setTimeout(openPicker, 320);
+    } else {
+      openPicker();
+    }
+  }, [uploadPickedBlob]);
+
+  const handlePickCamera = useCallback(() => {
+    setAttachmentSheetOpen(false);
+    const openPicker = () => {
+      launchCamera(
+        {
+          mediaType: 'photo',
+          quality: 0.9,
+          saveToPhotos: false,
+        },
+        async (response) => {
+          if (response.didCancel || response.errorCode || !response.assets?.[0]) {
+            if (response.errorCode === 'permission') {
+              Alert.alert('Permission needed', 'Please allow camera access to take a photo.');
+            }
+            return;
+          }
+          const asset = response.assets[0];
+          if (!asset.uri) return;
+          try {
+            const res = await fetch(asset.uri);
+            const blob = await res.blob();
+            const mime = asset.type || blob.type || 'image/jpeg';
+            const body = blob.type ? blob : new Blob([await blob.arrayBuffer()], { type: mime });
+            await uploadPickedBlob(body, filenameFromImageAsset(asset));
+          } catch (e) {
+            Alert.alert('Upload failed', e instanceof Error ? e.message : 'Could not upload file');
+          }
+        }
+      );
+    };
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      setTimeout(openPicker, 320);
+    } else {
+      openPicker();
+    }
+  }, [uploadPickedBlob]);
+
+  const openAttachmentSheet = useCallback(() => {
+    hapticLight();
+    setAttachmentSheetOpen(true);
+  }, []);
 
   const pickerMembers = useMemo(() => {
     const source = availableMembers.length > 0 ? availableMembers : assignees;
@@ -952,19 +1112,8 @@ export function TaskDetailContent({
     });
   }, []);
 
-  const scrollToAttachments = useCallback(() => {
-    hapticLight();
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({
-          y: Math.max(0, attachmentsSectionYRef.current - MEMBERS_SCROLL_PADDING),
-          animated: true,
-        });
-      });
-    });
-  }, []);
-
   return (
+    <>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -996,7 +1145,7 @@ export function TaskDetailContent({
         >
           <QuickChip styles={styles} colors={colors} icon="users" label="Assign" onPress={toggleMemberPickerFromQuickAdd} />
           <QuickChip styles={styles} colors={colors} icon="check-square" label="Checklist" onPress={scrollToChecklists} />
-          <QuickChip styles={styles} colors={colors} icon="paperclip" label="Attach" onPress={scrollToAttachments} />
+          <QuickChip styles={styles} colors={colors} icon="paperclip" label="Attach" onPress={openAttachmentSheet} />
         </ScrollView>
         <Text style={styles.quickHint}>Dates, labels, and more — in the sections below.</Text>
 
@@ -1266,21 +1415,27 @@ export function TaskDetailContent({
           </Section>
         </View>
 
-        <View
-          onLayout={(e) => {
-            attachmentsSectionYRef.current = e.nativeEvent.layout.y;
-          }}
-        >
-          <Section styles={styles} colors={colors} title="Attachments" icon="paperclip">
+        <Section styles={styles} colors={colors} title="Attachments" icon="paperclip">
             {attachments.map((a) => (
               <View key={a.id} style={styles.attachRow}>
-                <View style={[styles.attachIcon, { backgroundColor: colors.canvas }]}>
-                  <Feather name="file-text" size={18} color={colors.textPrimary} />
-                </View>
-                <View style={styles.attachMeta}>
-                  <Text style={styles.attachName}>{a.name}</Text>
-                  {a.subtitle ? <Text style={styles.attachSub}>{a.subtitle}</Text> : null}
-                </View>
+                <Pressable
+                  disabled={!a.url}
+                  onPress={() => {
+                    if (!a.url) return;
+                    hapticLight();
+                    const open = getImageUrl(a.url);
+                    if (open) void Linking.openURL(open);
+                  }}
+                  style={({ pressed }) => [{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed && a.url ? 0.85 : 1 }]}
+                >
+                  <View style={[styles.attachIcon, { backgroundColor: colors.canvas }]}>
+                    <Feather name="file-text" size={18} color={colors.textPrimary} />
+                  </View>
+                  <View style={styles.attachMeta}>
+                    <Text style={styles.attachName}>{a.name}</Text>
+                    {a.subtitle ? <Text style={styles.attachSub}>{a.subtitle}</Text> : null}
+                  </View>
+                </Pressable>
                 <Pressable
                   onPress={() => {
                     hapticLight();
@@ -1292,9 +1447,27 @@ export function TaskDetailContent({
                 </Pressable>
               </View>
             ))}
-            <GhostButton styles={styles} colors={colors} icon="plus" label="Add attachment" onPress={addAttachment} />
-          </Section>
-        </View>
+            <Pressable
+              onPress={() => {
+                if (!uploadingAttachment) openAttachmentSheet();
+              }}
+              disabled={uploadingAttachment}
+              style={({ pressed }) => [styles.ghostBtnOuter, pressed && !uploadingAttachment && { opacity: 0.85 }]}
+            >
+              <View style={styles.ghostBtnRow}>
+                <View style={styles.ghostBtnIcon}>
+                  {uploadingAttachment ? (
+                    <ActivityIndicator size="small" color={colors.iconPrimary} />
+                  ) : (
+                    <Feather name="plus" size={16} color={colors.iconPrimary} />
+                  )}
+                </View>
+                <Text style={styles.ghostBtnText}>
+                  {uploadingAttachment ? 'Uploading…' : 'Add attachment'}
+                </Text>
+              </View>
+            </Pressable>
+        </Section>
 
         <Section styles={styles} colors={colors} title="Activity" icon="activity">
           {activity.length === 0 ? (
@@ -1315,5 +1488,13 @@ export function TaskDetailContent({
         </Section>
       </ScrollView>
     </KeyboardAvoidingView>
+    <AttachmentAddSheet
+      visible={attachmentSheetOpen}
+      onClose={() => setAttachmentSheetOpen(false)}
+      onFiles={handlePickFiles}
+      onPhotos={handlePickPhotos}
+      onCamera={handlePickCamera}
+    />
+    </>
   );
 }

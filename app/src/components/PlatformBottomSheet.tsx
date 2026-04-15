@@ -30,8 +30,15 @@ const BACKGROUND_COLOR = '#020617';
 interface PlatformBottomSheetProps {
   isOpened: boolean;
   onIsOpenedChange: (opened: boolean) => void;
+  /** Fractions of screen height (e.g. `[0.35, 0.5]`). iOS uses all for snap points; Android/web use the largest for sheet height. */
   presentationDetents?: number[];
   presentationDragIndicator?: 'visible' | 'hidden';
+  /** Sheet panel background (defaults to dark navy). */
+  sheetBackgroundColor?: string;
+  /** Scrim behind the sheet (defaults to semi-transparent black). */
+  overlayBackgroundColor?: string;
+  /** Drag handle pill color. */
+  handleBarColor?: string;
   children: React.ReactNode;
 }
 
@@ -40,16 +47,21 @@ export function PlatformBottomSheet({
   onIsOpenedChange,
   presentationDetents = [0.5],
   presentationDragIndicator = 'visible',
+  sheetBackgroundColor = BACKGROUND_COLOR,
+  overlayBackgroundColor = 'rgba(0, 0, 0, 0.5)',
+  handleBarColor = 'rgba(255, 255, 255, 0.3)',
   children,
 }: PlatformBottomSheetProps) {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  
-  const detent = presentationDetents[0] || 0.5;
-  const sheetHeight = Platform.OS === 'web' 
-    ? Math.max(280, Math.min(SCREEN_HEIGHT * detent, 420))
-    : SCREEN_HEIGHT * detent;
+
+  const detent =
+    presentationDetents.length > 0 ? Math.max(...presentationDetents) : 0.5;
+  const sheetHeight =
+    Platform.OS === 'web'
+      ? Math.max(280, Math.min(SCREEN_HEIGHT * detent, 520))
+      : SCREEN_HEIGHT * detent;
 
   useEffect(() => {
     if (isOpened) {
@@ -98,12 +110,24 @@ export function PlatformBottomSheet({
           <Group modifiers={modifiers}>
             {RNHostView ? (
               <RNHostView>
-                <View style={{ flex: 1, marginBottom: -insets.bottom }}>
+                <View
+                  style={{
+                    flex: 1,
+                    marginBottom: -insets.bottom,
+                    backgroundColor: sheetBackgroundColor,
+                  }}
+                >
                   {children}
                 </View>
               </RNHostView>
             ) : (
-              <View style={{ flex: 1, marginBottom: -insets.bottom }}>
+              <View
+                style={{
+                  flex: 1,
+                  marginBottom: -insets.bottom,
+                  backgroundColor: sheetBackgroundColor,
+                }}
+              >
                 {children}
               </View>
             )}
@@ -126,6 +150,7 @@ export function PlatformBottomSheet({
           styles.overlay,
           {
             opacity: opacityAnim,
+            backgroundColor: overlayBackgroundColor,
           },
         ]}
       >
@@ -140,6 +165,7 @@ export function PlatformBottomSheet({
           {
             height: sheetHeight,
             transform: [{ translateY: slideAnim }],
+            backgroundColor: sheetBackgroundColor,
           },
         ]}
         pointerEvents="box-none"
@@ -150,10 +176,12 @@ export function PlatformBottomSheet({
         >
           {presentationDragIndicator === 'visible' && (
             <View style={styles.handleBarContainer}>
-              <View style={styles.handleBar} />
+              <View style={[styles.handleBar, { backgroundColor: handleBarColor }]} />
             </View>
           )}
-          <View style={[styles.content, { paddingBottom: insets.bottom }]}>
+          <View
+            style={[styles.content, { paddingBottom: insets.bottom, backgroundColor: sheetBackgroundColor }]}
+          >
             {children}
           </View>
         </Pressable>
@@ -165,14 +193,12 @@ export function PlatformBottomSheet({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   bottomSheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: BACKGROUND_COLOR,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     width: '100%',
@@ -190,12 +216,10 @@ const styles = StyleSheet.create({
   handleBar: {
     width: 40,
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 2,
   },
   content: {
     flex: 1,
-    backgroundColor: BACKGROUND_COLOR,
     width: '100%',
   },
 });

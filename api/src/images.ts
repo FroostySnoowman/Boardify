@@ -1,8 +1,21 @@
 import type { Env } from './bindings';
 import { jsonResponse } from './http';
 import { getCurrentUserFromSession } from './auth';
+import { getBoardMembership } from './boardAccess';
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024;
+
+function roleAtLeast(role: string, min: 'member' | 'admin' | 'owner'): boolean {
+  const order = { member: 0, admin: 1, owner: 2 };
+  return order[role as keyof typeof order] >= order[min];
+}
+
+function sanitizeAttachmentFilename(name: string): string {
+  const trimmed = name.replace(/[/\\]/g, '').trim();
+  const base = trimmed.length > 0 ? trimmed : 'file';
+  return base.length > 180 ? base.slice(0, 180) : base;
+}
 
 function generateImageKey(userId: string, type: 'profile'): string {
   const timestamp = Date.now();
@@ -73,6 +86,95 @@ async function uploadProfilePicture(request: Request, env: Env): Promise<Respons
   }
 }
 
+async function uploadCardAttachment(request: Request, env: Env): Promise<Response> {
+  const user = await getCurrentUserFromSession(request, env);
+  if (!user) {
+    return jsonResponse(request, { error: 'Not authenticated' }, { status: 401 });
+  }
+  if (!env.IMAGES) {
+    return jsonResponse(request, { error: 'Image storage not configured' }, { status: 500 });
+  }
+
+  const url = new URL(request.url);
+  const cardId = url.searchParams.get('cardId');
+  if (!cardId) {
+    return jsonResponse(request, { error: 'cardId required' }, { status: 400 });
+  }
+  let filename = url.searchParams.get('filename') || 'file';
+  try {
+    filename = decodeURIComponent(filename);
+  } catch {
+    // keep raw
+  }
+  filename = sanitizeAttachmentFilename(filename);
+
+  const card = await env.DB.prepare(
+    `SELECT c.id, l.board_id FROM cards c JOIN lists l ON l.id = c.list_id WHERE c.id = ?`
+  )
+    .bind(cardId)
+    .first<{ id: string; board_id: string }>();
+  if (!card) {
+    return jsonResponse(request, { error: 'Not found' }, { status: 404 });
+  }
+
+  const userId = Number(user.id);
+  const m = await getBoardMembership(env, card.board_id, userId);
+  if (!m || !roleAtLeast(m.role, 'member')) {
+    return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
+  }
+
+  const contentType = request.headers.get('content-type') || 'application/octet-stream';
+  const contentLength = request.headers.get('content-length');
+  if (contentLength && parseInt(contentLength, 10) > MAX_ATTACHMENT_SIZE) {
+    return jsonResponse(request, { error: 'File too large (max 25MB)' }, { status: 400 });
+  }
+
+  try {
+    const data = await request.arrayBuffer();
+    if (data.byteLength > MAX_ATTACHMENT_SIZE) {
+      return jsonResponse(request, { error: 'File too large (max 25MB)' }, { status: 400 });
+    }
+    if (data.byteLength === 0) {
+      return jsonResponse(request, { error: 'Empty file' }, { status: 400 });
+    }
+
+    const attachmentId = crypto.randomUUID();
+    const random = Math.random().toString(36).slice(2, 8);
+    const safeTail = filename.replace(/[^a-zA-Z0-9._-]+/g, '_') || 'file';
+    const key = `attachments/${card.board_id}/${cardId}/${attachmentId}-${random}-${safeTail}`;
+
+    const ct = contentType.split(';')[0].trim() || 'application/octet-stream';
+    const disp =
+      ct.startsWith('image/') || ct === 'application/pdf' ? 'inline' : 'attachment';
+
+    await env.IMAGES.put(key, data, {
+      httpMetadata: {
+        contentType: ct,
+        contentDisposition: disp,
+      },
+    });
+
+    const imageUrl = getImageUrl(env, key);
+    return jsonResponse(
+      request,
+      {
+        attachment: {
+          id: attachmentId,
+          name: filename,
+          url: imageUrl,
+          storageKey: key,
+          size: data.byteLength,
+          mimeType: ct,
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Card attachment upload error:', error);
+    return jsonResponse(request, { error: 'Upload failed' }, { status: 500 });
+  }
+}
+
 async function serveImage(request: Request, env: Env, key: string): Promise<Response> {
   try {
     if (!env.IMAGES) {
@@ -114,6 +216,10 @@ export async function handleImages(
 
   if (pathname === '/upload/profile-picture' && method === 'POST') {
     return uploadProfilePicture(request, env);
+  }
+
+  if (pathname === '/upload/card-attachment' && method === 'POST') {
+    return uploadCardAttachment(request, env);
   }
 
   const segments = pathname.split('/').filter(Boolean);

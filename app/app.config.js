@@ -214,7 +214,9 @@ module.exports = {
         UIBackgroundModes: ['remote-notification'],
         LSApplicationCategoryType: 'public.app-category.sports',
         NSPhotoLibraryUsageDescription:
-          'Boardify needs access to your photo library so you can choose a profile picture.',
+          'Boardify needs access to your photo library so you can choose a profile picture or attach images to cards.',
+        NSCameraUsageDescription:
+          'Boardify needs camera access to take photos you attach to cards.',
         CFBundleURLTypes: [
           {
             CFBundleURLSchemes: allUrlSchemes,
@@ -270,6 +272,7 @@ module.exports = {
         'ACCESS_NETWORK_STATE',
         'android.permission.POST_NOTIFICATIONS',
         'android.permission.READ_MEDIA_IMAGES',
+        'android.permission.CAMERA',
       ],
       versionCode: parseInt(process.env.ANDROID_VERSION_CODE || buildNumber, 10)
     },

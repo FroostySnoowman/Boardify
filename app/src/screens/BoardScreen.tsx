@@ -2603,7 +2603,7 @@ export default function BoardScreen({
                   const targetCardId = aiRecommendation.cardId;
                   setAiRecommendation(null);
                   setAiMenuOpen(false);
-                  handleCalendarOpenTask(targetCardId);
+                  if (targetCardId) handleCalendarOpenTask(targetCardId);
                 }}
               >
                 <Text style={styles.aiModalPrimaryBtnText}>Open task</Text>

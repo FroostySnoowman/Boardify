@@ -1,7 +1,8 @@
 import type { Env } from './bindings';
 import { jsonResponse } from './http';
-import { getCurrentUserFromSession, getAppUrl, getSmtp } from './auth';
-import { getBoardMembership, requireBoardAccess } from './boardAccess';
+import { getAppUrl, getSmtp } from './auth';
+import { requireBoardAccess } from './boardAccess';
+import { resolveAuthPrincipal, sessionUser, principalUserId } from './authPrincipal';
 import { insertBoardAuditLog } from './auditLog';
 import {
   handleBoardAiPrioritize,
@@ -235,11 +236,28 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
 
   const method = request.method;
   const segments = pathname.split('/').filter(Boolean);
+  const principal = await resolveAuthPrincipal(request, env);
 
   if (segments.length === 1 && segments[0] === 'boards' && method === 'GET') {
-    const user = await getCurrentUserFromSession(request, env);
-    if (!user) return jsonResponse(request, { error: 'Unauthorized' }, { status: 401 });
-    const uid = Number(user.id);
+    if (!principal) return jsonResponse(request, { error: 'Unauthorized' }, { status: 401 });
+    const uid = principalUserId(principal);
+    if (principal.kind === 'api_key' && principal.scopeKind === 'boards') {
+      if (principal.allowedBoardIds.size === 0) {
+        return jsonResponse(request, { boards: [] });
+      }
+      const ids = [...principal.allowedBoardIds];
+      const ph = ids.map(() => '?').join(',');
+      const { results } = await env.DB.prepare(
+        `SELECT b.id, b.owner_user_id, b.name, b.color, b.settings_json, b.sort_order, b.archived_at, b.created_at, b.updated_at
+         FROM boards b
+         INNER JOIN board_members m ON m.board_id = b.id AND m.user_id = ?
+         WHERE b.archived_at IS NULL AND b.id IN (${ph})
+         ORDER BY b.sort_order ASC, b.updated_at DESC`
+      )
+        .bind(uid, ...ids)
+        .all<BoardRow>();
+      return jsonResponse(request, { boards: results ?? [] });
+    }
     const { results } = await env.DB.prepare(
       `SELECT b.id, b.owner_user_id, b.name, b.color, b.settings_json, b.sort_order, b.archived_at, b.created_at, b.updated_at
        FROM boards b
@@ -253,8 +271,15 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 1 && segments[0] === 'boards' && method === 'POST') {
-    const user = await getCurrentUserFromSession(request, env);
-    if (!user) return jsonResponse(request, { error: 'Unauthorized' }, { status: 401 });
+    if (!principal) return jsonResponse(request, { error: 'Unauthorized' }, { status: 401 });
+    if (principal.kind === 'api_key' && principal.scopeKind === 'boards') {
+      return jsonResponse(
+        request,
+        { error: 'Creating a board requires an API key scoped to all boards, not a fixed set of boards' },
+        { status: 403 }
+      );
+    }
+    const uid = principalUserId(principal);
     let body: { name?: string; color?: string; settings_json?: string | Record<string, unknown> } = {};
     try {
       body = await request.json();
@@ -273,7 +298,6 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
         : typeof body.settings_json === 'string'
           ? body.settings_json
           : null;
-    const uid = Number(user.id);
     await env.DB.batch([
       env.DB.prepare(
         `INSERT INTO boards (id, owner_user_id, name, color, settings_json, sort_order, archived_at, created_at, updated_at)
@@ -296,7 +320,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     }
 
   if (segments.length === 2 && method === 'GET') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     const row = await env.DB.prepare('SELECT * FROM boards WHERE id = ?').bind(boardId).first<BoardRow>();
     if (!row) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
@@ -304,7 +328,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 2 && method === 'PATCH') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'admin')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -358,7 +382,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 2 && method === 'DELETE') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'owner')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -370,7 +394,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 3 && segments[2] === 'members' && method === 'GET') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     const { results } = await env.DB.prepare(
       `SELECT m.user_id AS user_id, m.role AS role, m.created_at AS joined_at,
@@ -403,7 +427,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   const INVITE_DAYS = 14;
 
   if (segments.length === 3 && segments[2] === 'invitations' && method === 'GET') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'admin')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -428,7 +452,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 3 && segments[2] === 'invitations' && method === 'POST') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'admin')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -540,7 +564,14 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   ) {
     const invitationId = segments[3];
     if (!invitationId) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-    const user = await getCurrentUserFromSession(request, env);
+    if (principal?.kind === 'api_key') {
+      return jsonResponse(
+        request,
+        { error: 'Accepting invitations requires a signed-in session, not an API key' },
+        { status: 403 }
+      );
+    }
+    const user = sessionUser(principal);
     if (!user?.email) return jsonResponse(request, { error: 'Unauthorized' }, { status: 401 });
     const row = await env.DB.prepare(
       `SELECT * FROM board_invitations WHERE id = ? AND board_id = ?`
@@ -570,7 +601,14 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   ) {
     const invitationId = segments[3];
     if (!invitationId) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-    const user = await getCurrentUserFromSession(request, env);
+    if (principal?.kind === 'api_key') {
+      return jsonResponse(
+        request,
+        { error: 'Declining invitations requires a signed-in session, not an API key' },
+        { status: 403 }
+      );
+    }
+    const user = sessionUser(principal);
     if (!user?.email) return jsonResponse(request, { error: 'Unauthorized' }, { status: 401 });
     const row = await env.DB.prepare(
       `SELECT * FROM board_invitations WHERE id = ? AND board_id = ?`
@@ -594,7 +632,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 3 && segments[2] === 'full' && method === 'GET') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     const board = await env.DB.prepare('SELECT * FROM boards WHERE id = ?').bind(boardId).first<BoardRow>();
     if (!board) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
@@ -634,7 +672,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 3 && segments[2] === 'lists' && method === 'GET') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     const { results } = await env.DB.prepare(
       'SELECT * FROM lists WHERE board_id = ? AND archived_at IS NULL ORDER BY position ASC'
@@ -645,7 +683,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 3 && segments[2] === 'lists' && method === 'POST') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -682,7 +720,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 4 && segments[2] === 'lists' && segments[3] === 'reorder' && method === 'POST') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -711,7 +749,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 3 && segments[2] === 'archive' && method === 'GET') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     const { results: cards } = await env.DB.prepare(
       'SELECT * FROM archived_cards WHERE board_id = ? ORDER BY archived_at DESC'
@@ -727,7 +765,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 4 && segments[2] === 'archive' && segments[3] === 'cards' && method === 'POST') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -777,7 +815,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 4 && segments[2] === 'archive' && segments[3] === 'lists' && method === 'POST') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -831,7 +869,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 3 && segments[2] === 'restore' && method === 'POST') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -976,7 +1014,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 3 && segments[2] === 'audit' && method === 'GET') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     const url = new URL(request.url);
     const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '50', 10)));
@@ -996,7 +1034,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 4 && segments[2] === 'dashboard' && segments[3] === 'tiles' && method === 'GET') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     const { results } = await env.DB.prepare(
       'SELECT * FROM board_dashboard_tiles WHERE board_id = ? ORDER BY position ASC'
@@ -1007,7 +1045,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 4 && segments[2] === 'dashboard' && segments[3] === 'tiles' && method === 'PUT') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -1040,7 +1078,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 3 && segments[2] === 'notification-settings' && method === 'GET') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     const row = await env.DB.prepare(
       'SELECT prefs_json FROM board_notification_settings WHERE board_id = ? AND user_id = ?'
@@ -1051,7 +1089,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 3 && segments[2] === 'notification-settings' && method === 'PATCH') {
-    const r = await requireBoardAccess(request, env, boardId);
+    const r = await requireBoardAccess(request, env, boardId, principal);
     if (r instanceof Response) return r;
     let patch: Record<string, unknown> = {};
     try {
@@ -1083,17 +1121,17 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
   }
 
   if (segments.length === 4 && segments[2] === 'ai' && segments[3] === 'prioritize' && method === 'POST') {
-    const resp = await handleBoardAiPrioritize(request, env, boardId);
+    const resp = await handleBoardAiPrioritize(request, env, boardId, principal);
     if (resp) return resp;
   }
 
   if (segments.length === 4 && segments[2] === 'ai' && segments[3] === 'next-task' && method === 'POST') {
-    const resp = await handleBoardAiNextTask(request, env, boardId);
+    const resp = await handleBoardAiNextTask(request, env, boardId, principal);
     if (resp) return resp;
   }
 
   if (segments.length === 4 && segments[2] === 'ai' && segments[3] === 'list-insights' && method === 'POST') {
-    const resp = await handleBoardAiListInsights(request, env, boardId);
+    const resp = await handleBoardAiListInsights(request, env, boardId, principal);
     if (resp) return resp;
   }
 
@@ -1101,7 +1139,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
 
   if (segments.length === 4 && segments[0] === 'cards' && segments[2] === 'ai' && segments[3] === 'subtasks' && method === 'POST') {
     const cardId = segments[1];
-    const resp = await handleCardAiSubtasks(request, env, cardId);
+    const resp = await handleCardAiSubtasks(request, env, cardId, principal);
     if (resp) return resp;
   }
 
@@ -1109,7 +1147,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     const listId = segments[1];
     const list = await env.DB.prepare('SELECT board_id FROM lists WHERE id = ?').bind(listId).first<{ board_id: string }>();
     if (!list) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-    const r = await requireBoardAccess(request, env, list.board_id);
+    const r = await requireBoardAccess(request, env, list.board_id, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -1152,7 +1190,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       title: string;
     }>();
     if (!list) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-    const r = await requireBoardAccess(request, env, list.board_id);
+    const r = await requireBoardAccess(request, env, list.board_id, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'admin')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -1180,7 +1218,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     const listId = segments[1];
     const list = await env.DB.prepare('SELECT board_id FROM lists WHERE id = ?').bind(listId).first<{ board_id: string }>();
     if (!list) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-    const r = await requireBoardAccess(request, env, list.board_id);
+    const r = await requireBoardAccess(request, env, list.board_id, principal);
     if (r instanceof Response) return r;
     const { results } = await env.DB.prepare(
       'SELECT * FROM cards WHERE list_id = ? ORDER BY position ASC'
@@ -1194,7 +1232,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
     const listId = segments[1];
     const list = await env.DB.prepare('SELECT board_id FROM lists WHERE id = ?').bind(listId).first<{ board_id: string }>();
     if (!list) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-    const r = await requireBoardAccess(request, env, list.board_id);
+    const r = await requireBoardAccess(request, env, list.board_id, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -1262,7 +1300,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       .bind(cardId)
       .first<Parameters<typeof cardRowToApi>[0] & { board_id: string }>();
     if (!card) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-    const r = await requireBoardAccess(request, env, card.board_id);
+    const r = await requireBoardAccess(request, env, card.board_id, principal);
     if (r instanceof Response) return r;
     const { board_id: _b, ...c } = card;
     return jsonResponse(request, { card: cardRowToApi(c) });
@@ -1276,7 +1314,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       .bind(cardId)
       .first<Parameters<typeof cardRowToApi>[0] & { board_id: string }>();
     if (!card) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-    const r = await requireBoardAccess(request, env, card.board_id);
+    const r = await requireBoardAccess(request, env, card.board_id, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -1416,7 +1454,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       .bind(cardId)
       .first<Parameters<typeof cardRowToApi>[0] & { board_id: string }>();
     if (!card) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-    const r = await requireBoardAccess(request, env, card.board_id);
+    const r = await requireBoardAccess(request, env, card.board_id, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -1444,7 +1482,7 @@ export async function handleBoards(request: Request, env: Env, pathname: string)
       .bind(cardId)
       .first<Parameters<typeof cardRowToApi>[0] & { board_id: string }>();
     if (!card) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-    const r = await requireBoardAccess(request, env, card.board_id);
+    const r = await requireBoardAccess(request, env, card.board_id, principal);
     if (r instanceof Response) return r;
     if (!roleAtLeast(r.role, 'member')) {
       return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });

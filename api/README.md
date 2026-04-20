@@ -83,8 +83,6 @@ CREATE TABLE IF NOT EXISTS user_expo_push_tokens (
 
 The mobile app registers an Expo token via `POST /user/expo-push-token` when the user enables Account → Notifications. After a successful board Durable Object broadcast (or if the DO is unavailable), the Worker sends pushes via the [Expo Push API](https://docs.expo.dev/push-notifications/sending-notifications/) using tokens from this table and per-board `pushEnabled` in `board_notification_settings`. Optional secret `EXPO_ACCESS_TOKEN` improves rate limits; see [`SECRETS.md`](SECRETS.md).
 
-**AI & scheduled notifications:** apply [`../db/migrations/20260215_ai_notifications.sql`](../db/migrations/20260215_ai_notifications.sql) to D1 (in addition to the main schema) for `notification_dedupe` and `ai_usage_daily`. The Worker exposes **Workers AI** (`[ai]` binding) for `POST /api/boards/:boardId/ai/prioritize`, `.../ai/next-task`, and `POST /api/cards/:cardId/ai/subtasks` (session auth, board membership required).
-
 ### Step 4 — Register the Durable Object (first time)
 
 The `[[migrations]]` block defines `BoardRoom`. Apply it by deploying **once** to dev or production:
@@ -169,13 +167,15 @@ Non-secret CORS: optional `ALLOWED_ORIGINS` in `wrangler.toml` `[vars]` (comma-s
 ## Routes (summary)
 
 - **Auth:** `/api/auth/*` and `/auth/*` — [`src/auth.ts`](src/auth.ts)
-- **User:** `/user/profile`, `/user/profile-picture` — [`src/user.ts`](src/user.ts)
-- **Images:** `POST /upload/profile-picture`, `GET /api/images/{key}` — [`src/images.ts`](src/images.ts)
+- **User:** `/user/profile`, `/user/profile-picture`, **`/user/api-keys`** (create/list/revoke API keys; session only) — [`src/user.ts`](src/user.ts), [`src/userApiKeys.ts`](src/userApiKeys.ts)
+- **Images:** `POST /upload/profile-picture`, `POST /upload/card-attachment`, `GET /api/images/{key}` — [`src/images.ts`](src/images.ts)
 - **Boards:** `/boards`, lists, cards, full snapshot, archive, restore, audit, dashboard, notification settings — [`src/boards.ts`](src/boards.ts)
+
+**HTTP API reference (auth, scopes, curl, WebSockets):** [`docs/HTTP_API.md`](docs/HTTP_API.md). **OpenAPI 3 contract:** [`docs/openapi.yaml`](docs/openapi.yaml).
 
 An optional **`/api`** prefix is stripped for routing so `API_BASE` may or may not include `/api`.
 
-**WebSockets:** `GET` `wss://<host>/ws/boards/<boardId>` or `.../api/ws/boards/<boardId>`. Auth: cookie, `?token=`, or `Authorization: Bearer`. See [`src/wsBoard.ts`](src/wsBoard.ts).
+**WebSockets:** `GET` `wss://<host>/ws/boards/<boardId>` or `.../api/ws/boards/<boardId>`. Auth: cookie, `?token=`, or `Authorization: Bearer` (session or `bfk_` API key). See [`src/wsBoard.ts`](src/wsBoard.ts).
 
 ---
 

@@ -2,6 +2,7 @@ import type { Env } from './bindings';
 import { bindRequestEnv, emptyCorsResponse, jsonResponse } from './http';
 import { handleAuth } from './auth';
 import { handleUser } from './user';
+import { handleUserApiKeys } from './userApiKeys';
 import { handleImages } from './images';
 import { handleBoards } from './boards';
 import { handlePublicInvitationRoutes } from './boardInvitations';
@@ -49,6 +50,11 @@ async function routeRequest(request: Request, env: Env, pathname: string): Promi
 
   if (pathname.startsWith('/auth/') || pathname.startsWith('/api/auth/')) {
     const resp = await handleAuth(request, env, pathname);
+    if (resp) return resp;
+  }
+
+  if (pathname.startsWith('/user/api-keys')) {
+    const resp = await handleUserApiKeys(request, env, pathname);
     if (resp) return resp;
   }
 

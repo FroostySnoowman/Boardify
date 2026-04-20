@@ -410,6 +410,21 @@ export default function AccountScreen() {
                 />
                 <ConfigRowDivider dividerStyle={styles.configDivider} />
                 <ConfigRow
+                  label="Developer API"
+                  sublabel="API keys, automation, REST docs"
+                  rowStyle={styles.configRow}
+                  labelStyle={styles.configLabel}
+                  sublabelStyle={styles.configSublabel}
+                  labelBlockStyle={styles.configLabelBlock}
+                  chevronColor={colors.iconChevron}
+                  onPress={() => {
+                    hapticLight();
+                    router.push('/api-keys');
+                  }}
+                  showChevron
+                />
+                <ConfigRowDivider dividerStyle={styles.configDivider} />
+                <ConfigRow
                   label="Sign out"
                   sublabel=""
                   rowStyle={styles.configRow}

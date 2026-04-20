@@ -80,6 +80,9 @@ if (envVars.GOOGLE_OAUTH_CLIENT_ID_ANDROID_DEV) {
   extra.GOOGLE_OAUTH_CLIENT_ID_ANDROID_DEV = envVars.GOOGLE_OAUTH_CLIENT_ID_ANDROID_DEV;
 }
 
+// In-app API Reference always uses this production worker URL (not dev/staging VITE_API_BASE).
+extra.VITE_API_BASE_DOCS = 'https://api.boardify.mybreakpoint.app';
+
 function isExpoExportWebOnlyFromArgv() {
   const a = process.argv;
   for (let i = 0; i < a.length; i++) {

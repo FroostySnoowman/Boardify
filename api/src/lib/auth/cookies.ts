@@ -104,3 +104,16 @@ export function getAuthToken(request: Request): string | null {
 
   return getAuthTokenFromQueryParam(request);
 }
+
+/** Prefer `Authorization` over cookies so programmatic clients are not overridden by a browser session. */
+export function getCredentialToken(request: Request): string | null {
+  const headerToken = getAuthTokenFromHeader(request);
+  if (headerToken) {
+    return headerToken;
+  }
+  const cookieToken = getAuthTokenFromCookie(request);
+  if (cookieToken) {
+    return cookieToken;
+  }
+  return getAuthTokenFromQueryParam(request);
+}

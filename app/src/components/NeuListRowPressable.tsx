@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { View as RNView } from 'react-native';
 import type { ThemeColors } from '../theme/colors';
 import Animated, {
@@ -19,10 +19,12 @@ type Props = {
   topStyle: object;
   onPress: () => void;
   children: React.ReactNode;
+  /** Merged after `styles.wrap` (e.g. `alignSelf: 'stretch'`, `width: '100%'`, spacing overrides). */
+  wrapStyle?: StyleProp<ViewStyle>;
 };
 
 export const NeuListRowPressable = forwardRef<RNView, Props>(function NeuListRowPressable(
-  { shadowStyle, topStyle, onPress, children },
+  { shadowStyle, topStyle, onPress, children, wrapStyle },
   ref
 ) {
   const offset = useSharedValue(0);
@@ -34,7 +36,7 @@ export const NeuListRowPressable = forwardRef<RNView, Props>(function NeuListRow
   }));
 
   return (
-    <Pressable onPress={onPress} style={styles.wrap} onPressIn={() => {
+    <Pressable onPress={onPress} style={[styles.wrap, wrapStyle]} onPressIn={() => {
       offset.value = withTiming(SHIFT, { duration: PRESS_DURATION });
     }} onPressOut={() => {
       cancelAnimation(offset);

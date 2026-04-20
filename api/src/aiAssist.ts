@@ -1,4 +1,5 @@
 import type { Env } from './bindings';
+import type { AuthPrincipal } from './authPrincipal';
 import { jsonResponse } from './http';
 import { requireBoardAccess } from './boardAccess';
 
@@ -120,10 +121,11 @@ function compactCardLine(c: CardRow): Record<string, unknown> {
 export async function handleBoardAiPrioritize(
   request: Request,
   env: Env,
-  boardId: string
+  boardId: string,
+  principal: AuthPrincipal | null
 ): Promise<Response | null> {
   if (request.method !== 'POST') return null;
-  const r = await requireBoardAccess(request, env, boardId);
+  const r = await requireBoardAccess(request, env, boardId, principal);
   if (r instanceof Response) return r;
   if (!roleAtLeast(r.role, 'member')) {
     return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -172,10 +174,11 @@ export async function handleBoardAiPrioritize(
 export async function handleBoardAiNextTask(
   request: Request,
   env: Env,
-  boardId: string
+  boardId: string,
+  principal: AuthPrincipal | null
 ): Promise<Response | null> {
   if (request.method !== 'POST') return null;
-  const r = await requireBoardAccess(request, env, boardId);
+  const r = await requireBoardAccess(request, env, boardId, principal);
   if (r instanceof Response) return r;
   if (!roleAtLeast(r.role, 'member')) {
     return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -227,10 +230,11 @@ export async function handleBoardAiNextTask(
 export async function handleBoardAiListInsights(
   request: Request,
   env: Env,
-  boardId: string
+  boardId: string,
+  principal: AuthPrincipal | null
 ): Promise<Response | null> {
   if (request.method !== 'POST') return null;
-  const r = await requireBoardAccess(request, env, boardId);
+  const r = await requireBoardAccess(request, env, boardId, principal);
   if (r instanceof Response) return r;
   if (!roleAtLeast(r.role, 'member')) {
     return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
@@ -294,7 +298,8 @@ export async function handleBoardAiListInsights(
 export async function handleCardAiSubtasks(
   request: Request,
   env: Env,
-  cardId: string
+  cardId: string,
+  principal: AuthPrincipal | null
 ): Promise<Response | null> {
   if (request.method !== 'POST') return null;
   const card = await env.DB.prepare(
@@ -303,7 +308,7 @@ export async function handleCardAiSubtasks(
     .bind(cardId)
     .first<{ title: string; description: string | null; payload_json: string; board_id: string }>();
   if (!card) return jsonResponse(request, { error: 'Not found' }, { status: 404 });
-  const r = await requireBoardAccess(request, env, card.board_id);
+  const r = await requireBoardAccess(request, env, card.board_id, principal);
   if (r instanceof Response) return r;
   if (!roleAtLeast(r.role, 'member')) {
     return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });

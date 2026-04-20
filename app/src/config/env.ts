@@ -8,7 +8,8 @@ const getEnvVar = (key: string, defaultValue?: string): string => {
   const fromEnv = process.env[key];
   const value = fromExpoConfig || fromManifest2 || fromManifest || fromEnv || defaultValue;
 
-  if (!value && !defaultValue) {
+  // Only warn when the key is absent and the caller did not pass a default (including `''` for optional keys).
+  if (!value && defaultValue === undefined) {
     console.warn(`Missing environment variable: ${key}`);
   }
   return value || '';
@@ -56,3 +57,14 @@ if (!ENV.DEV) {
 }
 
 export const SHARE_BASE_URL = DEFAULT_PROD_APP_URL;
+
+/**
+ * Worker origin shown in API Reference (always production Boardify host).
+ * `VITE_API_BASE_DOCS` is set in `app.config.js` Expo `extra`; does not follow {@link ENV.API_BASE}.
+ */
+export function getApiDocsPublicBaseUrl(): string {
+  const explicit = getEnvVar('VITE_API_BASE_DOCS', '').trim();
+  if (explicit) return explicit.replace(/\/$/, '');
+  const prod = getEnvVar('VITE_API_BASE_PROD', DEFAULT_PROD_API).trim();
+  return (prod || DEFAULT_PROD_API).replace(/\/$/, '');
+}

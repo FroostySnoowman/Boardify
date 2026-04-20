@@ -1,7 +1,6 @@
 import type { Env } from './bindings';
-import { getAuthToken } from './lib/auth/cookies';
-import { getSessionByToken } from './lib/auth/session';
-import { getBoardMembership } from './boardAccess';
+import { resolveAuthPrincipal } from './authPrincipal';
+import { requireBoardAccess } from './boardAccess';
 
 export async function handleBoardWebSocket(
   request: Request,
@@ -12,28 +11,22 @@ export async function handleBoardWebSocket(
     return new Response('WebSocket not configured', { status: 503 });
   }
 
-  const url = new URL(request.url);
-  const token = getAuthToken(request) || url.searchParams.get('token');
-  if (!token) {
+  const principal = await resolveAuthPrincipal(request, env);
+  if (!principal) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const sess = await getSessionByToken(env.DB, token);
-  if (!sess) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  const member = await getBoardMembership(env, boardId, sess.user_id);
-  if (!member) {
-    return new Response('Forbidden', { status: 403 });
+  const access = await requireBoardAccess(request, env, boardId, principal);
+  if (access instanceof Response) {
+    return access;
   }
 
   const userRow = await env.DB.prepare('SELECT username FROM users WHERE id = ?')
-    .bind(sess.user_id)
+    .bind(access.userId)
     .first<{ username: string | null }>();
 
   const headers = new Headers(request.headers);
-  headers.set('X-Internal-User-Id', String(sess.user_id));
+  headers.set('X-Internal-User-Id', String(access.userId));
   headers.set('X-Internal-Username', encodeURIComponent(userRow?.username ?? ''));
 
   const id = env.BOARD_ROOM.idFromName(boardId);

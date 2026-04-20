@@ -193,3 +193,24 @@ CREATE TABLE IF NOT EXISTS ai_usage_daily (
   count INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (user_id, day)
 );
+
+CREATE TABLE IF NOT EXISTS user_api_keys (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  token_prefix TEXT NOT NULL,
+  scope_kind TEXT NOT NULL CHECK (scope_kind IN ('all', 'boards')),
+  created_at TEXT NOT NULL,
+  revoked_at TEXT,
+  last_used_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_user_api_keys_user ON user_api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_api_keys_token_hash ON user_api_keys(token_hash);
+
+CREATE TABLE IF NOT EXISTS user_api_key_boards (
+  api_key_id TEXT NOT NULL REFERENCES user_api_keys(id) ON DELETE CASCADE,
+  board_id TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+  PRIMARY KEY (api_key_id, board_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_api_key_boards_board ON user_api_key_boards(board_id);

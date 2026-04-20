@@ -1,7 +1,8 @@
 import type { Env } from './bindings';
 import { jsonResponse } from './http';
 import { getCurrentUserFromSession } from './auth';
-import { getBoardMembership } from './boardAccess';
+import { requireBoardAccess } from './boardAccess';
+import { resolveAuthPrincipal } from './authPrincipal';
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024;
@@ -87,10 +88,6 @@ async function uploadProfilePicture(request: Request, env: Env): Promise<Respons
 }
 
 async function uploadCardAttachment(request: Request, env: Env): Promise<Response> {
-  const user = await getCurrentUserFromSession(request, env);
-  if (!user) {
-    return jsonResponse(request, { error: 'Not authenticated' }, { status: 401 });
-  }
   if (!env.IMAGES) {
     return jsonResponse(request, { error: 'Image storage not configured' }, { status: 500 });
   }
@@ -117,9 +114,12 @@ async function uploadCardAttachment(request: Request, env: Env): Promise<Respons
     return jsonResponse(request, { error: 'Not found' }, { status: 404 });
   }
 
-  const userId = Number(user.id);
-  const m = await getBoardMembership(env, card.board_id, userId);
-  if (!m || !roleAtLeast(m.role, 'member')) {
+  const principal = await resolveAuthPrincipal(request, env);
+  const access = await requireBoardAccess(request, env, card.board_id, principal);
+  if (access instanceof Response) {
+    return access;
+  }
+  if (!roleAtLeast(access.role, 'member')) {
     return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
   }
 

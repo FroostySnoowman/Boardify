@@ -19,6 +19,7 @@ import {
   setAuthCookie,
   clearAuthCookie,
   getAuthToken,
+  getCredentialToken,
 } from './lib/auth/cookies'
 import { checkRateLimit } from './lib/auth/rate-limit'
 import {
@@ -39,7 +40,7 @@ export async function getCurrentUserFromSession(
   env: Env
 ): Promise<AuthenticatedUser | null> {
   try {
-    const token = getAuthToken(request)
+    const token = getCredentialToken(request)
     if (!token) {
       return null
     }

@@ -238,6 +238,7 @@ function AppContent() {
           <Stack.Screen name="terms" options={createBoardModalOptions} />
           <Stack.Screen name="verify-email" options={createBoardModalOptions} />
           <Stack.Screen name="create-board" options={createBoardModalOptions} />
+          <Stack.Screen name="api-keys" options={createBoardModalOptions} />
           <Stack.Screen name="invite/[token]" options={createBoardModalOptions} />
           <Stack.Screen name="board-settings" options={createBoardModalOptions} />
           <Stack.Screen name="board-notifications" options={createBoardModalOptions} />
@@ -246,6 +247,15 @@ function AppContent() {
           <Stack.Screen name="add-dashboard-tile" options={createBoardModalOptions} />
           <Stack.Screen name="board-ai" options={createBoardModalOptions} />
           <Stack.Screen name="default-board" options={createBoardModalOptions} />
+          <Stack.Screen
+            name="api-reference"
+            options={{
+              ...createBoardModalOptions,
+              // Nested `app/api-reference/_layout.tsx` Stack owns the header; a second parent header
+              // caused a white strip and wrong `useHeaderHeight()` on iOS page sheets.
+              headerShown: false,
+            }}
+          />
           <Stack.Screen name="board" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" options={{ headerShown: false }} />
         </Stack>

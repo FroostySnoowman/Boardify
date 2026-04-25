@@ -36,6 +36,8 @@ const FEATURES: { icon: keyof typeof Feather.glyphMap; label: string }[] = [
 
 function getPurchaseProductId(p: any): string | undefined {
   if (typeof p?.productId === 'string' && p.productId.length > 0) return p.productId;
+  if (typeof p?.productID === 'string' && p.productID.length > 0) return p.productID;
+  if (typeof p?.sku === 'string' && p.sku.length > 0) return p.sku;
   if (Array.isArray(p?.productIds) && typeof p.productIds[0] === 'string') return p.productIds[0];
   return undefined;
 }
@@ -49,9 +51,25 @@ function getIosReceipt(p: any): string | undefined {
 }
 
 function getAndroidPurchaseToken(p: any): string | undefined {
-  const v = p?.purchaseToken ?? p?.token;
+  const v = p?.purchaseToken ?? p?.purchaseTokenAndroid ?? p?.token;
   return typeof v === 'string' && v.length > 0 ? v : undefined;
 }
+
+function hasTargetProduct(p: any): boolean {
+  return getPurchaseProductId(p) === PREMIUM_MONTHLY_PRODUCT_ID;
+}
+
+function summarizePurchaseShape(p: any): Record<string, unknown> {
+  return {
+    productId: getPurchaseProductId(p) ?? null,
+    hasReceipt: !!getIosReceipt(p),
+    hasAndroidToken: !!getAndroidPurchaseToken(p),
+    transactionId: p?.transactionId ?? p?.transactionIdentifierIOS ?? null,
+    originalTransactionId: p?.originalTransactionIdentifierIOS ?? null,
+  };
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function NeubrutalFrame({
   children,
@@ -362,16 +380,29 @@ export default function AiPaywallScreen({
           type: 'subs',
         });
       }
-      const purchases = await RNIap.getAvailablePurchases();
-      const available = Array.isArray(purchases) ? purchases : [];
+      // Sandbox can lag a bit before purchases appear in getAvailablePurchases.
+      const available: any[] = [];
+      for (let i = 0; i < 4; i++) {
+        const purchases = await RNIap.getAvailablePurchases();
+        const list = Array.isArray(purchases) ? purchases : [];
+        available.splice(0, available.length, ...list);
+        if (available.some(hasTargetProduct)) break;
+        if (i < 3) await sleep(1200);
+      }
       const requested = Array.isArray(purchaseResult)
         ? purchaseResult
         : purchaseResult
           ? [purchaseResult]
           : [];
       const combined = [...requested, ...available];
-      const match = combined.find((p: any) => getPurchaseProductId(p) === PREMIUM_MONTHLY_PRODUCT_ID);
+      const match =
+        combined.find((p: any) => hasTargetProduct(p)) ??
+        combined.find((p: any) => (Platform.OS === 'ios' ? !!getIosReceipt(p) : !!getAndroidPurchaseToken(p)));
       if (!match) {
+        console.warn('[AiPaywall] no premium purchase candidates', {
+          requested: requested.map(summarizePurchaseShape),
+          available: available.map(summarizePurchaseShape),
+        });
         throw new Error('No premium purchase found after checkout.');
       }
 
@@ -414,7 +445,9 @@ export default function AiPaywallScreen({
       const RNIap = await getIapModuleAfterInit();
       const purchases = await RNIap.getAvailablePurchases();
       const list = Array.isArray(purchases) ? purchases : [];
-      const match = list.find((p: any) => getPurchaseProductId(p) === PREMIUM_MONTHLY_PRODUCT_ID);
+      const match =
+        list.find((p: any) => hasTargetProduct(p)) ??
+        list.find((p: any) => (Platform.OS === 'ios' ? !!getIosReceipt(p) : !!getAndroidPurchaseToken(p)));
       if (!match) {
         Alert.alert('No subscription found', 'No active AI subscription was found for this store account.');
         return;

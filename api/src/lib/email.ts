@@ -378,9 +378,11 @@ export function accountDeletionEmailHtml(deleteUrl: string, logoUrl: string): st
 
       <!-- Permanent warning -->
       <tr><td align="center" bgcolor="${CARD}" style="padding-bottom:28px;${bg(CARD)};">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="${WARN_BOX_BG}" style="${bg(WARN_BOX_BG)};border:2px solid ${WARN_BORDER};border-radius:8px;">
-          <tr><td bgcolor="${WARN_BOX_BG}" style="padding:12px 22px;font-family:${F};font-size:13px;color:#991b1b;text-align:center;line-height:1.55;font-weight:500;${bg(WARN_BOX_BG)};">
-            &#9888; This action is <strong style="color:#b91c1c;">permanent</strong> and cannot be undone.
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="${WARN_BOX_BG}" style="${bg(WARN_BOX_BG)};border:2px solid ${WARN_BORDER};border-radius:10px;max-width:100%;">
+          <tr><td bgcolor="${WARN_BOX_BG}" style="padding:12px 20px;text-align:center;${bg(WARN_BOX_BG)};">
+            <span style="display:inline-block;font-family:${F};font-size:13px;line-height:1.45;font-weight:700;color:#9f1239;letter-spacing:0.1px;">
+              &#9888;&#65039; Permanent action. This cannot be undone.
+            </span>
           </td></tr>
         </table>
       </td></tr>

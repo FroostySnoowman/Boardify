@@ -71,6 +71,33 @@ function summarizePurchaseShape(p: any): Record<string, unknown> {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function summarizeProductShape(p: any): Record<string, unknown> {
+  return {
+    id: p?.id ?? p?.productId ?? p?.productID ?? null,
+    type: p?.type ?? null,
+    title: p?.title ?? null,
+    displayName: p?.displayName ?? null,
+    price: p?.displayPrice ?? p?.localizedPrice ?? null,
+    hasOffers: Array.isArray(p?.subscriptionOfferDetailsAndroid) || Array.isArray(p?.subscriptionOffers),
+  };
+}
+
+function dumpUnknownError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    const extra = error as unknown as Record<string, unknown>;
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack ?? null,
+      ...extra,
+    };
+  }
+  if (typeof error === 'object' && error !== null) {
+    return error as Record<string, unknown>;
+  }
+  return { value: String(error) };
+}
+
 function NeubrutalFrame({
   children,
   backgroundColor,
@@ -347,15 +374,29 @@ export default function AiPaywallScreen({
     if (purchasing) return;
     setPurchasing(true);
     try {
+      console.warn('[AiPaywall][debug] purchase:start', {
+        platform: Platform.OS,
+        productId: PREMIUM_MONTHLY_PRODUCT_ID,
+      });
       if (Platform.OS === 'web') {
         const { url } = await createCheckoutSession();
         window.location.assign(url);
         return;
       }
       const RNIap = await getIapModuleAfterInit();
+      const preExistingRaw = await RNIap.getAvailablePurchases().catch(() => []);
+      const preExisting = Array.isArray(preExistingRaw) ? preExistingRaw : [];
+      console.warn('[AiPaywall][debug] purchase:available:before', {
+        count: preExisting.length,
+        purchases: preExisting.map(summarizePurchaseShape),
+      });
       const products = await RNIap.fetchProducts({
         skus: [PREMIUM_MONTHLY_PRODUCT_ID],
         type: 'subs',
+      });
+      console.warn('[AiPaywall][debug] purchase:products', {
+        count: Array.isArray(products) ? products.length : 0,
+        products: (Array.isArray(products) ? products : []).map(summarizeProductShape),
       });
       const first = Array.isArray(products) ? products[0] : null;
       if (!first) throw new Error('Subscription product unavailable.');
@@ -380,20 +421,29 @@ export default function AiPaywallScreen({
           type: 'subs',
         });
       }
+      const requested = Array.isArray(purchaseResult)
+        ? purchaseResult
+        : purchaseResult
+          ? [purchaseResult]
+          : [];
+      console.warn('[AiPaywall][debug] purchase:request:result', {
+        count: requested.length,
+        purchases: requested.map(summarizePurchaseShape),
+      });
       // Sandbox can lag a bit before purchases appear in getAvailablePurchases.
       const available: any[] = [];
       for (let i = 0; i < 4; i++) {
         const purchases = await RNIap.getAvailablePurchases();
         const list = Array.isArray(purchases) ? purchases : [];
         available.splice(0, available.length, ...list);
+        console.warn('[AiPaywall][debug] purchase:available:poll', {
+          attempt: i + 1,
+          count: available.length,
+          purchases: available.map(summarizePurchaseShape),
+        });
         if (available.some(hasTargetProduct)) break;
         if (i < 3) await sleep(1200);
       }
-      const requested = Array.isArray(purchaseResult)
-        ? purchaseResult
-        : purchaseResult
-          ? [purchaseResult]
-          : [];
       const combined = [...requested, ...available];
       const match =
         combined.find((p: any) => hasTargetProduct(p)) ??
@@ -411,6 +461,11 @@ export default function AiPaywallScreen({
         if (!receipt) {
           throw new Error('No iOS receipt found after checkout.');
         }
+        console.warn('[AiPaywall][debug] purchase:verify:ios', {
+          productId: PREMIUM_MONTHLY_PRODUCT_ID,
+          receiptLength: receipt.length,
+          purchase: summarizePurchaseShape(match),
+        });
         await verifyPurchase({
           platform: 'ios',
           receipt,
@@ -421,16 +476,23 @@ export default function AiPaywallScreen({
         if (!purchaseToken) {
           throw new Error('No Android purchase token found after checkout.');
         }
+        console.warn('[AiPaywall][debug] purchase:verify:android', {
+          productId: PREMIUM_MONTHLY_PRODUCT_ID,
+          tokenLength: purchaseToken.length,
+          purchase: summarizePurchaseShape(match),
+        });
         await verifyPurchase({
           platform: 'android',
           purchaseToken,
           productId: PREMIUM_MONTHLY_PRODUCT_ID,
         });
       }
+      console.warn('[AiPaywall][debug] purchase:verify:success');
       await refresh();
       onClose();
     } catch (err: any) {
       if (isUserCancelledPurchaseError(err)) return;
+      console.warn('[AiPaywall][debug] purchase:error:raw', dumpUnknownError(err));
       console.warn('[AiPaywall] purchase failed', getIapErrorDetails(err));
       Alert.alert('Purchase failed', String(err?.message || 'Unable to complete purchase.'));
     } finally {

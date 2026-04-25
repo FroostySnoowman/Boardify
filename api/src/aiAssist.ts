@@ -2,6 +2,7 @@ import type { Env } from './bindings';
 import type { AuthPrincipal } from './authPrincipal';
 import { jsonResponse } from './http';
 import { requireBoardAccess } from './boardAccess';
+import { hasPremiumEntitlement, parseUserSubscriptionStatus } from './entitlements';
 
 function parseJson<T>(raw: string | null | undefined, fallback: T): T {
   if (!raw) return fallback;
@@ -54,6 +55,19 @@ async function tryConsumeAiSlot(env: Env, userId: number): Promise<boolean> {
     .bind(userId, day)
     .run();
   return true;
+}
+
+function requirePremiumJson(
+  request: Request,
+  principal: { subscriptionStatus: string | null } | null
+): Response | null {
+  if (!principal) {
+    return jsonResponse(request, { error: 'Not authenticated' }, { status: 401 });
+  }
+  if (!hasPremiumEntitlement(parseUserSubscriptionStatus(principal.subscriptionStatus))) {
+    return jsonResponse(request, { error: 'Premium subscription required.' }, { status: 403 });
+  }
+  return null;
 }
 
 async function runLlmJson(env: Env, system: string, user: string, maxTokens: number): Promise<unknown> {
@@ -130,6 +144,8 @@ export async function handleBoardAiPrioritize(
   if (!roleAtLeast(r.role, 'member')) {
     return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
   }
+  const denied = requirePremiumJson(request, principal?.kind === 'session' ? principal.user : null);
+  if (denied) return denied;
   if (!(await tryConsumeAiSlot(env, r.userId))) {
     return jsonResponse(request, { error: 'Daily AI limit reached' }, { status: 429 });
   }
@@ -183,6 +199,8 @@ export async function handleBoardAiNextTask(
   if (!roleAtLeast(r.role, 'member')) {
     return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
   }
+  const denied = requirePremiumJson(request, principal?.kind === 'session' ? principal.user : null);
+  if (denied) return denied;
   if (!(await tryConsumeAiSlot(env, r.userId))) {
     return jsonResponse(request, { error: 'Daily AI limit reached' }, { status: 429 });
   }
@@ -239,6 +257,8 @@ export async function handleBoardAiListInsights(
   if (!roleAtLeast(r.role, 'member')) {
     return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
   }
+  const denied = requirePremiumJson(request, principal?.kind === 'session' ? principal.user : null);
+  if (denied) return denied;
   if (!(await tryConsumeAiSlot(env, r.userId))) {
     return jsonResponse(request, { error: 'Daily AI limit reached' }, { status: 429 });
   }
@@ -313,6 +333,8 @@ export async function handleCardAiSubtasks(
   if (!roleAtLeast(r.role, 'member')) {
     return jsonResponse(request, { error: 'Forbidden' }, { status: 403 });
   }
+  const denied = requirePremiumJson(request, principal?.kind === 'session' ? principal.user : null);
+  if (denied) return denied;
   if (!(await tryConsumeAiSlot(env, r.userId))) {
     return jsonResponse(request, { error: 'Daily AI limit reached' }, { status: 429 });
   }

@@ -105,6 +105,7 @@ import {
 import { uid } from '../utils/id';
 import { toggleStopwatchOnTask } from '../utils/workTime';
 import { BoardScreenSkeleton } from '../components/skeletons';
+import { useRequirePremium } from '../hooks/useRequirePremium';
 
 export type { BoardViewMode } from '../types/board';
 
@@ -540,6 +541,7 @@ export default function BoardScreen({
   const [aiSnapshot, setAiSnapshot] = useState<BoardColumnData[] | null>(null);
   const [aiChangeLabel, setAiChangeLabel] = useState('');
   const [aiReorderNotes, setAiReorderNotes] = useState<Record<string, string>>({});
+  const { requirePremium, paywallElement } = useRequirePremium();
 
   useEffect(() => {
     if (!boardId) return;
@@ -1181,6 +1183,11 @@ export default function BoardScreen({
 
   const runAiPrioritization = useCallback(async () => {
     if (aiBusyAction) return;
+    let allowed = false;
+    requirePremium(() => {
+      allowed = true;
+    });
+    if (!allowed) return;
     setAiMenuOpen(false);
     const targetListId = aiMenuListId;
     const before = cloneBoardColumns(columnsRef.current);
@@ -1212,10 +1219,15 @@ export default function BoardScreen({
     } finally {
       setAiBusyAction(null);
     }
-  }, [aiBusyAction, aiMenuListId, boardId, handleAiError, persistVisibleOrder, setColumns]);
+  }, [aiBusyAction, aiMenuListId, boardId, handleAiError, persistVisibleOrder, requirePremium, setColumns]);
 
   const runAiNextTask = useCallback(async () => {
     if (aiBusyAction) return;
+    let allowed = false;
+    requirePremium(() => {
+      allowed = true;
+    });
+    if (!allowed) return;
     setAiMenuOpen(false);
     const targetListId = aiMenuListId;
     setAiBusyAction('next');
@@ -1234,10 +1246,15 @@ export default function BoardScreen({
     } finally {
       setAiBusyAction(null);
     }
-  }, [aiBusyAction, aiMenuListId, boardId, handleAiError]);
+  }, [aiBusyAction, aiMenuListId, boardId, handleAiError, requirePremium]);
 
   const runAiInsights = useCallback(async () => {
     if (aiBusyAction) return;
+    let allowed = false;
+    requirePremium(() => {
+      allowed = true;
+    });
+    if (!allowed) return;
     setAiMenuOpen(false);
     const targetListId = aiMenuListId;
     setAiBusyAction('insights');
@@ -1252,7 +1269,7 @@ export default function BoardScreen({
     } finally {
       setAiBusyAction(null);
     }
-  }, [aiBusyAction, aiMenuListId, boardId, handleAiError]);
+  }, [aiBusyAction, aiMenuListId, boardId, handleAiError, requirePremium]);
 
   const keepAiChanges = useCallback(() => {
     setAiSnapshot(null);
@@ -2090,13 +2107,15 @@ export default function BoardScreen({
                           cards={col.cards}
                           onAddCard={() => openAddCardComposer(i)}
                           onAiPress={() => {
-                            router.push({
-                              pathname: '/board-ai',
-                              params: {
-                                boardId,
-                                listId: col.id,
-                                listTitle: col.title,
-                              },
+                            requirePremium(() => {
+                              router.push({
+                                pathname: '/board-ai',
+                                params: {
+                                  boardId,
+                                  listId: col.id,
+                                  listTitle: col.title,
+                                },
+                              });
                             });
                           }}
                           addCardComposerOpen={addCardComposerCol === i}
@@ -2158,13 +2177,15 @@ export default function BoardScreen({
                     cards={col.cards}
                     onAddCard={() => openAddCardComposer(i)}
                     onAiPress={() => {
-                      router.push({
-                        pathname: '/board-ai',
-                        params: {
-                          boardId,
-                          listId: col.id,
-                          listTitle: col.title,
-                        },
+                      requirePremium(() => {
+                        router.push({
+                          pathname: '/board-ai',
+                          params: {
+                            boardId,
+                            listId: col.id,
+                            listTitle: col.title,
+                          },
+                        });
                       });
                     }}
                     addCardComposerOpen={addCardComposerCol === i}
@@ -2672,6 +2693,7 @@ export default function BoardScreen({
           onClose={handleCloseExpandedCard}
         />
       ) : null}
+      {paywallElement}
     </View>
   );
 }

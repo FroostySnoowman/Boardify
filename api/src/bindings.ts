@@ -19,6 +19,13 @@ export interface Env {
   SMTP_PASS?: string;
   SMTP_FROM?: string;
   EXPO_ACCESS_TOKEN?: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_PREMIUM_PRICE_ID?: string;
+  APPLE_IAP_SHARED_SECRET?: string;
+  GOOGLE_PLAY_CLIENT_EMAIL?: string;
+  GOOGLE_PLAY_PRIVATE_KEY?: string;
+  GOOGLE_PLAY_PACKAGE_NAME?: string;
   /** When `"1"`, reminder/digest skips push/email/in-app sends (logs only). */
   DIGEST_DRY_RUN?: string;
 }

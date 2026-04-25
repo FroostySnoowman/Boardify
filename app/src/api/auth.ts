@@ -201,7 +201,7 @@ export interface User {
     birthdate?: string | null;
     chatDisabled?: boolean;
     parentalConsentAt?: string | null;
-    subscriptionStatus?: 'free' | 'plus' | 'plus_grace';
+    subscriptionStatus?: 'free' | 'plus' | 'plus_grace' | 'premium' | 'premium_grace';
 }
 
 export async function fetchCurrentUser(): Promise<User> {

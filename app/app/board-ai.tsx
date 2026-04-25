@@ -24,6 +24,7 @@ import {
   runBoardAiNextTask,
   runBoardAiPrioritization,
 } from '../src/api/boards';
+import { useRequirePremium } from '../src/hooks/useRequirePremium';
 import {
   BOARD_AI_APPLY_ORDER_EVENT,
   BOARD_AI_OPEN_CARD_EVENT,
@@ -156,6 +157,7 @@ export default function BoardAiScreen() {
     risks: string[];
     suggestions: string[];
   } | null>(null);
+  const { requirePremium, paywallElement } = useRequirePremium();
 
   useEffect(() => {
     if (!boardId) return;
@@ -198,6 +200,11 @@ export default function BoardAiScreen() {
 
   const runPrioritize = useCallback(async () => {
     if (!boardId || busy) return;
+    let allowed = false;
+    requirePremium(() => {
+      allowed = true;
+    });
+    if (!allowed) return;
     setBusy('prioritize');
     try {
       const out = await runBoardAiPrioritization(boardId, {
@@ -211,7 +218,7 @@ export default function BoardAiScreen() {
     } finally {
       setBusy(null);
     }
-  }, [boardId, listId, busy]);
+  }, [boardId, listId, busy, requirePremium]);
 
   const applyPrioritize = useCallback(() => {
     if (!boardId || prioritizedOrder.length === 0) return;
@@ -226,6 +233,11 @@ export default function BoardAiScreen() {
 
   const runNextTask = useCallback(async () => {
     if (!boardId || busy) return;
+    let allowed = false;
+    requirePremium(() => {
+      allowed = true;
+    });
+    if (!allowed) return;
     setBusy('next');
     try {
       const out = await runBoardAiNextTask(boardId, {
@@ -242,7 +254,7 @@ export default function BoardAiScreen() {
     } finally {
       setBusy(null);
     }
-  }, [boardId, listId, busy]);
+  }, [boardId, listId, busy, requirePremium]);
 
   const openRecommended = useCallback(() => {
     if (!boardId || !nextTask?.cardId) return;
@@ -259,6 +271,11 @@ export default function BoardAiScreen() {
 
   const runInsights = useCallback(async () => {
     if (!boardId || busy) return;
+    let allowed = false;
+    requirePremium(() => {
+      allowed = true;
+    });
+    if (!allowed) return;
     setBusy('insights');
     try {
       const out = await runBoardAiListInsights(boardId, {
@@ -271,7 +288,7 @@ export default function BoardAiScreen() {
     } finally {
       setBusy(null);
     }
-  }, [boardId, listId, busy]);
+  }, [boardId, listId, busy, requirePremium]);
 
   return (
     <View style={styles.container}>
@@ -414,6 +431,7 @@ export default function BoardAiScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {paywallElement}
     </View>
   );
 }

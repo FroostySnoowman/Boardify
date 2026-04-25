@@ -10,6 +10,8 @@ import { handleBoardWebSocket } from './wsBoard';
 import { handleLegal } from './legal';
 import { handleScheduled } from './scheduled';
 import { handleNotificationQueue } from './notificationQueue';
+import { handleSubscriptions } from './subscriptions';
+import { handleWebhooks } from './webhooks';
 
 export { BoardRoom } from './board-room-do';
 
@@ -37,6 +39,12 @@ async function routeRequest(request: Request, env: Env, pathname: string): Promi
 
   const legalResp = handleLegal(request, env, pathname);
   if (legalResp) return legalResp;
+
+  const subscriptionsPath = stripApiPrefix(pathname);
+  const subResp = await handleSubscriptions(request, env, subscriptionsPath);
+  if (subResp) return subResp;
+  const webhookResp = await handleWebhooks(request, env, subscriptionsPath);
+  if (webhookResp) return webhookResp;
 
   const forImages = stripApiPrefix(pathname);
   if (

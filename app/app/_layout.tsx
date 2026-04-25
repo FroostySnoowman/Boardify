@@ -27,6 +27,7 @@ import { registerPushNotificationDeepLinks } from '../src/notifications/notifica
 import { registerInviteDeepLinks } from '../src/notifications/inviteDeepLink';
 import { ThemeProvider, useTheme } from '../src/theme';
 import { preloadFeatherFontForWeb } from '../src/utils/webVectorFonts';
+import { SubscriptionProvider } from '../src/contexts/SubscriptionContext';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -280,14 +281,16 @@ function AppRoot() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <InboxPrefetchOnLaunch />
-        <BoardSortProvider>
-          <MessageFilterProvider>
-            <NetworkProvider>
-              <AppContent />
-            </NetworkProvider>
-          </MessageFilterProvider>
-        </BoardSortProvider>
+        <SubscriptionProvider>
+          <InboxPrefetchOnLaunch />
+          <BoardSortProvider>
+            <MessageFilterProvider>
+              <NetworkProvider>
+                <AppContent />
+              </NetworkProvider>
+            </MessageFilterProvider>
+          </BoardSortProvider>
+        </SubscriptionProvider>
       </AuthProvider>
     </ThemeProvider>
   );

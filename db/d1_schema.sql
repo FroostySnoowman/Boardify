@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
   chat_disabled INTEGER NOT NULL DEFAULT 0,
   parental_consent_at TEXT,
   parental_pin_hash TEXT,
+  stripe_customer_id TEXT,
   subscription_status TEXT DEFAULT 'free',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -193,6 +194,27 @@ CREATE TABLE IF NOT EXISTS ai_usage_daily (
   count INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (user_id, day)
 );
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL CHECK (platform IN ('ios', 'android', 'stripe')),
+  product_id TEXT,
+  status TEXT NOT NULL CHECK (status IN ('active', 'grace_period', 'expired')),
+  original_transaction_id TEXT,
+  google_purchase_token TEXT,
+  stripe_subscription_id TEXT,
+  current_period_start TEXT,
+  current_period_end TEXT,
+  cancelled_at TEXT,
+  apple_environment TEXT CHECK (apple_environment IN ('Sandbox', 'Production')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_original_tx ON subscriptions(original_transaction_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_google_token ON subscriptions(google_purchase_token);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_stripe_sub ON subscriptions(stripe_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_status ON subscriptions(user_id, status);
 
 CREATE TABLE IF NOT EXISTS user_api_keys (
   id TEXT PRIMARY KEY,

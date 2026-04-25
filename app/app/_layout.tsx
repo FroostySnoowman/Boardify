@@ -250,6 +250,7 @@ function AppContent() {
           <Stack.Screen name="privacy" options={createBoardModalOptions} />
           <Stack.Screen name="terms" options={createBoardModalOptions} />
           <Stack.Screen name="verify-email" options={createBoardModalOptions} />
+          <Stack.Screen name="delete-account/[token]" options={createBoardModalOptions} />
           <Stack.Screen name="create-board" options={createBoardModalOptions} />
           <Stack.Screen name="api-keys" options={createBoardModalOptions} />
           <Stack.Screen name="invite/[token]" options={createBoardModalOptions} />

@@ -34,6 +34,25 @@ const FEATURES: { icon: keyof typeof Feather.glyphMap; label: string }[] = [
   { icon: 'activity', label: 'List-level wins, risks, and suggestions' },
 ];
 
+function getPurchaseProductId(p: any): string | undefined {
+  if (typeof p?.productId === 'string' && p.productId.length > 0) return p.productId;
+  if (Array.isArray(p?.productIds) && typeof p.productIds[0] === 'string') return p.productIds[0];
+  return undefined;
+}
+
+function getIosReceipt(p: any): string | undefined {
+  const v =
+    p?.transactionReceipt ??
+    p?.originalTransactionReceiptIOS ??
+    p?.purchaseToken;
+  return typeof v === 'string' && v.length > 0 ? v : undefined;
+}
+
+function getAndroidPurchaseToken(p: any): string | undefined {
+  const v = p?.purchaseToken ?? p?.token;
+  return typeof v === 'string' && v.length > 0 ? v : undefined;
+}
+
 function NeubrutalFrame({
   children,
   backgroundColor,
@@ -322,8 +341,9 @@ export default function AiPaywallScreen({
       });
       const first = Array.isArray(products) ? products[0] : null;
       if (!first) throw new Error('Subscription product unavailable.');
+      let purchaseResult: any = null;
       if (Platform.OS === 'ios') {
-        await RNIap.requestPurchase({
+        purchaseResult = await RNIap.requestPurchase({
           request: { apple: { sku: PREMIUM_MONTHLY_PRODUCT_ID } },
           type: 'subs',
         });
@@ -332,7 +352,7 @@ export default function AiPaywallScreen({
         const offerToken =
           androidProduct?.subscriptionOfferDetailsAndroid?.[0]?.offerToken ??
           androidProduct?.subscriptionOffers?.[0]?.offerTokenAndroid;
-        await RNIap.requestPurchase({
+        purchaseResult = await RNIap.requestPurchase({
           request: {
             google: {
               skus: [PREMIUM_MONTHLY_PRODUCT_ID],
@@ -343,16 +363,39 @@ export default function AiPaywallScreen({
         });
       }
       const purchases = await RNIap.getAvailablePurchases();
-      const list = Array.isArray(purchases) ? purchases : [];
-      const match = list.find((p: any) => p.productId === PREMIUM_MONTHLY_PRODUCT_ID);
-      if (!match?.purchaseToken) {
+      const available = Array.isArray(purchases) ? purchases : [];
+      const requested = Array.isArray(purchaseResult)
+        ? purchaseResult
+        : purchaseResult
+          ? [purchaseResult]
+          : [];
+      const combined = [...requested, ...available];
+      const match = combined.find((p: any) => getPurchaseProductId(p) === PREMIUM_MONTHLY_PRODUCT_ID);
+      if (!match) {
         throw new Error('No premium purchase found after checkout.');
       }
-      await verifyPurchase({
-        platform: Platform.OS as 'ios' | 'android',
-        ...(Platform.OS === 'ios' ? { receipt: match.purchaseToken } : { purchaseToken: match.purchaseToken }),
-        productId: PREMIUM_MONTHLY_PRODUCT_ID,
-      });
+
+      if (Platform.OS === 'ios') {
+        const receipt = getIosReceipt(match);
+        if (!receipt) {
+          throw new Error('No iOS receipt found after checkout.');
+        }
+        await verifyPurchase({
+          platform: 'ios',
+          receipt,
+          productId: PREMIUM_MONTHLY_PRODUCT_ID,
+        });
+      } else {
+        const purchaseToken = getAndroidPurchaseToken(match);
+        if (!purchaseToken) {
+          throw new Error('No Android purchase token found after checkout.');
+        }
+        await verifyPurchase({
+          platform: 'android',
+          purchaseToken,
+          productId: PREMIUM_MONTHLY_PRODUCT_ID,
+        });
+      }
       await refresh();
       onClose();
     } catch (err: any) {
@@ -371,16 +414,34 @@ export default function AiPaywallScreen({
       const RNIap = await getIapModuleAfterInit();
       const purchases = await RNIap.getAvailablePurchases();
       const list = Array.isArray(purchases) ? purchases : [];
-      const match = list.find((p: any) => p.productId === PREMIUM_MONTHLY_PRODUCT_ID);
-      if (!match?.purchaseToken) {
+      const match = list.find((p: any) => getPurchaseProductId(p) === PREMIUM_MONTHLY_PRODUCT_ID);
+      if (!match) {
         Alert.alert('No subscription found', 'No active AI subscription was found for this store account.');
         return;
       }
-      await verifyPurchase({
-        platform: Platform.OS as 'ios' | 'android',
-        ...(Platform.OS === 'ios' ? { receipt: match.purchaseToken } : { purchaseToken: match.purchaseToken }),
-        productId: PREMIUM_MONTHLY_PRODUCT_ID,
-      });
+      if (Platform.OS === 'ios') {
+        const receipt = getIosReceipt(match);
+        if (!receipt) {
+          Alert.alert('Restore failed', 'No iOS receipt found for this subscription.');
+          return;
+        }
+        await verifyPurchase({
+          platform: 'ios',
+          receipt,
+          productId: PREMIUM_MONTHLY_PRODUCT_ID,
+        });
+      } else {
+        const purchaseToken = getAndroidPurchaseToken(match);
+        if (!purchaseToken) {
+          Alert.alert('Restore failed', 'No Android purchase token found for this subscription.');
+          return;
+        }
+        await verifyPurchase({
+          platform: 'android',
+          purchaseToken,
+          productId: PREMIUM_MONTHLY_PRODUCT_ID,
+        });
+      }
       await refresh();
       onClose();
     } catch (err: any) {

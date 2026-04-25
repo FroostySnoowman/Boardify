@@ -14,6 +14,7 @@ import {
   type AccountUiPrefs,
 } from '../storage/accountPrefs';
 import { getThemeColors, type ResolvedScheme, type ThemeColors } from './colors';
+import * as SystemUI from 'expo-system-ui';
 
 export type ThemePreference = AccountUiPrefs['theme'];
 
@@ -69,6 +70,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [preference, systemScheme, appearanceTick]);
 
   const colors = useMemo(() => getThemeColors(resolvedScheme), [resolvedScheme]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
+    void SystemUI.setBackgroundColorAsync(colors.canvas);
+  }, [colors.canvas]);
 
   const setThemePreference = useCallback(async (next: ThemePreference) => {
     const current = await loadAccountUiPrefs();

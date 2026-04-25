@@ -214,7 +214,12 @@ module.exports = {
     splash: {
       image: './assets/splash.png',
       resizeMode: 'contain',
-      backgroundColor: '#f5f0e8'
+      backgroundColor: '#f5f0e8',
+      dark: {
+        image: './assets/splash.png',
+        resizeMode: 'contain',
+        backgroundColor: '#141210',
+      },
     },
     ios: {
       supportsTablet: true,
@@ -226,7 +231,12 @@ module.exports = {
       splash: {
         image: './assets/splash.png',
         resizeMode: 'contain',
-        backgroundColor: '#f5f0e8'
+        backgroundColor: '#f5f0e8',
+        dark: {
+          image: './assets/splash.png',
+          resizeMode: 'contain',
+          backgroundColor: '#141210',
+        },
       },
       infoPlist: {
         UIBackgroundModes: ['remote-notification'],
@@ -259,7 +269,12 @@ module.exports = {
       splash: {
         image: './assets/splash.png',
         resizeMode: 'contain',
-        backgroundColor: '#f5f0e8'
+        backgroundColor: '#f5f0e8',
+        dark: {
+          image: './assets/splash.png',
+          resizeMode: 'contain',
+          backgroundColor: '#141210',
+        },
       },
       predictiveBackGestureEnabled: false,
       backgroundColor: '#f5f0e8',

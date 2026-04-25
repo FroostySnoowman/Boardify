@@ -180,7 +180,7 @@ function AppContent() {
       <View
         style={{
           flex: 1,
-          backgroundColor: '#f5f0e8',
+          backgroundColor: colors.canvas,
           alignItems: 'center',
           justifyContent: 'center',
         }}

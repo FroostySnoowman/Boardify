@@ -26,7 +26,6 @@ export interface Env {
   GOOGLE_PLAY_CLIENT_EMAIL?: string;
   GOOGLE_PLAY_PRIVATE_KEY?: string;
   GOOGLE_PLAY_PACKAGE_NAME?: string;
-  /** When `"1"`, reminder/digest skips push/email/in-app sends (logs only). */
   DIGEST_DRY_RUN?: string;
 }
 

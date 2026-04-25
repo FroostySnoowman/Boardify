@@ -31,10 +31,15 @@ interface User {
 
 type TabsScreenName = 'index' | 'messages' | 'account';
 
+const ACCOUNT_TAB_MODAL_PATHS = new Set(['/profile', '/api-keys', '/default-board']);
+
 function useSelectedTabsScreen(): TabsScreenName {
   const pathname = usePathname() ?? '';
-  if (pathname.includes('/messages')) return 'messages';
-  if (pathname.includes('/account')) return 'account';
+  const path = (pathname.split('?')[0] ?? '').replace(/\/$/, '');
+
+  if (path.includes('/messages')) return 'messages';
+  if (path.includes('/account')) return 'account';
+  if (ACCOUNT_TAB_MODAL_PATHS.has(path)) return 'account';
   return 'index';
 }
 

@@ -3,7 +3,7 @@ import 'react-native-gesture-handler';
 import '../global.css';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, View, StyleSheet, Text, Pressable } from 'react-native';
+import { Platform, View, StyleSheet, Text, Pressable, Image } from 'react-native';
 
 if (Platform.OS === 'web' && (StyleSheet as any).setFlag) {
   (StyleSheet as any).setFlag('darkMode', 'class');
@@ -176,7 +176,19 @@ function AppContent() {
 
   if (!appReady) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: '#f5f0e8',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Image
+          source={require('../assets/splash.png')}
+          style={{ width: 220, height: 220 }}
+          resizeMode="contain"
+        />
         <StatusBar style={statusBarStyle} />
       </View>
     );

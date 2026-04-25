@@ -118,3 +118,65 @@ npx wrangler d1 execute boardify-db-dev --remote --file=../db/d1_schema.sql
 ```
 
 On first subscription API use, the Worker can also create missing `subscriptions` / `stripe_customer_id` for legacy databases (`ensureSubscriptionsSchema` in `api/src/subscriptions.ts`).
+
+---
+
+## 7) Where and how to set environment variables
+
+### API (Cloudflare Worker) — required for IAP / Stripe / webhooks
+
+All values in **§4** are read by the **Boardify API Worker** (`api/`, Wrangler name `boardify-api-dev` for **dev** and `boardify-api` for **production** — see [`api/wrangler.toml`](api/wrangler.toml)).
+
+**Where to set them**
+
+1. **Cloudflare dashboard**  
+   **Workers & Pages** → open **`boardify-api-dev`** or **`boardify-api`** → **Settings** → **Variables and Secrets**.  
+   Add each name under **Secrets** (values are encrypted and not shown again after save). Use the environment selector if your account shows separate dev/prod Workers as different services.
+
+2. **Wrangler CLI (recommended for secrets)**  
+   Run from the **`api/`** directory so `wrangler.toml` is picked up. Use **`--env dev`** or **`--env production`** so the secret attaches to the correct Worker:
+
+   ```bash
+   cd api
+
+   # Stripe (web + webhooks)
+   [ X ] npx wrangler secret put STRIPE_SECRET_KEY --env dev
+   [ X ] npx wrangler secret put STRIPE_WEBHOOK_SECRET --env dev
+   [ X ] npx wrangler secret put STRIPE_PREMIUM_PRICE_ID --env dev
+
+   # Apple receipt / legacy verify
+   [ X ] npx wrangler secret put APPLE_IAP_SHARED_SECRET --env dev
+
+   # Google Play subscription verify
+   [  ] npx wrangler secret put GOOGLE_PLAY_CLIENT_EMAIL --env dev
+   [  ] npx wrangler secret put GOOGLE_PLAY_PRIVATE_KEY --env dev
+
+   # Optional but recommended (checkout success/cancel URLs, portal return URL)
+   npx wrangler secret put WEB_APP_URL --env dev
+   ```
+
+   Repeat the same `secret put` commands with **`--env production`** for the live Worker.
+
+   **`GOOGLE_PLAY_PACKAGE_NAME`** is not a secret; you can set it as a plain **Variable** in the dashboard, or add it under `[env.dev.vars]` / `[env.production.vars]` in `wrangler.toml` (e.g. `GOOGLE_PLAY_PACKAGE_NAME = "app.mybreakpoint.boardify"`). If unset, the API defaults to `app.mybreakpoint.boardify`.
+
+**Check what is already set (names only)**
+
+```bash
+cd api
+npx wrangler secret list --env dev
+npx wrangler secret list --env production
+```
+
+**Local API (`wrangler dev`)**  
+Create **`api/.dev.vars`** (same folder as `wrangler.toml`, gitignored) with one `NAME=value` per line for the same keys. See [Cloudflare: local development variables](https://developers.cloudflare.com/workers/testing/local-development/#local-only-environment-variables).
+
+**Other Worker secrets (auth, email, OAuth)**  
+Not specific to IAP, but the same dashboard / `wrangler secret put` flow applies. Full list and procedures: [`api/SECRETS.md`](api/SECRETS.md).
+
+---
+
+### Stripe Dashboard (not Worker env)
+
+The **webhook endpoint URL** is configured in **Stripe** → **Developers** → **Webhooks** → your endpoint → URL must be `https://<your-public-api-host>/webhooks/stripe`. The signing secret you copy there becomes **`STRIPE_WEBHOOK_SECRET`** on the Worker (§3 above).
+
+---

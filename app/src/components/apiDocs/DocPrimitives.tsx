@@ -1,7 +1,6 @@
-import React, { useMemo } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, Platform } from 'react-native';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { View, Text, Pressable, StyleSheet, ScrollView, Platform, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { hapticLight } from '../../utils/haptics';
 import { copyTextToClipboard } from '../../utils/copyText';
 import type { ThemeColors } from '../../theme/colors';
 import type { DocBlock, DocParamRow, HttpMethod } from '../../data/apiDocsCatalog';
@@ -225,35 +224,65 @@ export function createDocStyles(colors: ThemeColors) {
   });
 }
 
+const COPY_ICON_POP_MS = 1800;
+
 function DocCodeBlock({
   label,
   code,
   apiBase,
   styles,
   iconColor,
+  colors,
 }: {
   label: string;
   code: string;
   apiBase: string;
   styles: ReturnType<typeof createDocStyles>;
   iconColor: string;
+  colors: ThemeColors;
 }) {
   const full = interpolateApiDocs(code, apiBase);
+  const [copied, setCopied] = useState(false);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pop = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!copied) return;
+    pop.setValue(1);
+    Animated.sequence([
+      Animated.spring(pop, { toValue: 1.2, useNativeDriver: true, friction: 5 }),
+      Animated.spring(pop, { toValue: 1, useNativeDriver: true, friction: 6 }),
+    ]).start();
+  }, [copied, pop]);
+
+  const onCopy = async () => {
+    const ok = await copyTextToClipboard(full);
+    if (!ok) return;
+    setCopied(true);
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    resetTimerRef.current = setTimeout(() => setCopied(false), COPY_ICON_POP_MS);
+  };
+
   return (
     <View style={styles.codeWrap}>
       <View style={styles.codeHeader}>
         <Text style={[styles.codeLabel, styles.codeHeaderLabel]} numberOfLines={2}>
           {label.toUpperCase()}
         </Text>
-        <Pressable
-          onPress={() => {
-            hapticLight();
-            void copyTextToClipboard(full);
-          }}
-          hitSlop={8}
-          accessibilityLabel="Copy to clipboard"
-        >
-          <Feather name="copy" size={18} color={iconColor} />
+        <Pressable onPress={onCopy} hitSlop={8} accessibilityLabel="Copy to clipboard">
+          <Animated.View style={{ transform: [{ scale: pop }] }}>
+            <Feather
+              name={copied ? 'check' : 'copy'}
+              size={18}
+              color={copied ? colors.successEmphasis : iconColor}
+            />
+          </Animated.View>
         </Pressable>
       </View>
       <Text selectable style={styles.codeBody}>
@@ -389,6 +418,7 @@ export function DocBlockList({
                 apiBase={apiBase}
                 styles={styles}
                 iconColor={iconMuted}
+                colors={colors}
               />
             );
           case 'endpoint':

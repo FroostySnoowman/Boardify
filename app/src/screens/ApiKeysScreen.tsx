@@ -7,9 +7,7 @@ import {
   StyleSheet,
   Platform,
   Pressable,
-  ActivityIndicator,
   Alert,
-  Share,
   KeyboardAvoidingView,
   Keyboard,
 } from 'react-native';
@@ -25,6 +23,9 @@ import { listBoards } from '../api/boards';
 import type { ApiBoardRow } from '../api/boardMappers';
 import { ApiKeysListSkeleton } from '../components/skeletons/ApiKeysListSkeleton';
 import { NeuListRowPressable, getNeuListRowCardBase } from '../components/NeuListRowPressable';
+import { BoardStyleActionButton } from '../components/BoardStyleActionButton';
+import { BoardStyleChoiceChip } from '../components/BoardStyleChoiceChip';
+import { copyTextToClipboard } from '../utils/copyText';
 
 type Phase = 'list' | 'create' | 'reveal';
 
@@ -72,31 +73,17 @@ function createStyles(colors: ThemeColors) {
       color: colors.subtitle,
       marginTop: 2,
     },
-    primaryBtn: {
-      backgroundColor: colors.textPrimary,
-      borderRadius: 12,
-      paddingVertical: 14,
-      alignItems: 'center',
+    primaryActionWrap: {
+      alignSelf: 'stretch',
+      width: '100%',
       marginTop: 8,
       marginBottom: 12,
     },
-    primaryBtnText: {
-      color: colors.canvas,
-      fontSize: 16,
-      fontWeight: '700',
-    },
-    secondaryBtn: {
-      borderRadius: 12,
-      paddingVertical: 12,
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginBottom: 8,
-    },
-    secondaryBtnText: {
-      fontSize: 15,
-      fontWeight: '600',
+    boardPrimaryLabel: {
       color: colors.textPrimary,
+    },
+    boardPrimaryLabelMuted: {
+      color: colors.textTertiary,
     },
     keyRow: {
       paddingVertical: 12,
@@ -135,21 +122,10 @@ function createStyles(colors: ThemeColors) {
       textTransform: 'uppercase',
       letterSpacing: 0.4,
     },
-    chipRow: {
+    scopeChipRow: {
       flexDirection: 'row',
-      gap: 10,
+      gap: 12,
       marginBottom: 16,
-    },
-    chip: {
-      flex: 1,
-      paddingVertical: 12,
-      borderRadius: 12,
-      borderWidth: 2,
-      alignItems: 'center',
-    },
-    chipText: {
-      fontSize: 14,
-      fontWeight: '700',
     },
     boardPickRow: {
       flexDirection: 'row',
@@ -203,6 +179,9 @@ export default function ApiKeysScreen() {
   const [selectedBoardIds, setSelectedBoardIds] = useState<Set<string>>(new Set());
   const [revealSecret, setRevealSecret] = useState<string | null>(null);
 
+  const canSubmitCreate =
+    createName.trim().length > 0 && (!scopeBoards || selectedBoardIds.size > 0);
+
   const resetCreateForm = useCallback(() => {
     setCreateName('');
     setScopeBoards(false);
@@ -254,15 +233,8 @@ export default function ApiKeysScreen() {
   };
 
   const submitCreate = async () => {
+    if (!canSubmitCreate || saving) return;
     const name = createName.trim();
-    if (!name) {
-      Alert.alert('Name required', 'Give this key a label so you can find it later.');
-      return;
-    }
-    if (scopeBoards && selectedBoardIds.size === 0) {
-      Alert.alert('Pick boards', 'Select at least one board for a scoped key.');
-      return;
-    }
     hapticLight();
     setSaving(true);
     try {
@@ -307,20 +279,9 @@ export default function ApiKeysScreen() {
 
   const shareSecret = async () => {
     if (!revealSecret) return;
-    hapticLight();
-    if (Platform.OS === 'web') {
-      try {
-        await navigator.clipboard.writeText(revealSecret);
-        Alert.alert('Copied', 'The API key was copied to your clipboard.');
-      } catch {
-        Alert.alert('Copy manually', revealSecret);
-      }
-      return;
-    }
-    try {
-      await Share.share({ message: revealSecret, title: 'Boardify API key' });
-    } catch {
-      // user dismissed
+    const ok = await copyTextToClipboard(revealSecret);
+    if (ok && Platform.OS === 'web') {
+      Alert.alert('Copied', 'The API key was copied to your clipboard.');
     }
   };
 
@@ -414,16 +375,19 @@ export default function ApiKeysScreen() {
                   </View>
                 ))
               )}
-              <Pressable
-                style={styles.primaryBtn}
-                onPress={() => {
-                  hapticLight();
-                  resetCreateForm();
-                  setPhase('create');
-                }}
-              >
-                <Text style={styles.primaryBtnText}>Create API key</Text>
-              </Pressable>
+              <View style={styles.primaryActionWrap}>
+                <BoardStyleActionButton
+                  layout="stack"
+                  shadowColor={colors.success}
+                  onPress={() => {
+                    hapticLight();
+                    resetCreateForm();
+                    setPhase('create');
+                  }}
+                  label="Create API key"
+                  labelStyle={styles.boardPrimaryLabel}
+                />
+              </View>
             </>
           ) : null}
 
@@ -439,37 +403,23 @@ export default function ApiKeysScreen() {
                 maxLength={120}
               />
               <Text style={styles.label}>Access</Text>
-              <View style={styles.chipRow}>
-                <Pressable
+              <View style={styles.scopeChipRow}>
+                <BoardStyleChoiceChip
+                  label="All boards"
+                  selected={!scopeBoards}
                   onPress={() => {
                     hapticLight();
                     setScopeBoards(false);
                   }}
-                  style={[
-                    styles.chip,
-                    {
-                      borderColor: !scopeBoards ? colors.textPrimary : colors.border,
-                      backgroundColor: !scopeBoards ? colors.surfaceElevated : colors.surface,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.chipText, { color: colors.textPrimary }]}>All boards</Text>
-                </Pressable>
-                <Pressable
+                />
+                <BoardStyleChoiceChip
+                  label="Specific boards"
+                  selected={scopeBoards}
                   onPress={() => {
                     hapticLight();
                     setScopeBoards(true);
                   }}
-                  style={[
-                    styles.chip,
-                    {
-                      borderColor: scopeBoards ? colors.textPrimary : colors.border,
-                      backgroundColor: scopeBoards ? colors.surfaceElevated : colors.surface,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.chipText, { color: colors.textPrimary }]}>Specific boards</Text>
-                </Pressable>
+                />
               </View>
               {scopeBoards ? (
                 <>
@@ -489,20 +439,30 @@ export default function ApiKeysScreen() {
                   })}
                 </>
               ) : null}
-              <Pressable
-                style={[styles.primaryBtn, saving && { opacity: 0.6 }]}
-                onPress={() => void submitCreate()}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color={colors.canvas} />
-                ) : (
-                  <Text style={styles.primaryBtnText}>Create key</Text>
-                )}
-              </Pressable>
-              <Pressable style={styles.secondaryBtn} onPress={() => setPhase('list')}>
-                <Text style={styles.secondaryBtnText}>Cancel</Text>
-              </Pressable>
+              <View style={styles.primaryActionWrap}>
+                <BoardStyleActionButton
+                  layout="stack"
+                  shadowColor={canSubmitCreate && !saving ? colors.success : colors.shadowFill}
+                  onPress={() => void submitCreate()}
+                  disabled={!canSubmitCreate || saving}
+                  label={saving ? 'Creating…' : 'Create key'}
+                  labelStyle={
+                    canSubmitCreate && !saving ? styles.boardPrimaryLabel : styles.boardPrimaryLabelMuted
+                  }
+                />
+              </View>
+              <View style={styles.primaryActionWrap}>
+                <BoardStyleActionButton
+                  layout="stack"
+                  shadowColor={colors.shadowFill}
+                  onPress={() => {
+                    hapticLight();
+                    setPhase('list');
+                  }}
+                  label="Cancel"
+                  labelStyle={styles.boardPrimaryLabel}
+                />
+              </View>
             </>
           ) : null}
 
@@ -517,14 +477,24 @@ export default function ApiKeysScreen() {
                   {revealSecret}
                 </Text>
               </View>
-              <Pressable style={styles.primaryBtn} onPress={() => void shareSecret()}>
-                <Text style={styles.primaryBtnText}>
-                  {Platform.OS === 'web' ? 'Copy to clipboard' : 'Copy / Share'}
-                </Text>
-              </Pressable>
-              <Pressable style={styles.secondaryBtn} onPress={doneReveal}>
-                <Text style={styles.secondaryBtnText}>Done</Text>
-              </Pressable>
+              <View style={styles.primaryActionWrap}>
+                <BoardStyleActionButton
+                  layout="stack"
+                  shadowColor={colors.success}
+                  onPress={() => void shareSecret()}
+                  label="Copy to clipboard"
+                  labelStyle={styles.boardPrimaryLabel}
+                />
+              </View>
+              <View style={styles.primaryActionWrap}>
+                <BoardStyleActionButton
+                  layout="stack"
+                  shadowColor={colors.shadowFill}
+                  onPress={doneReveal}
+                  label="Done"
+                  labelStyle={styles.boardPrimaryLabel}
+                />
+              </View>
             </>
           ) : null}
         </ScrollView>

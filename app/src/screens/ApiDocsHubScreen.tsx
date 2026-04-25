@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   Pressable,
   Keyboard,
+  Animated,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -24,6 +25,7 @@ import { NeuListRowPressable, getNeuListRowCardBase } from '../components/NeuLis
 /** Non-iOS: pad below the stack header. iOS uses `contentInsetAdjustmentBehavior="automatic"` instead of `headerHeight`. */
 const BELOW_HEADER_GAP = 12;
 const IOS_SCROLL_TOP_GAP = 10;
+const COPY_FEEDBACK_MS = 1800;
 
 function createStyles(colors: ThemeColors, maxReadableWidth: number) {
   return StyleSheet.create({
@@ -183,8 +185,26 @@ export default function ApiDocsHubScreen() {
   const maxReadable = Platform.OS === 'web' ? 640 : 560;
   const styles = useMemo(() => createStyles(colors, maxReadable), [colors, maxReadable]);
   const [query, setQuery] = useState('');
+  const [baseUrlCopied, setBaseUrlCopied] = useState(false);
+  const baseUrlCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const baseUrlCopyPop = useRef(new Animated.Value(1)).current;
 
   const filtered = useMemo(() => filterApiDocCategories(query), [query]);
+
+  useEffect(() => {
+    return () => {
+      if (baseUrlCopyTimerRef.current) clearTimeout(baseUrlCopyTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!baseUrlCopied) return;
+    baseUrlCopyPop.setValue(1);
+    Animated.sequence([
+      Animated.spring(baseUrlCopyPop, { toValue: 1.2, useNativeDriver: true, friction: 5 }),
+      Animated.spring(baseUrlCopyPop, { toValue: 1, useNativeDriver: true, friction: 6 }),
+    ]).start();
+  }, [baseUrlCopied, baseUrlCopyPop]);
 
   const close = useCallback(() => {
     hapticLight();
@@ -192,9 +212,12 @@ export default function ApiDocsHubScreen() {
     router.back();
   }, []);
 
-  const copyBase = useCallback(() => {
-    hapticLight();
-    void copyTextToClipboard(getApiDocsPublicBaseUrl());
+  const copyBase = useCallback(async () => {
+    const ok = await copyTextToClipboard(getApiDocsPublicBaseUrl());
+    if (!ok) return;
+    setBaseUrlCopied(true);
+    if (baseUrlCopyTimerRef.current) clearTimeout(baseUrlCopyTimerRef.current);
+    baseUrlCopyTimerRef.current = setTimeout(() => setBaseUrlCopied(false), COPY_FEEDBACK_MS);
   }, []);
 
   const openCategory = useCallback((id: string) => {
@@ -249,7 +272,13 @@ export default function ApiDocsHubScreen() {
             </Text>
           </View>
           <Pressable onPress={copyBase} hitSlop={8} accessibilityLabel="Copy base URL">
-            <Feather name="copy" size={18} color={colors.iconMuted} />
+            <Animated.View style={{ transform: [{ scale: baseUrlCopyPop }] }}>
+              <Feather
+                name={baseUrlCopied ? 'check' : 'copy'}
+                size={18}
+                color={baseUrlCopied ? colors.successEmphasis : colors.iconMuted}
+              />
+            </Animated.View>
           </Pressable>
         </View>
 

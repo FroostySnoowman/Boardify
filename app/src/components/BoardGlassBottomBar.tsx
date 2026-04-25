@@ -294,7 +294,7 @@ export function BoardGlassBottomBar({
 
 const styles = StyleSheet.create({
   anchor: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
     pointerEvents: 'box-none',
     zIndex: 20000,

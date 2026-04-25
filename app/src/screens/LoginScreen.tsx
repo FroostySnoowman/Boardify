@@ -258,7 +258,7 @@ function createLoginStyles(colors: ThemeColors) {
       borderColor: colors.border,
     },
     resetOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: colors.modalCreamCanvas,
       zIndex: 100,
     },

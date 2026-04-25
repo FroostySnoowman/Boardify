@@ -192,7 +192,7 @@ export function PlatformBottomSheet({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   bottomSheet: {
     position: 'absolute',

@@ -177,7 +177,7 @@ function AppContent() {
   if (!appReady) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.canvas }}>
-        <StatusBar style={statusBarStyle} backgroundColor={colors.canvas} />
+        <StatusBar style={statusBarStyle} />
       </View>
     );
   }
@@ -188,7 +188,7 @@ function AppContent() {
         style={{ flex: 1, backgroundColor: colors.canvas }}
         onLayout={onLayoutRootView}
       >
-        <StatusBar style={statusBarStyle} backgroundColor={colors.canvas} />
+        <StatusBar style={statusBarStyle} />
         <OfflineBanner />
         <Stack
           screenOptions={{

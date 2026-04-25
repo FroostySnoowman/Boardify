@@ -2,7 +2,6 @@ import React, { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useNavigationState } from '@react-navigation/native';
 import { router, usePathname } from 'expo-router';
 import { GlassView, isLiquidGlassAvailable, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { ContextMenu } from './ContextMenu';
@@ -33,23 +32,9 @@ interface User {
 type TabsScreenName = 'index' | 'messages' | 'account';
 
 function useSelectedTabsScreen(): TabsScreenName {
-  const fromNav = useNavigationState((state) => {
-    const routes = state?.routes as { name: string; state?: { routes: { name: string }[]; index: number } }[] | undefined;
-    if (!routes) return null;
-    const tabs = routes.find((r) => r.name === '(tabs)');
-    const inner = tabs?.state;
-    if (!inner?.routes || typeof inner.index !== 'number') return null;
-    const name = inner.routes[inner.index]?.name;
-    if (name === 'index' || name === 'messages' || name === 'account') {
-      return name;
-    }
-    return null;
-  });
-
   const pathname = usePathname() ?? '';
-  if (fromNav) return fromNav;
-  if (pathname.includes('messages')) return 'messages';
-  if (pathname.includes('account')) return 'account';
+  if (pathname.includes('/messages')) return 'messages';
+  if (pathname.includes('/account')) return 'account';
   return 'index';
 }
 

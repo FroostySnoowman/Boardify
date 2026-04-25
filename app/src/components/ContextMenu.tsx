@@ -75,7 +75,7 @@ export function ContextMenu({
     () =>
       StyleSheet.create({
         androidMenuOverlay: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: colors.overlayScrim,
         },
         androidMenuContainer: {

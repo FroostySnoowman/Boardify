@@ -135,7 +135,7 @@ export default function ProfilePictureUpload({
                     height={128}
                     borderRadius={64}
                     variant="onWhite"
-                    style={StyleSheet.absoluteFillObject}
+                    style={StyleSheet.absoluteFill}
                   />
                 </View>
               ) : null}

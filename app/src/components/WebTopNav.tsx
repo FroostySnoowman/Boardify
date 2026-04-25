@@ -230,7 +230,7 @@ export function WebTopNav({
     () =>
       StyleSheet.create({
         menuOverlay: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: colors.overlayScrim,
         },
         mobileMenuContainer: {

@@ -13,8 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useIsFocused } from '@react-navigation/native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 import { TabScreenChrome } from '../components/TabScreenChrome';
 import { ActivitiesHeader, MOBILE_NAV_HEIGHT } from '../components/ActivitiesHeader';
@@ -402,7 +401,6 @@ export default function MessagesScreen() {
   const rawMessagesRef = useRef<ApiInboxMessage[]>([]);
   rawMessagesRef.current = rawMessages;
   const inboxDiskCachePresentRef = useRef(false);
-  const isFocused = useIsFocused();
 
   useEffect(() => {
     void loadReadMessageIds().then((s) => {
@@ -466,14 +464,16 @@ export default function MessagesScreen() {
     [user]
   );
 
-  useEffect(() => {
-    if (!isFocused || !user?.id || !readIdsReady || !bootstrapped) return;
-    const silent =
-      rawMessagesRef.current.length > 0 ||
-      getMemoryInboxMessages(user.id).length > 0 ||
-      inboxDiskCachePresentRef.current;
-    void loadMessages({ silent });
-  }, [isFocused, user?.id, readIdsReady, bootstrapped, loadMessages]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id || !readIdsReady || !bootstrapped) return;
+      const silent =
+        rawMessagesRef.current.length > 0 ||
+        getMemoryInboxMessages(user.id).length > 0 ||
+        inboxDiskCachePresentRef.current;
+      void loadMessages({ silent });
+    }, [user?.id, readIdsReady, bootstrapped, loadMessages])
+  );
 
   const items = useMemo(
     () => mapApiToItems(rawMessages, readIds),

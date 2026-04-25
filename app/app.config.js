@@ -171,6 +171,14 @@ module.exports = {
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     plugins: [
+      [
+        'expo-build-properties',
+        {
+          ios: {
+            deploymentTarget: '16.4',
+          },
+        },
+      ],
       'expo-router',
       [
         'expo-notifications',
@@ -195,6 +203,12 @@ module.exports = {
           category: 'public.app-category.sports',
         },
       ],
+      [
+        './plugins/withIosPodsDeploymentTarget',
+        {
+          deploymentTarget: '16.4',
+        },
+      ],
       './plugins/withAndroidSigning',
     ],
     splash: {
@@ -204,6 +218,7 @@ module.exports = {
     },
     ios: {
       supportsTablet: true,
+      deploymentTarget: '16.4',
       bundleIdentifier: 'app.mybreakpoint.boardify',
       appleTeamId: 'BZHS36ZMFQ',
       backgroundColor: '#f5f0e8',

@@ -298,7 +298,7 @@ function createExpandOverlayStyles(colors: ThemeColors) {
       flex: 1,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: colors.canvas,
     },
     cardFace: {

@@ -309,7 +309,7 @@ function createBoardSettingsStyles(colors: ThemeColors) {
       padding: 24,
     },
     colorModalBackdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: 'rgba(0,0,0,0.45)',
     },
     colorModalCard: {

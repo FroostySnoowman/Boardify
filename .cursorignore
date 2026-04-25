@@ -1,0 +1,5 @@
+# Install / generated native trees — never edit here; use package.json, app config, and `expo prebuild` / CI instead.
+app/node_modules
+app/ios
+app/android
+app/.expo

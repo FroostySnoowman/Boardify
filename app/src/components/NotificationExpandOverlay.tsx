@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#0a0a0a',
   },
   cardFace: {
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   listMimicLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingVertical: 14,
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   expandedLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#fff',
   },
   cardFaceHeader: {

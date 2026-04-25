@@ -2747,12 +2747,12 @@ function createBoardScreenStyles(colors: ThemeColors) {
     letterSpacing: 0.2,
   },
   cardDragOverlayRoot: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 22000,
     elevation: 22,
   },
   listDragOverlayRoot: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 22000,
     elevation: 22,
   },
@@ -2837,7 +2837,7 @@ function createBoardScreenStyles(colors: ThemeColors) {
     alignItems: 'flex-start',
   },
   focusDotsOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 20050,
     elevation: 20050,
     justifyContent: 'flex-end',
@@ -3130,7 +3130,7 @@ function createBoardScreenStyles(colors: ThemeColors) {
     color: colors.danger,
   },
   aiModalOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 20100,
     justifyContent: 'center',
     alignItems: 'center',

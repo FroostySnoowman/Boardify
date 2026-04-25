@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   center: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

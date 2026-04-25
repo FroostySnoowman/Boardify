@@ -92,12 +92,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkSession = async () => {
       try {
         if (Platform.OS === 'web' && typeof window !== 'undefined') {
-          const urlParams = new URLSearchParams(window.location.search);
-          const token = urlParams.get('token') || urlParams.get('session_token');
-          if (token) {
-            const { storeSessionToken } = await import('../api/session');
-            await storeSessionToken(token);
-            window.history.replaceState({}, '', window.location.pathname);
+          const path = window.location.pathname.replace(/\/+$/, '') || '/';
+          const isEmailVerificationRoute = path === '/verify-email' || path.endsWith('/verify-email');
+          if (!isEmailVerificationRoute) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token') || urlParams.get('session_token');
+            if (token) {
+              const { storeSessionToken } = await import('../api/session');
+              await storeSessionToken(token);
+              window.history.replaceState({}, '', window.location.pathname);
+            }
           }
         }
 

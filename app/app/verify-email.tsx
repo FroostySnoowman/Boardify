@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,15 @@ import {
   Platform,
   KeyboardAvoidingView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { Stack, router, useFocusEffect } from 'expo-router';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticLight } from '../src/utils/haptics';
 import { BoardStyleActionButton } from '../src/components/BoardStyleActionButton';
 import { useAuth } from '../src/contexts/AuthContext';
-import { fetchCurrentUser, resendVerificationEmail } from '../src/api/auth';
+import { fetchCurrentUser, resendVerificationEmail, verifyEmailWithToken } from '../src/api/auth';
 import { useTheme } from '../src/theme';
 import type { ThemeColors } from '../src/theme/colors';
 
@@ -65,6 +66,19 @@ function createVerifyEmailStyles(colors: ThemeColors) {
       marginBottom: 28,
       fontWeight: '500',
     },
+    statusLine: {
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textPrimary,
+      marginBottom: 16,
+      fontWeight: '600',
+    },
+    verifyingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 20,
+    },
     actions: {
       flexDirection: 'row',
       alignItems: 'flex-start',
@@ -87,6 +101,66 @@ export default function VerifyEmailScreen() {
   const headerHeight = useHeaderHeight();
   const { user, refreshUser } = useAuth();
   const [resending, setResending] = useState(false);
+  const params = useLocalSearchParams<{ token?: string | string[] }>();
+  const tokenFromLink = useMemo(() => {
+    const raw = params.token;
+    const s = Array.isArray(raw) ? raw[0] : raw;
+    return typeof s === 'string' && s.trim() ? s.trim() : undefined;
+  }, [params.token]);
+  const [linkVerifyPhase, setLinkVerifyPhase] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [linkVerifyMessage, setLinkVerifyMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!tokenFromLink) return;
+
+    let cancelled = false;
+    setLinkVerifyPhase('loading');
+    setLinkVerifyMessage(null);
+
+    void (async () => {
+      try {
+        const message = await verifyEmailWithToken(tokenFromLink);
+        if (cancelled) return;
+        setLinkVerifyPhase('done');
+        setLinkVerifyMessage(message);
+        router.replace('/verify-email');
+        await refreshUser({ silent: true });
+        if (cancelled) return;
+        try {
+          const u = await fetchCurrentUser();
+          if (u.emailVerified) {
+            router.replace('/');
+            return;
+          }
+          setLinkVerifyMessage(
+            `${message} You are signed in with a different account. Sign out and sign in with the address you verified if needed.`
+          );
+        } catch {
+          setLinkVerifyMessage(`${message} Sign in with that address to continue.`);
+        }
+      } catch (e: unknown) {
+        if (cancelled) return;
+        const msg = e instanceof Error ? e.message : 'Verification failed';
+        try {
+          await refreshUser({ silent: true });
+          if (cancelled) return;
+          const u = await fetchCurrentUser();
+          if (u.emailVerified) {
+            router.replace('/');
+            return;
+          }
+        } catch {
+          // ignore — treat as real failure below
+        }
+        setLinkVerifyPhase('error');
+        setLinkVerifyMessage(msg);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tokenFromLink, refreshUser]);
 
   const close = useCallback(() => {
     hapticLight();
@@ -165,11 +239,36 @@ export default function VerifyEmailScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.card}>
-            <Text style={styles.helper}>
-              Open the verification link sent to{' '}
-              <Text style={{ fontWeight: '800', color: colors.textPrimary }}>{user?.email ?? 'your email'}</Text>{' '}
-              on this device, then tap Continue. If nothing arrived, check spam or tap Resend below.
-            </Text>
+            {linkVerifyPhase === 'loading' ? (
+              <View style={styles.verifyingRow}>
+                <ActivityIndicator color={colors.textPrimary} />
+                <Text style={styles.statusLine}>Verifying your email…</Text>
+              </View>
+            ) : null}
+            {linkVerifyPhase === 'done' && linkVerifyMessage ? (
+              <Text style={styles.statusLine}>{linkVerifyMessage}</Text>
+            ) : null}
+            {linkVerifyPhase === 'error' && linkVerifyMessage ? (
+              <Text style={[styles.statusLine, { color: colors.textSecondary }]}>{linkVerifyMessage}</Text>
+            ) : null}
+            {linkVerifyPhase === 'idle' || linkVerifyPhase === 'error' ? (
+              <Text style={styles.helper}>
+                {tokenFromLink ? (
+                  'If verification failed, try a new link from Resend below.'
+                ) : (
+                  <>
+                    Open the verification link sent to{' '}
+                    <Text style={{ fontWeight: '800', color: colors.textPrimary }}>{user?.email ?? 'your email'}</Text>
+                    {' '}
+                    on this device, then tap Continue. If nothing arrived, check spam or tap Resend below.
+                  </>
+                )}
+              </Text>
+            ) : linkVerifyPhase === 'done' ? (
+              <Text style={styles.helper}>
+                You can close this screen or use Continue if you are already signed in on this device.
+              </Text>
+            ) : null}
             <View style={styles.actions}>
               <BoardStyleActionButton
                 shadowColor={colors.shadowFill}

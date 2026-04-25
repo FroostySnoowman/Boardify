@@ -15,11 +15,26 @@ export function useBoardRemoteState(boardId: string | undefined) {
   const [boardRow, setBoardRow] = useState<ApiBoardRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const refresh = useCallback(async () => {
-    if (!boardId) return;
-    const { board, columns: cols } = await getBoardFull(boardId);
-    setBoardRow(board);
-    setColumns(mapFullColumnsToBoard(cols));
+  const refresh = useCallback(async (): Promise<boolean> => {
+    if (!boardId) return false;
+    try {
+      const { board, columns: cols } = await getBoardFull(boardId);
+      setBoardRow(board);
+      setColumns(mapFullColumnsToBoard(cols));
+      setError(null);
+      return true;
+    } catch (e: unknown) {
+      const status =
+        typeof e === 'object' && e !== null && 'status' in e ? (e as { status?: number }).status : undefined;
+      if (status === 401 || status === 403 || status === 404) {
+        // Board no longer accessible (deleted or membership revoked).
+        setBoardRow(null);
+        setColumns([]);
+      }
+      const message = e instanceof Error ? e.message : 'Failed to load board';
+      setError(message || 'Failed to load board');
+      return false;
+    }
   }, [boardId]);
 
   useEffect(() => {

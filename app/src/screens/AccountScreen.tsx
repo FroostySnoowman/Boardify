@@ -17,6 +17,7 @@ import { hapticLight } from '../utils/haptics';
 import { IPAD_TAB_CONTENT_TOP_PADDING } from '../config/layout';
 import { TabScreenChrome } from '../components/TabScreenChrome';
 import { ContextMenu } from '../components/ContextMenu';
+import { requestDeleteAccount } from '../api/auth';
 import { listBoards } from '../api/boards';
 import { getAiUsageToday } from '../api/user';
 import {
@@ -53,6 +54,7 @@ export default function AccountScreen() {
   const [local, setLocal] = useState<LocalPrefs>(DEFAULT_LOCAL);
   const [defaultBoardLabel, setDefaultBoardLabel] = useState('None');
   const [aiUsage, setAiUsage] = useState<AiUsageState | null>(null);
+  const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
   const isWeb = Platform.OS === 'web';
 
   const styles = useMemo(
@@ -425,6 +427,46 @@ export default function AccountScreen() {
                 />
                 <ConfigRowDivider dividerStyle={styles.configDivider} />
                 <ConfigRow
+                  label="Delete account"
+                  sublabel={
+                    deleteAccountBusy
+                      ? 'Sending confirmation email…'
+                      : 'Requires confirmation by email before permanent deletion'
+                  }
+                  rowStyle={styles.configRow}
+                  labelStyle={[styles.configLabel, { color: colors.danger }]}
+                  sublabelStyle={styles.configSublabel}
+                  labelBlockStyle={styles.configLabelBlock}
+                  onPress={() => {
+                    if (deleteAccountBusy) return;
+                    hapticLight();
+                    Alert.alert(
+                      'Delete account',
+                      'We will email a secure confirmation link to your account email. Your account is only deleted after you confirm from that email.',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Send email',
+                          style: 'destructive',
+                          onPress: () => {
+                            setDeleteAccountBusy(true);
+                            void requestDeleteAccount()
+                              .then((msg) => {
+                                Alert.alert('Check your email', msg || 'A confirmation email has been sent.');
+                              })
+                              .catch((e: unknown) => {
+                                const message = e instanceof Error ? e.message : 'Could not send confirmation email.';
+                                Alert.alert('Unable to request deletion', message);
+                              })
+                              .finally(() => setDeleteAccountBusy(false));
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                />
+                <ConfigRowDivider dividerStyle={styles.configDivider} />
+                <ConfigRow
                   label="Sign out"
                   sublabel=""
                   rowStyle={styles.configRow}
@@ -469,7 +511,7 @@ export default function AccountScreen() {
               chevronColor={colors.iconChevron}
               onPress={() => {
                 hapticLight();
-                router.push('/privacy');
+                router.push({ pathname: '/privacy', params: { from: 'account' } });
               }}
               showChevron
             />
@@ -484,7 +526,7 @@ export default function AccountScreen() {
               chevronColor={colors.iconChevron}
               onPress={() => {
                 hapticLight();
-                router.push('/terms');
+                router.push({ pathname: '/terms', params: { from: 'account' } });
               }}
               showChevron
             />

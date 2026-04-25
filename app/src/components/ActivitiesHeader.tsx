@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { router, usePathname } from 'expo-router';
+import { router, useGlobalSearchParams, usePathname } from 'expo-router';
 import { GlassView, isLiquidGlassAvailable, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { ContextMenu } from './ContextMenu';
 import { GlassRoundIconButton } from './GlassRoundIconButton';
@@ -32,14 +32,18 @@ interface User {
 type TabsScreenName = 'index' | 'messages' | 'account';
 
 const ACCOUNT_TAB_MODAL_PATHS = new Set(['/profile', '/api-keys', '/default-board']);
+const LEGAL_MODAL_PATHS = new Set(['/privacy', '/terms']);
 
 function useSelectedTabsScreen(): TabsScreenName {
   const pathname = usePathname() ?? '';
+  const params = useGlobalSearchParams<{ from?: string | string[] }>();
   const path = (pathname.split('?')[0] ?? '').replace(/\/$/, '');
+  const fromParam = Array.isArray(params.from) ? params.from[0] : params.from;
 
   if (path.includes('/messages')) return 'messages';
   if (path.includes('/account')) return 'account';
   if (ACCOUNT_TAB_MODAL_PATHS.has(path)) return 'account';
+  if (LEGAL_MODAL_PATHS.has(path) && fromParam === 'account') return 'account';
   return 'index';
 }
 

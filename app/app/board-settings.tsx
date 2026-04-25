@@ -12,6 +12,7 @@ import {
   Pressable,
   ActivityIndicator,
   Modal,
+  Alert,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -32,6 +33,7 @@ import {
   listBoardMembers,
   listBoardInvitations,
   createBoardInvitation,
+  deleteBoard,
   type ApiBoardInvitationRow,
   type ApiBoardMemberRow,
 } from '../src/api/boards';
@@ -876,6 +878,7 @@ export default function BoardSettingsScreen() {
   const [membersListExpanded, setMembersListExpanded] = useState(false);
   const [labelsTaxonomyOpen, setLabelsTaxonomyOpen] = useState(false);
   const [prioritiesTaxonomyOpen, setPrioritiesTaxonomyOpen] = useState(false);
+  const [deleteBoardBusy, setDeleteBoardBusy] = useState(false);
 
   useEffect(() => {
     setMembersListExpanded(false);
@@ -1510,6 +1513,49 @@ export default function BoardSettingsScreen() {
                   Adds, edits, archives, restores, and new lists
                 </Text>
               </Pressable>
+            </SettingsSection>
+
+
+            <SettingsSection sheet={styles} title="Danger zone">
+              <Text style={styles.sublabel}>
+                Permanently delete this board and all cards, lists, and activity for it.
+              </Text>
+              <View style={styles.actions}>
+                <BoardStyleActionButton
+                  shadowColor={deleteBoardBusy ? colors.shadowFill : colors.danger}
+                  onPress={() => {
+                    if (!boardId || deleteBoardBusy) return;
+                    hapticLight();
+                    Alert.alert(
+                      'Delete board?',
+                      `Delete “${boardName}” forever? This cannot be undone.`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete board',
+                          style: 'destructive',
+                          onPress: () => {
+                            setDeleteBoardBusy(true);
+                            void deleteBoard(boardId)
+                              .then(() => {
+                                Alert.alert('Board deleted', `“${boardName}” was permanently deleted.`);
+                                router.replace('/');
+                              })
+                              .catch((e: unknown) => {
+                                const message = e instanceof Error ? e.message : 'Could not delete board.';
+                                Alert.alert('Delete failed', message);
+                              })
+                              .finally(() => setDeleteBoardBusy(false));
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  disabled={!boardId || deleteBoardBusy}
+                  label={deleteBoardBusy ? 'Deleting…' : 'Delete board'}
+                  labelStyle={{ color: colors.dangerText }}
+                />
+              </View>
             </SettingsSection>
 
             <SettingsSection sheet={styles} title="Reminders">

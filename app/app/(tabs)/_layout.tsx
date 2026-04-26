@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { AppTopNav, WebTopNav } from '../../src/components';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppTopNav, MOBILE_NAV_HEIGHT, WebTopNav } from '../../src/components';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useTheme } from '../../src/theme';
 
@@ -22,7 +23,10 @@ const TAB_ITEMS = [
 export default function TabsLayout() {
   const { user, loading } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
+  const isIpad = Platform.OS === 'ios' && Platform.isPad;
+  const ipadHeaderOffset = isIpad ? MOBILE_NAV_HEIGHT + insets.top : 0;
 
   const tabBarTintColor = colors.bottomBarIcon;
   const tabBarLabelColor = colors.bottomBarIconMuted;
@@ -77,7 +81,7 @@ export default function TabsLayout() {
 
   return (
     <View style={layoutStyles.container}>
-      <View style={layoutStyles.contentWrapper} collapsable={false}>
+      <View style={[layoutStyles.contentWrapper, { marginTop: ipadHeaderOffset }]} collapsable={false}>
         <NativeTabs
           labelStyle={{
             color: tabBarLabelColor,
@@ -87,6 +91,7 @@ export default function TabsLayout() {
           blurEffect={tabBarBlurEffect}
           backgroundColor={tabBarBackgroundColor}
           shadowColor="transparent"
+          sidebarAdaptable={false}
         >
           {TAB_ITEMS.map((item) => (
             <NativeTabs.Trigger

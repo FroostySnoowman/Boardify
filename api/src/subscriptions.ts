@@ -221,7 +221,7 @@ async function verifyApplePurchase(
       .bind(subId, userId, productId, originalTransactionId, appleEnvironment, periodEnd, now, now)
       .run();
 
-    await syncUserSubscriptionStatus(env.DB, userId, now);
+    await syncUserSubscriptionStatus(env.DB, userId, now, { includeIosSandbox: true });
     return jsonResponse(request, {
       status: 'premium',
       expiresAt: periodEnd,

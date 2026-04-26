@@ -37,10 +37,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       return;
     }
     try {
-      const next = await getSubscriptionStatus();
+      const next = await getSubscriptionStatus({
+        includeSandbox: Platform.OS === 'ios',
+      });
       setStatus(next);
     } catch {
-      // keep previous state on transient failures
+      // ignore
     } finally {
       setLoading(false);
     }

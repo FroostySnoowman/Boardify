@@ -161,36 +161,3 @@ Step-by-step obtain + `wrangler secret put` for dev and production: **[`SECRETS.
 **Apple:** `APPLE_CLIENT_ID` is a **Services ID**, not your iOS bundle ID. Use a separate identifier (e.g. `app.example.boardify.web`). See [Creating a client secret](https://developer.apple.com/documentation/accountorganizationaldatasharing/creating-a-client-secret).
 
 Non-secret CORS: optional `ALLOWED_ORIGINS` in `wrangler.toml` `[vars]` (comma-separated). Built-in origins for Boardify + localhost are in [`src/http.ts`](src/http.ts).
-
----
-
-## Routes (summary)
-
-- **Auth:** `/api/auth/*` and `/auth/*` — [`src/auth.ts`](src/auth.ts)
-- **User:** `/user/profile`, `/user/profile-picture`, **`/user/api-keys`** (create/list/revoke API keys; session only) — [`src/user.ts`](src/user.ts), [`src/userApiKeys.ts`](src/userApiKeys.ts)
-- **Images:** `POST /upload/profile-picture`, `POST /upload/card-attachment`, `GET /api/images/{key}` — [`src/images.ts`](src/images.ts)
-- **Boards:** `/boards`, lists, cards, full snapshot, archive, restore, audit, dashboard, notification settings — [`src/boards.ts`](src/boards.ts)
-
-**HTTP API reference (auth, scopes, curl, WebSockets):** [`docs/HTTP_API.md`](docs/HTTP_API.md). **OpenAPI 3 contract:** [`docs/openapi.yaml`](docs/openapi.yaml).
-
-An optional **`/api`** prefix is stripped for routing so `API_BASE` may or may not include `/api`.
-
-**WebSockets:** `GET` `wss://<host>/ws/boards/<boardId>` or `.../api/ws/boards/<boardId>`. Auth: cookie, `?token=`, or `Authorization: Bearer` (session or `bfk_` API key). See [`src/wsBoard.ts`](src/wsBoard.ts).
-
----
-
-## Troubleshooting
-
-```bash
-npx wrangler whoami
-rm -rf .wrangler
-npx wrangler types
-```
-
-If D1 errors persist, confirm `database_id` values and that `d1 execute … --remote` targeted the correct **database name**.
-
----
-
-## Reference worker
-
-[`../reference/`](../reference/) shares the same **Wrangler** habits (dev + remote, `d1 execute --remote`). [`../reference/DEV_COMMANDS.md`](../reference/DEV_COMMANDS.md) has extra command examples — use **Boardify** resource names and URLs here.

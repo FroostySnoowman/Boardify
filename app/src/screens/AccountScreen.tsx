@@ -56,6 +56,7 @@ export default function AccountScreen() {
   const [aiUsage, setAiUsage] = useState<AiUsageState | null>(null);
   const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
   const isWeb = Platform.OS === 'web';
+  const canUseWindow = isWeb && typeof window !== 'undefined';
 
   const styles = useMemo(
     () =>
@@ -440,27 +441,36 @@ export default function AccountScreen() {
                   onPress={() => {
                     if (deleteAccountBusy) return;
                     hapticLight();
+                    const sendEmail = () => {
+                      setDeleteAccountBusy(true);
+                      void requestDeleteAccount()
+                        .then((msg) => {
+                          const text = msg || 'A confirmation email has been sent.';
+                          if (canUseWindow) window.alert(text);
+                          else Alert.alert('Check your email', text);
+                        })
+                        .catch((e: unknown) => {
+                          const message = e instanceof Error ? e.message : 'Could not send confirmation email.';
+                          if (canUseWindow) window.alert(message);
+                          else Alert.alert('Unable to request deletion', message);
+                        })
+                        .finally(() => setDeleteAccountBusy(false));
+                    };
+
+                    if (canUseWindow) {
+                      const ok = window.confirm(
+                        'Delete account?\n\nWe will email a secure confirmation link to your account email. Your account is only deleted after you confirm from that email.'
+                      );
+                      if (ok) sendEmail();
+                      return;
+                    }
+
                     Alert.alert(
                       'Delete account',
                       'We will email a secure confirmation link to your account email. Your account is only deleted after you confirm from that email.',
                       [
                         { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Send email',
-                          style: 'destructive',
-                          onPress: () => {
-                            setDeleteAccountBusy(true);
-                            void requestDeleteAccount()
-                              .then((msg) => {
-                                Alert.alert('Check your email', msg || 'A confirmation email has been sent.');
-                              })
-                              .catch((e: unknown) => {
-                                const message = e instanceof Error ? e.message : 'Could not send confirmation email.';
-                                Alert.alert('Unable to request deletion', message);
-                              })
-                              .finally(() => setDeleteAccountBusy(false));
-                          },
-                        },
+                        { text: 'Send email', style: 'destructive', onPress: sendEmail },
                       ]
                     );
                   }}
@@ -475,6 +485,11 @@ export default function AccountScreen() {
                   labelBlockStyle={styles.configLabelBlock}
                   onPress={() => {
                     hapticLight();
+                    if (canUseWindow) {
+                      const ok = window.confirm('Sign out?');
+                      if (ok) void logout();
+                      return;
+                    }
                     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
                       { text: 'Cancel', style: 'cancel' },
                       { text: 'Sign out', style: 'destructive', onPress: () => logout() },

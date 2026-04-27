@@ -26,6 +26,7 @@ import { NeuListRowPressable, getNeuListRowCardBase } from '../components/NeuLis
 import { BoardStyleActionButton } from '../components/BoardStyleActionButton';
 import { BoardStyleChoiceChip } from '../components/BoardStyleChoiceChip';
 import { copyTextToClipboard } from '../utils/copyText';
+import { alertOk, confirmDestructive } from '../utils/confirm';
 
 type Phase = 'list' | 'create' | 'reveal';
 
@@ -248,7 +249,7 @@ export default function ApiKeysScreen() {
       await refresh();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Could not create key';
-      Alert.alert('Could not create key', msg);
+      alertOk('Could not create key', msg);
     } finally {
       setSaving(false);
     }
@@ -257,31 +258,29 @@ export default function ApiKeysScreen() {
   const confirmRevoke = (row: UserApiKeyListItem) => {
     if (row.revokedAt) return;
     hapticLight();
-    Alert.alert('Revoke key', `“${row.name}” will stop working immediately.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Revoke',
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              await revokeUserApiKey(row.id);
-              await refresh();
-            } catch (e: unknown) {
-              const msg = e instanceof Error ? e.message : 'Could not revoke';
-              Alert.alert('Error', msg);
-            }
-          })();
-        },
-      },
-    ]);
+    void confirmDestructive({
+      title: 'Revoke key',
+      message: `“${row.name}” will stop working immediately.`,
+      confirmText: 'Revoke',
+    }).then((ok) => {
+      if (!ok) return;
+      void (async () => {
+        try {
+          await revokeUserApiKey(row.id);
+          await refresh();
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : 'Could not revoke';
+          alertOk('Error', msg);
+        }
+      })();
+    });
   };
 
   const shareSecret = async () => {
     if (!revealSecret) return;
     const ok = await copyTextToClipboard(revealSecret);
     if (ok && Platform.OS === 'web') {
-      Alert.alert('Copied', 'The API key was copied to your clipboard.');
+      alertOk('Copied', 'The API key was copied to your clipboard.');
     }
   };
 

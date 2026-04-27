@@ -553,6 +553,16 @@ export default function AiPaywallScreen({
     onClose();
   };
 
+  const navigateToLegal = (path: '/terms' | '/privacy') => {
+    hapticLight();
+    if (Platform.OS === 'web') {
+      onClose();
+      setTimeout(() => router.push(path), 0);
+      return;
+    }
+    router.push(path);
+  };
+
   const headerBarHeight = MOBILE_NAV_HEIGHT + insets.top;
   const isGlassClose =
     isLiquidGlassAvailable() && isGlassEffectAPIAvailable() && Platform.OS !== 'web';
@@ -672,8 +682,7 @@ export default function AiPaywallScreen({
           <View style={styles.legalRow}>
             <Pressable
               onPress={() => {
-                hapticLight();
-                router.push('/terms');
+                navigateToLegal('/terms');
               }}
             >
               <Text style={styles.legalLink}>Terms of Use (EULA)</Text>
@@ -681,8 +690,7 @@ export default function AiPaywallScreen({
             <Text style={styles.legalDot}>{'\u2022'}</Text>
             <Pressable
               onPress={() => {
-                hapticLight();
-                router.push('/privacy');
+                navigateToLegal('/privacy');
               }}
             >
               <Text style={styles.legalLink}>Privacy Policy</Text>

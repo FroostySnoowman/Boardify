@@ -19,6 +19,7 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { hapticLight } from '../src/utils/haptics';
+import { alertOk, confirmDestructive } from '../src/utils/confirm';
 import { BoardStyleActionButton } from '../src/components/BoardStyleActionButton';
 import type { BoardViewMode, TaskLabel } from '../src/types/board';
 import {
@@ -1526,30 +1527,24 @@ export default function BoardSettingsScreen() {
                   onPress={() => {
                     if (!boardId || deleteBoardBusy) return;
                     hapticLight();
-                    Alert.alert(
-                      'Delete board?',
-                      `Delete “${boardName}” forever? This cannot be undone.`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Delete board',
-                          style: 'destructive',
-                          onPress: () => {
-                            setDeleteBoardBusy(true);
-                            void deleteBoard(boardId)
-                              .then(() => {
-                                Alert.alert('Board deleted', `“${boardName}” was permanently deleted.`);
-                                router.replace('/');
-                              })
-                              .catch((e: unknown) => {
-                                const message = e instanceof Error ? e.message : 'Could not delete board.';
-                                Alert.alert('Delete failed', message);
-                              })
-                              .finally(() => setDeleteBoardBusy(false));
-                          },
-                        },
-                      ]
-                    );
+                    void confirmDestructive({
+                      title: 'Delete board?',
+                      message: `Delete “${boardName}” forever? This cannot be undone.`,
+                      confirmText: 'Delete board',
+                    }).then((ok) => {
+                      if (!ok) return;
+                      setDeleteBoardBusy(true);
+                      void deleteBoard(boardId)
+                        .then(() => {
+                          alertOk('Board deleted', `“${boardName}” was permanently deleted.`);
+                          router.replace('/');
+                        })
+                        .catch((e: unknown) => {
+                          const message = e instanceof Error ? e.message : 'Could not delete board.';
+                          alertOk('Delete failed', message);
+                        })
+                        .finally(() => setDeleteBoardBusy(false));
+                    });
                   }}
                   disabled={!boardId || deleteBoardBusy}
                   label={deleteBoardBusy ? 'Deleting…' : 'Delete board'}

@@ -6,7 +6,6 @@ import type { ThemeColors } from '../../theme/colors';
 import type { DocBlock, DocParamRow, HttpMethod } from '../../data/apiDocsCatalog';
 import { interpolateApiDocs } from '../../data/apiDocsCatalog';
 
-/** High-contrast label on saturated HTTP method chips (works in light and dark mode). */
 const METHOD_BADGE_LABEL = '#0f172a';
 
 function methodColor(m: HttpMethod): string {
@@ -92,7 +91,6 @@ export function createDocStyles(colors: ThemeColors) {
       borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      // Match primary card surfaces (e.g. neu list rows) — not surfaceMuted, which reads cream on light sheets.
       backgroundColor: colors.cardFace,
       overflow: 'hidden',
     },

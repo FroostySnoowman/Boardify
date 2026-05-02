@@ -22,10 +22,6 @@ export function sessionUser(p: AuthPrincipal | null): AuthenticatedUser | null {
   return p.user;
 }
 
-/**
- * Resolves either a logged-in user (session) or a valid API key (`bfk_` prefix).
- * Prefer `Authorization: Bearer …` over cookies (see `getCredentialToken`).
- */
 export async function resolveAuthPrincipal(request: Request, env: Env): Promise<AuthPrincipal | null> {
   const token = getCredentialToken(request);
   if (!token) {

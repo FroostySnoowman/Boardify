@@ -2,7 +2,6 @@ import { Platform, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 
-/** Writes to the system clipboard. On native, uses `expo-clipboard` (not the share sheet). */
 export async function copyTextToClipboard(text: string): Promise<boolean> {
   if (Platform.OS === 'web') {
     try {

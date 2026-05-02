@@ -27,7 +27,6 @@ export function useBoardRemoteState(boardId: string | undefined) {
       const status =
         typeof e === 'object' && e !== null && 'status' in e ? (e as { status?: number }).status : undefined;
       if (status === 401 || status === 403 || status === 404) {
-        // Board no longer accessible (deleted or membership revoked).
         setBoardRow(null);
         setColumns([]);
       }

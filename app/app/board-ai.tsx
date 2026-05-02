@@ -214,7 +214,7 @@ export default function BoardAiScreen() {
       setPrioritizedOrder(out.order ?? []);
       setPrioritizeNotes(out.notes ?? {});
     } catch {
-      // keep UI calm; board APIs already normalize error text elsewhere
+      // ignore
     } finally {
       setBusy(null);
     }
@@ -250,7 +250,7 @@ export default function BoardAiScreen() {
         subtasks: Array.isArray(out.subtasks) ? out.subtasks : [],
       });
     } catch {
-      // noop
+      // ignore
     } finally {
       setBusy(null);
     }
@@ -260,7 +260,6 @@ export default function BoardAiScreen() {
     if (!boardId || !nextTask?.cardId) return;
     const cardId = nextTask.cardId;
     close();
-    // Wait until the sheet dismissal finishes so the board modal can open safely.
     setTimeout(() => {
       DeviceEventEmitter.emit(BOARD_AI_OPEN_CARD_EVENT, {
         boardId,
@@ -284,7 +283,7 @@ export default function BoardAiScreen() {
       });
       setInsights(out);
     } catch {
-      // noop
+      // ignore
     } finally {
       setBusy(null);
     }

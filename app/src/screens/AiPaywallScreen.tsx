@@ -430,7 +430,6 @@ export default function AiPaywallScreen({
         count: requested.length,
         purchases: requested.map(summarizePurchaseShape),
       });
-      // Sandbox can lag a bit before purchases appear in getAvailablePurchases.
       const available: any[] = [];
       for (let i = 0; i < 4; i++) {
         const purchases = await RNIap.getAvailablePurchases();

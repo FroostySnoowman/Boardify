@@ -10,7 +10,6 @@ function randomBase64Url(bytesLen: number): string {
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-/** Full secret shown once to the user (e.g. `bfk_` + random). */
 export function generateApiKeySecret(): string {
   return `${API_KEY_PREFIX}${randomBase64Url(32)}`;
 }

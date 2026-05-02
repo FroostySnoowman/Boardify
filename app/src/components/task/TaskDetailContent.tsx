@@ -50,7 +50,6 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** SwiftUI / RN bottom sheets must finish dismissing before another modal (camera, library, document picker) can present. */
 function runAfterBottomSheetCloses(onReady: () => void) {
   InteractionManager.runAfterInteractions(() => {
     const delay = Platform.OS === 'ios' ? 480 : Platform.OS === 'android' ? 320 : 0;

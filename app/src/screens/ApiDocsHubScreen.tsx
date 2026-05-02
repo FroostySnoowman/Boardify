@@ -22,7 +22,6 @@ import { getApiDocsPublicBaseUrl } from '../config/env';
 import { copyTextToClipboard } from '../utils/copyText';
 import { NeuListRowPressable, getNeuListRowCardBase } from '../components/NeuListRowPressable';
 
-/** Non-iOS: pad below the stack header. iOS uses `contentInsetAdjustmentBehavior="automatic"` instead of `headerHeight`. */
 const BELOW_HEADER_GAP = 12;
 const IOS_SCROLL_TOP_GAP = 10;
 const COPY_FEEDBACK_MS = 1800;

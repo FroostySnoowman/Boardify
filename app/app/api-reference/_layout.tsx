@@ -9,10 +9,7 @@ export default function ApiReferenceLayout() {
   const sheetStack = useMemo(
     () => ({
       headerShown: true,
-      // Large titles inflate `useHeaderHeight()` and leave a big empty band under the toolbar on sheets.
       headerLargeTitle: false,
-      // Opaque header matches sheet canvas and avoids a translucent / white hairline at the top of
-      // pageSheet + formSheet on iOS (transparent + blur can show system white above cream content).
       headerTransparent: false,
       headerStyle: { backgroundColor: colors.modalCreamCanvas },
       headerShadowVisible: false,
@@ -30,7 +27,6 @@ export default function ApiReferenceLayout() {
     () => ({
       ...sheetStack,
       presentation: Platform.OS === 'ios' ? ('formSheet' as const) : ('modal' as const),
-      // Topic sheets use the same X toolbar as the hub; hide the system back chevron on iOS/Android formSheet.
       headerBackVisible: Platform.OS === 'web',
     }),
     [sheetStack]

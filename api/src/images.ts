@@ -101,7 +101,7 @@ async function uploadCardAttachment(request: Request, env: Env): Promise<Respons
   try {
     filename = decodeURIComponent(filename);
   } catch {
-    // keep raw
+    // ignore
   }
   filename = sanitizeAttachmentFilename(filename);
 

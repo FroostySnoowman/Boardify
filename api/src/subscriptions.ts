@@ -65,7 +65,7 @@ function getWebAppUrl(request: Request, env: Env): string {
         return `${parsed.protocol}//${parsed.host}`;
       }
     } catch {
-      // ignore malformed Origin header
+      // ignore
     }
   }
 

@@ -83,7 +83,8 @@ export function useRequirePremium() {
           return;
         }
         try {
-          router.push({ pathname: path, params: { fromPaywall: '1' } });
+          const href = path === '/terms' ? '/terms?fromPaywall=1' : '/privacy?fromPaywall=1';
+          router.push(href as '/terms?fromPaywall=1' | '/privacy?fromPaywall=1');
           pushedRef.current = true;
         } catch {
           disarmPaywallReopenAfterLegal();

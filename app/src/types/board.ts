@@ -26,9 +26,7 @@ export type TaskAttachment = {
   id: string;
   name: string;
   subtitle?: string;
-  /** Public API path, e.g. `/api/images/attachments/...` */
   url?: string;
-  /** R2 object key; used by the API to delete the object when the attachment is removed */
   storageKey?: string;
   size?: number;
   mimeType?: string;

@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../theme';
 
-/** Matches `BoardStyleActionButton` offset so the selected face reads “pressed in”. */
 const SHIFT = 5;
 
 type Props = {

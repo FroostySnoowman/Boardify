@@ -1,8 +1,3 @@
-/**
- * Board-scoped notification prefs (stored in board_notification_settings.prefs_json).
- * Backward compatible with older clients that only set pushEnabled, dueSoon, emailDigest, quietHours.
- */
-
 export type BoardNotificationPrefs = {
   pushEnabled: boolean;
   dueSoon: boolean;
@@ -13,15 +8,12 @@ export type BoardNotificationPrefs = {
   quietHours: boolean;
   quietFromMinutes: number;
   quietUntilMinutes: number;
-  /** Per-channel deadline reminders (defaults derived from dueSoon + push/email patterns). */
   deadlineRemindPush: boolean;
   deadlineRemindEmail: boolean;
   deadlineRemindInApp: boolean;
-  /** Daily AI digest channels (legacy `emailDigest` seeds email). */
   dailyDigestPush: boolean;
   dailyDigestEmail: boolean;
   dailyDigestInApp: boolean;
-  /** Minutes from midnight local-server interpretation; v1 uses UTC for cron only as doc — optional for UI. */
   dailyDigestLocalMinutes?: number;
 };
 
@@ -96,16 +88,11 @@ export function parseBoardNotificationPrefs(raw: string | null | undefined): Boa
   };
 }
 
-/** Current UTC minutes from midnight (0–1439). */
 export function utcMinutesNow(): number {
   const d = new Date();
   return d.getUTCHours() * 60 + d.getUTCMinutes();
 }
 
-/**
- * If quiet hours wrap (e.g. 22:00–08:00), "quiet" when minutes >= from OR minutes < until.
- * Non-wrap: quiet when minutes >= from AND minutes < until.
- */
 export function isQuietNowUtc(prefs: BoardNotificationPrefs): boolean {
   if (!prefs.quietHours) return false;
   const m = utcMinutesNow();

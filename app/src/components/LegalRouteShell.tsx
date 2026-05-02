@@ -1,36 +1,31 @@
-import React, { useMemo } from 'react';
-import { useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
 import LegalDocumentScreen, { type LegalDocumentVariant } from '../screens/LegalDocumentScreen';
 import { completePaywallLegalFlow } from '../utils/paywallLegalFlow';
 
-function normalizeParam(v: string | string[] | undefined): string | undefined {
-  if (v === undefined) return undefined;
-  return Array.isArray(v) ? v[0] : v;
-}
-
 /**
- * Detects paywall-driven legal opens and wires `beforeRemove` on the same `Stack.Screen`
- * as the document (Expo Router), avoiding `useNavigation()` from `@react-navigation/native`
- * which can throw "Couldn't find a navigation object" when contexts are duplicated.
+ * Completes the paywall return when this sheet loses focus (swipe / pop). Safe for all
+ * entry paths: `completePaywallLegalFlow` is a no-op unless the paywall armed a reopen.
  */
 export function LegalRouteShell({ variant }: { variant: LegalDocumentVariant }) {
-  const localParams = useLocalSearchParams<{ fromPaywall?: string | string[] }>();
-  const globalParams = useGlobalSearchParams<{ fromPaywall?: string | string[] }>();
-  const fromPaywallFlow =
-    normalizeParam(localParams.fromPaywall) === '1' ||
-    normalizeParam(globalParams.fromPaywall) === '1';
+  const blurCompleteOkRef = useRef(false);
 
-  const paywallLeaveListeners = useMemo(
-    () =>
-      fromPaywallFlow
-        ? {
-            beforeRemove: () => {
-              completePaywallLegalFlow();
-            },
-          }
-        : undefined,
-    [fromPaywallFlow]
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      blurCompleteOkRef.current = false;
+      const timeoutId = setTimeout(() => {
+        if (!cancelled) blurCompleteOkRef.current = true;
+      }, 0);
+      return () => {
+        cancelled = true;
+        clearTimeout(timeoutId);
+        if (blurCompleteOkRef.current) {
+          completePaywallLegalFlow();
+        }
+      };
+    }, [])
   );
 
-  return <LegalDocumentScreen variant={variant} paywallLeaveListeners={paywallLeaveListeners} />;
+  return <LegalDocumentScreen variant={variant} />;
 }

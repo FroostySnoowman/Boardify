@@ -30,14 +30,10 @@ const BACKGROUND_COLOR = '#020617';
 interface PlatformBottomSheetProps {
   isOpened: boolean;
   onIsOpenedChange: (opened: boolean) => void;
-  /** Fractions of screen height (e.g. `[0.35, 0.5]`). iOS uses all for snap points; Android/web use the largest for sheet height. */
   presentationDetents?: number[];
   presentationDragIndicator?: 'visible' | 'hidden';
-  /** Sheet panel background (defaults to dark navy). */
   sheetBackgroundColor?: string;
-  /** Scrim behind the sheet (defaults to semi-transparent black). */
   overlayBackgroundColor?: string;
-  /** Drag handle pill color. */
   handleBarColor?: string;
   children: React.ReactNode;
 }

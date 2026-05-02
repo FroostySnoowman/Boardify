@@ -8,6 +8,7 @@ import { LEGAL_POLICY_EFFECTIVE } from '../legal/metadata';
 import { getPrivacySections, PRIVACY_DOCUMENT_TITLE } from '../legal/privacyPolicy';
 import { getTermsSections, TERMS_DOCUMENT_TITLE } from '../legal/termsOfService';
 import { hapticLight } from '../utils/haptics';
+import { completePaywallLegalFlow } from '../utils/paywallLegalFlow';
 import { useTheme } from '../theme';
 import type { ThemeColors } from '../theme/colors';
 import type { LegalSection } from '../legal/types';
@@ -237,14 +238,7 @@ function renderSection(
 
 export type LegalDocumentVariant = 'privacy' | 'terms';
 
-export default function LegalDocumentScreen({
-  variant,
-  paywallLeaveListeners,
-}: {
-  variant: LegalDocumentVariant;
-  /** When set (paywall flow), reopen paywall after this sheet is removed. */
-  paywallLeaveListeners?: { beforeRemove: () => void };
-}) {
+export default function LegalDocumentScreen({ variant }: { variant: LegalDocumentVariant }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -266,12 +260,13 @@ export default function LegalDocumentScreen({
 
   const close = () => {
     hapticLight();
+    completePaywallLegalFlow();
     router.back();
   };
 
   return (
     <View style={styles.container}>
-      <Stack.Screen listeners={paywallLeaveListeners}>
+      <Stack.Screen>
         <Stack.Header
           style={
             Platform.OS === 'ios'

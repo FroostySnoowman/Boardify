@@ -20,7 +20,6 @@ function createStyles(colors: ThemeColors) {
   });
 }
 
-/** Placeholder rows matching loaded API key list rows (name, meta, revoke line). */
 export function ApiKeysListSkeleton() {
   const { colors } = useTheme();
   const s = useMemo(() => createStyles(colors), [colors]);

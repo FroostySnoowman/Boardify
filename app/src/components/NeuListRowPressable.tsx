@@ -19,7 +19,6 @@ type Props = {
   topStyle: object;
   onPress: () => void;
   children: React.ReactNode;
-  /** Merged after `styles.wrap` (e.g. `alignSelf: 'stretch'`, `width: '100%'`, spacing overrides). */
   wrapStyle?: StyleProp<ViewStyle>;
 };
 

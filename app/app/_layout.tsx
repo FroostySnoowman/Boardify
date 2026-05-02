@@ -265,8 +265,6 @@ function AppContent() {
             name="api-reference"
             options={{
               ...createBoardModalOptions,
-              // Nested `app/api-reference/_layout.tsx` Stack owns the header; a second parent header
-              // caused a white strip and wrong `useHeaderHeight()` on iOS page sheets.
               headerShown: false,
             }}
           />

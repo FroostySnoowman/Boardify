@@ -1,9 +1,3 @@
-/**
- * In-app API docs (Swagger-style). Keep aligned with api/docs/HTTP_API.md and openapi.yaml.
- * Placeholders: __API_BASE__ → production worker origin (`getApiDocsPublicBaseUrl`);
- * `<host>` → that origin’s hostname (for WebSocket examples).
- */
-
 export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 export type DocParamRow = {

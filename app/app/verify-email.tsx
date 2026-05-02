@@ -150,7 +150,7 @@ export default function VerifyEmailScreen() {
             return;
           }
         } catch {
-          // ignore — treat as real failure below
+          // ignore
         }
         setLinkVerifyPhase('error');
         setLinkVerifyMessage(msg);

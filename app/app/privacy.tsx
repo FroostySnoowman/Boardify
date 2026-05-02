@@ -1,5 +1,5 @@
-import LegalDocumentScreen from '../src/screens/LegalDocumentScreen';
+import { LegalRouteShell } from '../src/components/LegalRouteShell';
 
 export default function PrivacyRoute() {
-  return <LegalDocumentScreen variant="privacy" />;
+  return <LegalRouteShell variant="privacy" />;
 }

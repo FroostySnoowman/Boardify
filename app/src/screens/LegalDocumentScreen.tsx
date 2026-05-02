@@ -237,7 +237,14 @@ function renderSection(
 
 export type LegalDocumentVariant = 'privacy' | 'terms';
 
-export default function LegalDocumentScreen({ variant }: { variant: LegalDocumentVariant }) {
+export default function LegalDocumentScreen({
+  variant,
+  paywallLeaveListeners,
+}: {
+  variant: LegalDocumentVariant;
+  /** When set (paywall flow), reopen paywall after this sheet is removed. */
+  paywallLeaveListeners?: { beforeRemove: () => void };
+}) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -264,7 +271,7 @@ export default function LegalDocumentScreen({ variant }: { variant: LegalDocumen
 
   return (
     <View style={styles.container}>
-      <Stack.Screen>
+      <Stack.Screen listeners={paywallLeaveListeners}>
         <Stack.Header
           style={
             Platform.OS === 'ios'

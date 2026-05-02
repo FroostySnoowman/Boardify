@@ -1,5 +1,5 @@
-import LegalDocumentScreen from '../src/screens/LegalDocumentScreen';
+import { LegalRouteShell } from '../src/components/LegalRouteShell';
 
 export default function TermsRoute() {
-  return <LegalDocumentScreen variant="terms" />;
+  return <LegalRouteShell variant="terms" />;
 }

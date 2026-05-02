@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { GlassView, isLiquidGlassAvailable, isGlassEffectAPIAvailable } from 'expo-glass-effect';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
 import { useSubscription } from '../contexts/SubscriptionContext';
@@ -166,12 +165,13 @@ const frameStyles = StyleSheet.create({
 export default function AiPaywallScreen({
   visible,
   onClose,
+  onOpenLegalFromPaywall,
 }: {
   visible: boolean;
   onClose: () => void;
+  onOpenLegalFromPaywall: (path: '/terms' | '/privacy') => void;
 }) {
   const { colors, resolvedScheme } = useTheme();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isPremium, refresh } = useSubscription();
   const [purchasing, setPurchasing] = useState(false);
@@ -553,14 +553,9 @@ export default function AiPaywallScreen({
     onClose();
   };
 
-  const navigateToLegal = (path: '/terms' | '/privacy') => {
+  const openLegal = (path: '/terms' | '/privacy') => {
     hapticLight();
-    if (Platform.OS === 'web') {
-      onClose();
-      setTimeout(() => router.push(path), 0);
-      return;
-    }
-    router.push(path);
+    onOpenLegalFromPaywall(path);
   };
 
   const headerBarHeight = MOBILE_NAV_HEIGHT + insets.top;
@@ -682,7 +677,7 @@ export default function AiPaywallScreen({
           <View style={styles.legalRow}>
             <Pressable
               onPress={() => {
-                navigateToLegal('/terms');
+                openLegal('/terms');
               }}
             >
               <Text style={styles.legalLink}>Terms of Use (EULA)</Text>
@@ -690,7 +685,7 @@ export default function AiPaywallScreen({
             <Text style={styles.legalDot}>{'\u2022'}</Text>
             <Pressable
               onPress={() => {
-                navigateToLegal('/privacy');
+                openLegal('/privacy');
               }}
             >
               <Text style={styles.legalLink}>Privacy Policy</Text>

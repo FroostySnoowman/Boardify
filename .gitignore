@@ -40,6 +40,7 @@ keys/
 
 # Android release signing (local secrets — never commit)
 **/keystore.properties
+app/keystore/
 *.keystore
 *.jks
 

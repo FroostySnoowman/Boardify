@@ -38,7 +38,7 @@ keys/
 .wrangler
 .expo
 
-# Android release signing (local secrets — never commit)
+# Android release signing
 **/keystore.properties
 app/keystore/
 *.keystore

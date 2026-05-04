@@ -192,6 +192,7 @@ module.exports = {
           iosUrlScheme: reversedClientId,
         },
       ],
+      './plugins/withAsyncStorageMavenRepo',
       './plugins/withNodePath',
       [
         './plugins/withIdentitySettings',

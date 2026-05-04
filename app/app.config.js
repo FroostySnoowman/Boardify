@@ -176,8 +176,13 @@ module.exports = {
           ios: {
             deploymentTarget: '16.4',
           },
+          android: {
+            kotlinVersion: '2.1.20',
+          },
         },
       ],
+      './plugins/withIosPodsDeploymentTarget',
+      './plugins/withAndroidKotlinGradleClasspath',
       'expo-router',
       [
         'expo-notifications',
@@ -201,12 +206,6 @@ module.exports = {
           buildNumber: buildNumber,
           displayName: 'Boardify',
           category: 'public.app-category.sports',
-        },
-      ],
-      [
-        './plugins/withIosPodsDeploymentTarget',
-        {
-          deploymentTarget: '16.4',
         },
       ],
       './plugins/withAndroidSigning',

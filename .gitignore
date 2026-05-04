@@ -37,6 +37,12 @@ keys/
 .vscode
 .wrangler
 .expo
+
+# Android release signing (local secrets — never commit)
+**/keystore.properties
+*.keystore
+*.jks
+
 package-lock.json
 ios
 scripts
